@@ -24,8 +24,11 @@ export class M365CalendarSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Microsoft 365 authentication').setHeading();
 
     new Setting(containerEl)
+      .setDesc('After changing the Client ID or Tenant ID, sign out and sign in again to apply the new credentials.');
+
+    new Setting(containerEl)
       .setName('Client ID')
-      .setDesc('Azure AD application (client) ID. Sign out and sign in again after changing.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Azure AD application (client) ID.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addText((text) =>
         text
           .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
