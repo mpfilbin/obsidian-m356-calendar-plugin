@@ -1,0 +1,326 @@
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+
+.m365-calendar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--font-interface);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+.m365-calendar-error {
+  background: var(--background-modifier-error);
+  color: var(--text-on-accent);
+  padding: var(--size-4-2) var(--size-4-4);
+  border-radius: var(--radius-s);
+  margin: var(--size-4-2);
+  font-size: var(--font-ui-small);
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.m365-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--size-4-2) var(--size-4-4);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+  gap: var(--size-4-3);
+}
+
+.m365-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.m365-calendar-nav button {
+  background: none;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  color: var(--text-normal);
+  cursor: pointer;
+  padding: var(--size-4-1) var(--size-4-2);
+  font-size: var(--font-ui-medium);
+}
+
+.m365-calendar-nav button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.m365-calendar-date-label {
+  font-weight: var(--font-semibold);
+  min-width: 180px;
+}
+
+.m365-calendar-view-toggle {
+  display: flex;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.m365-calendar-view-toggle button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--size-4-1) var(--size-4-3);
+  font-size: var(--font-ui-small);
+}
+
+.m365-calendar-view-toggle button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.m365-calendar-refresh {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-medium);
+}
+
+.m365-calendar-refresh:disabled {
+  cursor: default;
+}
+
+/* ─── Body layout ─────────────────────────────────────────────────────────── */
+
+.m365-calendar-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Calendar Selector ───────────────────────────────────────────────────── */
+
+.m365-calendar-selector {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--background-modifier-border);
+  padding: var(--size-4-3);
+  overflow-y: auto;
+}
+
+.m365-calendar-selector-item {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-1) 0;
+  font-size: var(--font-ui-small);
+}
+
+.m365-calendar-color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Main calendar area ──────────────────────────────────────────────────── */
+
+.m365-calendar-main {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ─── Month View ──────────────────────────────────────────────────────────── */
+
+.m365-calendar-month-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.m365-calendar-month-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.m365-calendar-day-header {
+  padding: var(--size-4-1) var(--size-4-2);
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+}
+
+.m365-calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+}
+
+.m365-calendar-day-cell {
+  border-right: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: var(--size-4-1);
+  cursor: pointer;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.m365-calendar-day-cell:hover {
+  background: var(--background-modifier-hover);
+}
+
+.m365-calendar-day-cell.other-month .m365-calendar-day-number {
+  color: var(--text-faint);
+}
+
+.m365-calendar-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  border-radius: 50%;
+}
+
+.m365-calendar-day-cell.today .m365-calendar-day-number {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* ─── Week View ───────────────────────────────────────────────────────────── */
+
+.m365-calendar-week-view {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  height: 100%;
+}
+
+.m365-calendar-week-day {
+  border-right: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.m365-calendar-week-day:hover {
+  background: var(--background-modifier-hover);
+}
+
+.m365-calendar-week-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.m365-calendar-week-day-name {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.m365-calendar-week-day-number {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.m365-calendar-week-day-number.today {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.m365-calendar-week-day-events {
+  padding: var(--size-4-1);
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ─── Event Card ──────────────────────────────────────────────────────────── */
+
+.m365-calendar-event-card {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  border-left: 3px solid transparent;
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  padding: 2px var(--size-4-1);
+  margin-bottom: 2px;
+  overflow: hidden;
+}
+
+.m365-calendar-event-time {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.m365-calendar-event-title {
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Create Event Form ───────────────────────────────────────────────────── */
+
+.m365-create-event-form {
+  padding: var(--size-4-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+}
+
+.m365-form-error {
+  background: var(--background-modifier-error);
+  color: var(--text-on-accent);
+  padding: var(--size-4-2);
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-small);
+}
+
+.m365-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+}
+
+.m365-form-field label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-weight: var(--font-semibold);
+}
+
+.m365-form-field input,
+.m365-form-field select,
+.m365-form-field textarea {
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  color: var(--text-normal);
+  padding: var(--size-4-2);
+  font-size: var(--font-ui-medium);
+  font-family: var(--font-interface);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.m365-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-4-2);
+}
