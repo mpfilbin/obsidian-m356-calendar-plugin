@@ -55,12 +55,14 @@ export const MonthView: React.FC<MonthViewProps> = ({
         {days.map((day, i) => {
           const isCurrentMonth = day.getMonth() === currentDate.getMonth();
           const isToday = day.toDateString() === today.toDateString();
-          const dayEvents = events.filter(
-            (e) => new Date(e.start.dateTime).toDateString() === day.toDateString(),
-          );
+          const dayEvents = events.filter((e) => {
+            const eventDateStr = e.start.dateTime.slice(0, 10); // 'YYYY-MM-DD'
+            const cellDateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+            return eventDateStr === cellDateStr;
+          });
           return (
             <div
-              key={i}
+              key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
               className={[
                 'm365-calendar-day-cell',
                 isCurrentMonth ? '' : 'other-month',
