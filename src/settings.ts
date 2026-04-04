@@ -79,7 +79,11 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       )
       .addButton((btn) =>
         btn.setButtonText('Sign Out').onClick(async () => {
-          await this.plugin.authService.signOut();
+          try {
+            await this.plugin.authService.signOut();
+          } catch (e) {
+            console.error('M365 Calendar: Sign out failed', e);
+          }
         }),
       );
 

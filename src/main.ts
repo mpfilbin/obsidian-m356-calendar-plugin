@@ -83,7 +83,7 @@ export default class M365CalendarPlugin extends Plugin {
     if (leaves.length > 0) {
       leaf = leaves[0];
     } else {
-      leaf = workspace.getLeaf(true);
+      leaf = workspace.getLeaf('tab');
       await leaf.setViewState({ type: VIEW_TYPE_M365_CALENDAR, active: true });
     }
     workspace.revealLeaf(leaf);
