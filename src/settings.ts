@@ -25,7 +25,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Client ID')
-      .setDesc('Azure AD application (client) ID. Restart plugin after changing.')  // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Azure AD application (client) ID.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addText((text) =>
         text
           .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
@@ -38,7 +38,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Tenant ID')
-      .setDesc('Use "common" for personal + work accounts. Restart plugin after changing.')
+      .setDesc('Use "common" for personal + work accounts.')
       .addText((text) =>
         text
           .setPlaceholder('common') // eslint-disable-line obsidianmd/ui/sentence-case

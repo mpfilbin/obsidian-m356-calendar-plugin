@@ -18,7 +18,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    auth = new AuthService('client-id', 'common', getSecret, setSecret, 'token-key');
+    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, 'token-key');
   });
 
   afterEach(() => {
