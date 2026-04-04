@@ -10,8 +10,8 @@ const GRAPH_SCOPES = [
 
 export class AuthService {
   constructor(
-    private readonly clientId: string,
-    private readonly tenantId: string,
+    private readonly getClientId: () => string,
+    private readonly getTenantId: () => string,
     private readonly getSecret: (name: string) => string | null,
     private readonly setSecret: (name: string, value: string) => Promise<void>,
     private readonly secretName: string,
@@ -93,18 +93,18 @@ export class AuthService {
 
   private buildAuthUrl(redirectUri: string): string {
     const params = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.getClientId(),
       response_type: 'code',
       redirect_uri: redirectUri,
       scope: GRAPH_SCOPES.join(' '),
       response_mode: 'query',
     });
-    return `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/authorize?${params}`;
+    return `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/authorize?${params}`;
   }
 
   private async exchangeCode(code: string, redirectUri: string): Promise<StoredTokens> {
     const body = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.getClientId(),
       code,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
@@ -112,7 +112,7 @@ export class AuthService {
     });
 
     const response = await fetch(
-      `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -131,14 +131,14 @@ export class AuthService {
 
   private async refreshAccessToken(refreshToken: string): Promise<string> {
     const body = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: this.getClientId(),
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
       scope: GRAPH_SCOPES.join(' '),
     });
 
     const response = await fetch(
-      `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

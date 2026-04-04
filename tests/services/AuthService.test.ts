@@ -18,7 +18,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    auth = new AuthService('client-id', 'common', getSecret, setSecret, 'token-key');
+    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, 'token-key');
   });
 
   afterEach(() => {
@@ -72,5 +72,43 @@ describe('AuthService', () => {
   it('signOut clears the stored secret', async () => {
     await auth.signOut();
     expect(setSecret).toHaveBeenCalledWith('token-key', '');
+  });
+
+  describe('dynamic getter reads', () => {
+    it('uses the current clientId at the time of token refresh, not the value at construction', async () => {
+      let clientId = 'original-client';
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret, 'token-key');
+      getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+
+      clientId = 'updated-client';
+      await dynamicAuth.getValidToken();
+
+      const body = new URLSearchParams(fetchMock.mock.calls[0][1].body as string);
+      expect(body.get('client_id')).toBe('updated-client');
+    });
+
+    it('uses the current tenantId at the time of token refresh, not the value at construction', async () => {
+      let tenantId = 'original-tenant';
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret, 'token-key');
+      getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+
+      tenantId = 'updated-tenant';
+      await dynamicAuth.getValidToken();
+
+      const [url] = fetchMock.mock.calls[0] as [string, unknown];
+      expect(url).toContain('/updated-tenant/');
+    });
   });
 });
