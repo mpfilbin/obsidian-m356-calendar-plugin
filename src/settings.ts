@@ -25,7 +25,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Client ID')
-      .setDesc('Azure AD application (client) ID.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Azure AD application (client) ID. Sign out and sign in again after changing.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addText((text) =>
         text
           .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
