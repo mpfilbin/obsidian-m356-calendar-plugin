@@ -32,9 +32,13 @@ jobs:
 
       - name: Create GitHub release
         run: |
-          gh release create "${{ steps.version.outputs.version }}" \
-            main.js manifest.json styles.css \
-            --title "${{ steps.version.outputs.version }}" \
-            --generate-notes
+          if gh release view "${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
+            echo "Release ${{ steps.version.outputs.version }} already exists, skipping."
+          else
+            gh release create "${{ steps.version.outputs.version }}" \
+              main.js manifest.json styles.css \
+              --title "${{ steps.version.outputs.version }}" \
+              --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
