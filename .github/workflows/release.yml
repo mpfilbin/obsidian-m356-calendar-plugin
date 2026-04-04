@@ -38,5 +38,3 @@ jobs:
             --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-</content>
-</invoke>
