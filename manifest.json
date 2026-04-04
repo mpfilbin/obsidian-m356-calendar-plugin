@@ -4,7 +4,7 @@
   "version": "0.1.2",
   "minAppVersion": "1.0.0",
   "description": "Microsoft 365 calendar view for Obsidian",
-  "author": "Your Name",
-  "authorUrl": "",
+  "author": "Michael Filbin",
+  "authorUrl": "https://mike.filb.in",
   "isDesktopOnly": true
 }
