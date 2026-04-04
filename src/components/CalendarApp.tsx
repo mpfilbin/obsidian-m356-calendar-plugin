@@ -90,14 +90,20 @@ export const CalendarApp: React.FC = () => {
       ? enabledIds.filter((id) => id !== calendarId)
       : [...enabledIds, calendarId];
     setEnabledIds(next);
-    const updated: M365CalendarSettings = { ...settings, enabledCalendarIds: next };
-    await saveSettings(updated);
+    try {
+      await saveSettings({ ...settings, enabledCalendarIds: next });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save settings');
+      setEnabledIds(enabledIds);
+    }
   };
 
   const handleDayClick = (date: Date) => {
+    const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
+    if (enabledCalendars.length === 0) return;
     const modal = new CreateEventModal(
       app,
-      calendars.filter((c) => enabledIds.includes(c.id)),
+      enabledCalendars,
       settings.defaultCalendarId,
       date,
       async (calendarId, event) => {
