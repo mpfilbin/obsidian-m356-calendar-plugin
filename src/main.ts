@@ -30,8 +30,8 @@ export default class M365CalendarPlugin extends Plugin {
     this.authService = new AuthService(
       this.settings.clientId,
       this.settings.tenantId,
-      (name) => this.app.secretStorage.get(name),
-      (name, value) => this.app.secretStorage.set(name, value),
+      (name) => this.app.secretStorage.getSecret(name),
+      async (name, value) => { this.app.secretStorage.setSecret(name, value); },
       this.settings.tokenSecretName,
     );
 
