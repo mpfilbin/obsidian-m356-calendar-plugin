@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { M365Calendar, M365Event, M365CalendarSettings } from '../types';
+import { M365Calendar, M365Event } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';

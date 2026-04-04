@@ -21,14 +21,14 @@ export class M365CalendarSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName('Microsoft 365 Authentication').setHeading();
+    new Setting(containerEl).setName('Microsoft 365 authentication').setHeading();
 
     new Setting(containerEl)
       .setName('Client ID')
-      .setDesc('Azure AD application (client) ID. Restart plugin after changing.')
+      .setDesc('Azure AD application (client) ID. Restart plugin after changing.')  // eslint-disable-line obsidianmd/ui/sentence-case
       .addText((text) =>
         text
-          .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
+          .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
           .setValue(this.plugin.settings.clientId)
           .onChange(async (value) => {
             this.plugin.settings.clientId = value.trim();
@@ -41,7 +41,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       .setDesc('Use "common" for personal + work accounts. Restart plugin after changing.')
       .addText((text) =>
         text
-          .setPlaceholder('common')
+          .setPlaceholder('common') // eslint-disable-line obsidianmd/ui/sentence-case
           .setValue(this.plugin.settings.tenantId)
           .onChange(async (value) => {
             this.plugin.settings.tenantId = value.trim() || 'common';
@@ -50,8 +50,8 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('OAuth Token')
-      .setDesc('Token stored securely in SecretStorage — not in data.json.')
+      .setName('OAuth token') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Token stored securely in SecretStorage — not in data.json.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addComponent(
         (el) =>
           new SecretComponent(this.app, el)
@@ -63,11 +63,11 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Sign In / Sign Out')
-      .setDesc('Authenticate with your Microsoft account.')
+      .setName('Sign in / sign out')
+      .setDesc('Authenticate with your Microsoft account.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addButton((btn) =>
         btn
-          .setButtonText('Sign In')
+          .setButtonText('Sign in')
           .setCta()
           .onClick(async () => {
             try {
@@ -78,7 +78,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       )
       .addButton((btn) =>
-        btn.setButtonText('Sign Out').onClick(async () => {
+        btn.setButtonText('Sign out').onClick(async () => {
           try {
             await this.plugin.authService.signOut();
           } catch (e) {
@@ -87,7 +87,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
         }),
       );
 
-    new Setting(containerEl).setName('Calendar Settings').setHeading();
+    new Setting(containerEl).setName('Calendar').setHeading();
 
     new Setting(containerEl)
       .setName('Default view')

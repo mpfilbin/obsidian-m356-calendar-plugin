@@ -5,9 +5,16 @@ import obsidian from 'eslint-plugin-obsidianmd';
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  obsidian.configs.all,
   {
+    plugins: { obsidianmd: obsidian },
+    languageOptions: {
+      parserOptions: {
+        project: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
+      ...obsidian.configs.recommended,
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },

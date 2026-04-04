@@ -21,7 +21,7 @@ export class M365CalendarView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'M365 Calendar';
+    return 'M365 calendar';
   }
 
   getIcon(): string {

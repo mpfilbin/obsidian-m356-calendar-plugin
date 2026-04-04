@@ -137,7 +137,7 @@ export class CreateEventModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText('New Event');
+    this.titleEl.setText('New event');
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>

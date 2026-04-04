@@ -52,7 +52,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
         ))}
       </div>
       <div className="m365-calendar-month-grid">
-        {days.map((day, i) => {
+        {days.map((day) => {
           const isCurrentMonth = day.getMonth() === currentDate.getMonth();
           const isToday = day.toDateString() === today.toDateString();
           const dayEvents = events.filter((e) => {

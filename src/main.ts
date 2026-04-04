@@ -49,13 +49,13 @@ export default class M365CalendarPlugin extends Plugin {
       });
     });
 
-    this.addRibbonIcon('calendar', 'Open M365 Calendar', () => {
+    this.addRibbonIcon('calendar', 'Open M365 calendar', () => { // eslint-disable-line obsidianmd/ui/sentence-case
       void this.activateView();
     });
 
     this.addCommand({
-      id: 'open-m365-calendar',
-      name: 'Open M365 Calendar',
+      id: 'open-calendar',
+      name: 'Open calendar',
       callback: () => void this.activateView(),
     });
 
@@ -63,7 +63,7 @@ export default class M365CalendarPlugin extends Plugin {
   }
 
   async onunload(): Promise<void> {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_M365_CALENDAR);
+    
   }
 
   async loadSettings(): Promise<void> {
