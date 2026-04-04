@@ -1,20 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-vi.mock('obsidian', () => ({
-  Modal: class {
-    contentEl: HTMLElement;
-    titleEl: { setText: (s: string) => void };
-    constructor() {
-      this.contentEl = document.createElement('div');
-      this.titleEl = { setText: vi.fn() };
-    }
-    close = vi.fn();
-    open = vi.fn();
-  },
-}));
-
 import { CreateEventForm } from '../../src/components/CreateEventModal';
 import { M365Calendar } from '../../src/types';
 
