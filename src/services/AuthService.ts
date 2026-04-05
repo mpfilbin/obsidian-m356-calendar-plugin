@@ -67,13 +67,28 @@ export class AuthService {
     return new Promise((resolve, reject) => {
       const server = http.createServer((req, res) => {
         const url = new URL(req.url!, 'http://localhost');
+
+        // Ignore browser-initiated requests that aren't the OAuth callback
+        // (e.g. favicon.ico, preflight). Only the root path carries OAuth params.
+        if (url.pathname !== '/') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
         const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+        const errorDescription = url.searchParams.get('error_description');
+
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<html><body><h1>Authentication complete. You can close this tab.</h1></body></html>');
         server.close();
+
         if (code) {
           const port = (server.address() as { port: number }).port;
           resolve({ code, redirectUri: `http://localhost:${port}` });
+        } else if (error) {
+          reject(new Error(`Authentication failed: ${errorDescription ?? error}`));
         } else {
           reject(new Error('No authorization code received'));
         }
