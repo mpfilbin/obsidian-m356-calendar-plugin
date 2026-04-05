@@ -66,7 +66,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
               signInBtn.setDisabled(true);
             } catch (e) {
               console.error('M365 Calendar: Sign in failed', e);
-              new Notice('M365 Calendar: Sign in failed. Check the developer console for details.');
+              new Notice('M365 Calendar: Sign in failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
             }
           });
       })
@@ -77,7 +77,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             signInBtn.setDisabled(false);
           } catch (e) {
             console.error('M365 Calendar: Sign out failed', e);
-            new Notice('M365 Calendar: Sign out failed. Check the developer console for details.');
+            new Notice('M365 Calendar: Sign out failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
           }
         }),
       );
