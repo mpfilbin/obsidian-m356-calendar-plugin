@@ -4,9 +4,10 @@ import { M365Event, M365Calendar } from '../types';
 interface EventCardProps {
   event: M365Event;
   calendar: M365Calendar;
+  onClick?: () => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event, calendar }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, calendar, onClick }) => {
   const startTime = new Date(event.start.dateTime);
   const timeLabel = event.isAllDay
     ? 'All day'
@@ -17,6 +18,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, calendar }) => {
       className="m365-calendar-event-card"
       style={{ borderLeftColor: calendar.color }}
       title={event.subject}
+      onClick={onClick}
     >
       <span className="m365-calendar-event-time">{timeLabel}</span>
       <span className="m365-calendar-event-title">{event.subject}</span>

@@ -23,6 +23,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
       getEvents: vi.fn().mockResolvedValue([mockEvent]),
       createEvent: vi.fn(),
+      updateEvent: vi.fn(),
     } as unknown as AppContextValue['calendarService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -63,6 +64,7 @@ describe('CalendarApp', () => {
         getCalendars: vi.fn().mockRejectedValue(new Error('Not authenticated')),
         getEvents: vi.fn().mockResolvedValue([]),
         createEvent: vi.fn(),
+        updateEvent: vi.fn(),
       } as unknown as AppContextValue['calendarService'],
     });
     renderCalendarApp(ctx);
@@ -78,6 +80,7 @@ describe('CalendarApp', () => {
         getCalendars: vi.fn().mockRejectedValue(new Error('Not authenticated')),
         getEvents: vi.fn().mockResolvedValue([]),
         createEvent: vi.fn(),
+        updateEvent: vi.fn(),
       } as unknown as AppContextValue['calendarService'],
     });
     renderCalendarApp(ctx);
@@ -96,7 +99,7 @@ describe('CalendarApp', () => {
       .mockResolvedValue([mockCalendar]);
     const getEvents = vi.fn().mockResolvedValue([mockEvent]);
     const ctx = makeContext({
-      calendarService: { getCalendars, getEvents, createEvent: vi.fn() } as unknown as AppContextValue['calendarService'],
+      calendarService: { getCalendars, getEvents, createEvent: vi.fn(), updateEvent: vi.fn() } as unknown as AppContextValue['calendarService'],
     });
 
     renderCalendarApp(ctx);

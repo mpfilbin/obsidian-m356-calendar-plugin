@@ -68,4 +68,12 @@ describe('CacheService', () => {
     await cache.set('key3', [mockEvent]);
     expect(cache.get('key3')).not.toBeNull();
   });
+
+  it('clearAll removes all entries', async () => {
+    await cache.set('key1', [mockEvent]);
+    await cache.set('key2', [mockEvent]);
+    cache.clearAll();
+    expect(cache.get('key1')).toBeNull();
+    expect(cache.get('key2')).toBeNull();
+  });
 });

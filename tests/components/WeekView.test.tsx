@@ -22,6 +22,15 @@ const eventOnMonday: M365Event = {
   isAllDay: false,
 };
 
+const eventOnApril4: M365Event = {
+  id: 'evt1',
+  subject: 'Team Meeting',
+  start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+  end: { dateTime: '2026-04-04T10:00:00', timeZone: 'UTC' },
+  calendarId: 'cal1',
+  isAllDay: false,
+};
+
 describe('WeekView', () => {
   it('renders exactly 7 day columns', () => {
     render(
@@ -71,5 +80,35 @@ describe('WeekView', () => {
       />,
     );
     expect(document.querySelectorAll('.m365-calendar-week-day.today')).toHaveLength(1);
+  });
+
+  it('calls onEventClick with the event when an event card is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-04')}
+        events={[eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByText('Team Meeting'));
+    expect(onEventClick).toHaveBeenCalledWith(eventOnApril4);
+  });
+
+  it('does not call onDayClick when an event card is clicked', async () => {
+    const onDayClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-04')}
+        events={[eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={onDayClick}
+        onEventClick={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByText('Team Meeting'));
+    expect(onDayClick).not.toHaveBeenCalled();
   });
 });

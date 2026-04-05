@@ -27,7 +27,7 @@ const EXPECTED_EVENT: M365Event = {
 
 describe('CalendarService', () => {
   let auth: Pick<AuthService, 'getValidToken'>;
-  let cache: Pick<CacheService, 'get' | 'set'>;
+  let cache: Pick<CacheService, 'get' | 'set' | 'clearAll'>;
   let service: CalendarService;
 
   beforeEach(() => {
@@ -35,6 +35,7 @@ describe('CalendarService', () => {
     cache = {
       get: vi.fn().mockReturnValue(null),
       set: vi.fn().mockResolvedValue(undefined),
+      clearAll: vi.fn(),
     };
     service = new CalendarService(
       auth as AuthService,
@@ -112,6 +113,35 @@ describe('CalendarService', () => {
     expect(events).toHaveLength(2);
   });
 
+  it('getEvents maps location displayName from Graph response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        value: [{
+          id: 'evt1',
+          subject: 'Team Standup',
+          start: { dateTime: '2026-04-04T09:00:00Z', timeZone: 'UTC' },
+          end: { dateTime: '2026-04-04T09:30:00Z', timeZone: 'UTC' },
+          isAllDay: false,
+          bodyPreview: '',
+          webLink: 'https://outlook.office.com/calendar/item/evt1',
+          location: { displayName: 'Conference Room A' },
+        }],
+      }),
+    }));
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(events[0].location).toBe('Conference Room A');
+  });
+
+  it('getEvents sets location to undefined when Graph response has no location', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [FAKE_EVENT_RESPONSE] }),
+    }));
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(events[0].location).toBeUndefined();
+  });
+
   it('createEvent posts to Graph and returns mapped event', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -133,5 +163,64 @@ describe('CalendarService', () => {
     expect(event.subject).toBe('New Event');
     expect(event.calendarId).toBe('cal1');
     expect(event.id).toBe('evt2');
+  });
+
+  it('updateEvent sends PATCH to /me/events/{id} with correct body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.updateEvent('evt1', { subject: 'Updated', location: 'Room 42' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events/evt1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+        }),
+      }),
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.subject).toBe('Updated');
+    expect(body.location).toEqual({ displayName: 'Room 42' });
+  });
+
+  it('updateEvent clears the cache on success', async () => {
+    // Prime the cache
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [FAKE_EVENT_RESPONSE] }),
+    }));
+    await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(cache.get as ReturnType<typeof vi.fn>).toHaveBeenCalled();
+
+    // Update the event
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    await service.updateEvent('evt1', { subject: 'Updated' });
+
+    // Cache should now be cleared — next getEvents call should fetch from Graph
+    const fetchAfterUpdate = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [FAKE_EVENT_RESPONSE] }),
+    });
+    vi.stubGlobal('fetch', fetchAfterUpdate);
+    (cache.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(fetchAfterUpdate).toHaveBeenCalled();
+  });
+
+  it('updateEvent omits undefined fields from PATCH body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.updateEvent('evt1', { subject: 'Only Subject' });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body).toEqual({ subject: 'Only Subject' });
+    expect(body.location).toBeUndefined();
+  });
+
+  it('updateEvent throws when Graph returns error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Forbidden' }));
+    await expect(service.updateEvent('evt1', { subject: 'x' })).rejects.toThrow(
+      'Failed to update event: Forbidden',
+    );
   });
 });

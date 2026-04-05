@@ -305,7 +305,7 @@
   font-weight: var(--font-semibold);
 }
 
-.m365-form-field input,
+.m365-form-field input:not([type="checkbox"]),
 .m365-form-field select,
 .m365-form-field textarea {
   background: var(--background-modifier-form-field);
@@ -317,6 +317,34 @@
   font-family: var(--font-interface);
   width: 100%;
   box-sizing: border-box;
+}
+
+.m365-event-click-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.m365-form-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.m365-form-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-normal);
+  cursor: pointer;
 }
 
 .m365-form-actions {

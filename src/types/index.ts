@@ -15,6 +15,7 @@ export interface M365Event {
   isAllDay: boolean;
   bodyPreview?: string;
   webLink?: string;
+  location?: string;
 }
 
 export interface NewEventInput {
@@ -23,6 +24,15 @@ export interface NewEventInput {
   end: Date;
   description?: string;
   isAllDay?: boolean;
+}
+
+export interface EventPatch {
+  subject?: string;
+  location?: string;
+  isAllDay?: boolean;
+  start?: { dateTime: string; timeZone: string };
+  end?: { dateTime: string; timeZone: string };
+  bodyContent?: string;
 }
 
 export interface CachedEvents {

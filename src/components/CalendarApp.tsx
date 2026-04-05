@@ -6,9 +6,16 @@ import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { CreateEventModal } from './CreateEventModal';
+import { EventDetailModal } from './EventDetailModal';
 import { useAppContext } from '../context';
 
 type ViewType = 'month' | 'week';
+
+function notifyError(e: unknown): void {
+  const message = e instanceof Error ? e.message : 'An error occurred';
+  console.error('M365 Calendar:', e);
+  new Notice(`M365 Calendar: ${message}`);
+}
 
 function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
   if (view === 'month') {
@@ -38,7 +45,7 @@ export const CalendarApp: React.FC = () => {
   // doesn't re-fetch them. Reset to false on error so the next refresh retries.
   const calendarsLoadedRef = useRef(false);
 
-  const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; notify?: boolean } = {}) => {
+  const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
     setSyncing(true);
     setError(null);
     try {
@@ -56,10 +63,9 @@ export const CalendarApp: React.FC = () => {
       }
     } catch (e) {
       calendarsLoadedRef.current = false;
-      const message = e instanceof Error ? e.message : 'Failed to load calendar data';
       console.error('M365 Calendar:', e);
-      if (options.notify) new Notice(`M365 Calendar: ${message}`);
-      setError(message);
+      if (options.userInitiated) notifyError(e);
+      setError(e instanceof Error ? e.message : 'Failed to load calendar data');
     } finally {
       setSyncing(false);
     }
@@ -113,11 +119,32 @@ export const CalendarApp: React.FC = () => {
       settings.defaultCalendarId,
       date,
       async (calendarId, event) => {
-        await calendarService.createEvent(calendarId, event);
-        await fetchAll();
+        try {
+          await calendarService.createEvent(calendarId, event);
+          await fetchAll();
+        } catch (e) {
+          notifyError(e);
+          throw e;
+        }
       },
     );
     modal.open();
+  };
+
+  const handleEventClick = (event: M365Event) => {
+    new EventDetailModal(
+      app,
+      event,
+      async (patch) => {
+        try {
+          await calendarService.updateEvent(event.id, patch);
+        } catch (e) {
+          notifyError(e);
+          throw e;
+        }
+      },
+      () => void fetchAll({ reloadCalendars: false }),
+    ).open();
   };
 
   return (
@@ -128,7 +155,7 @@ export const CalendarApp: React.FC = () => {
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
-        onRefresh={() => void fetchAll({ reloadCalendars: true, notify: true })}
+        onRefresh={() => void fetchAll({ reloadCalendars: true, userInitiated: true })}
         syncing={syncing}
       />
       <div className="m365-calendar-body">
@@ -144,6 +171,7 @@ export const CalendarApp: React.FC = () => {
               events={events}
               calendars={calendars}
               onDayClick={handleDayClick}
+              onEventClick={handleEventClick}
             />
           ) : (
             <WeekView
@@ -151,6 +179,7 @@ export const CalendarApp: React.FC = () => {
               events={events}
               calendars={calendars}
               onDayClick={handleDayClick}
+              onEventClick={handleEventClick}
             />
           )}
         </div>

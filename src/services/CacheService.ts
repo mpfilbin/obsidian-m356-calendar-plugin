@@ -28,6 +28,10 @@ export class CacheService {
     await this.save(this.store);
   }
 
+  clearAll(): void {
+    this.store = {};
+  }
+
   purgeExpired(): void {
     const now = Date.now();
     for (const key of Object.keys(this.store)) {

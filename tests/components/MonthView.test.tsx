@@ -87,4 +87,35 @@ describe('MonthView', () => {
     const todayCells = document.querySelectorAll('.m365-calendar-day-cell.today');
     expect(todayCells.length).toBe(1);
   });
+
+  it('calls onEventClick with the event when an event card is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByText('Team Meeting'));
+    expect(onEventClick).toHaveBeenCalledWith(eventOnApril4);
+  });
+
+  it('does not call onDayClick when an event card is clicked', async () => {
+    const onDayClick = vi.fn();
+    const onEventClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={onDayClick}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByText('Team Meeting'));
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
 });
