@@ -79,7 +79,13 @@ export class AuthService {
       let redirectUri = '';
 
       const server = http.createServer((req, res) => {
-        const url = new URL(req.url!, 'http://localhost');
+        if (!req.url) {
+          res.writeHead(400);
+          res.end();
+          return;
+        }
+
+        const url = new URL(req.url, 'http://localhost');
 
         // Ignore browser-initiated requests that aren't the OAuth callback
         // (e.g. favicon.ico, preflight). Only the root path carries OAuth params.
@@ -94,7 +100,7 @@ export class AuthService {
         const errorDescription = url.searchParams.get('error_description');
 
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end('<html><body><h1>Authentication complete. You can close this tab.</h1></body></html>');
+        res.end('<html lang="en"><body><h1>Authentication complete. You can close this tab.</h1></body></html>');
         server.close();
 
         if (code) {
