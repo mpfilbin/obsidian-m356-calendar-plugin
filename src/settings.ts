@@ -1,11 +1,10 @@
-import { App, PluginSettingTab, SecretComponent, Setting } from 'obsidian';
+import { App, type ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
 import M365CalendarPlugin from './main';
 import { M365CalendarSettings } from './types';
 
 export const DEFAULT_SETTINGS: M365CalendarSettings = {
   clientId: '',
   tenantId: 'common',
-  tokenSecretName: 'm365-calendar-token',
   enabledCalendarIds: [],
   defaultCalendarId: '',
   refreshIntervalMinutes: 10,
@@ -52,43 +51,42 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       );
 
-    new Setting(containerEl)
-      .setName('OAuth token') // eslint-disable-line obsidianmd/ui/sentence-case
-      .setDesc('Token stored securely in SecretStorage — not in data.json.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addComponent(
-        (el) =>
-          new SecretComponent(this.app, el)
-            .setValue(this.plugin.settings.tokenSecretName)
-            .onChange(async (value) => {
-              this.plugin.settings.tokenSecretName = value;
-              await this.plugin.saveSettings();
-            }),
-      );
+    let signInBtn: ButtonComponent;
 
     new Setting(containerEl)
       .setName('Sign in / sign out')
       .setDesc('Authenticate with your Microsoft account.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addButton((btn) =>
-        btn
+      .addButton((btn) => {
+        signInBtn = btn
           .setButtonText('Sign in')
           .setCta()
           .onClick(async () => {
+            signInBtn.setDisabled(true);
             try {
               await this.plugin.authService.signIn();
             } catch (e) {
+              signInBtn.setDisabled(false);
               console.error('M365 Calendar: Sign in failed', e);
+              new Notice('M365 Calendar: Sign in failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
             }
-          }),
-      )
+          });
+      })
       .addButton((btn) =>
         btn.setButtonText('Sign out').onClick(async () => {
           try {
             await this.plugin.authService.signOut();
+            signInBtn.setDisabled(false);
           } catch (e) {
             console.error('M365 Calendar: Sign out failed', e);
+            new Notice('M365 Calendar: Sign out failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
           }
         }),
       );
+
+    // Reflect current auth state — disable Sign In if already authenticated
+    void this.plugin.authService.isAuthenticated().then((authenticated) => {
+      signInBtn.setDisabled(authenticated);
+    });
 
     new Setting(containerEl).setName('Calendar').setHeading();
 

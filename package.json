@@ -1,6 +1,6 @@
 {
   "name": "obsidian-m365-calendar",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Microsoft 365 calendar view for Obsidian",
   "main": "main.js",
   "type": "module",

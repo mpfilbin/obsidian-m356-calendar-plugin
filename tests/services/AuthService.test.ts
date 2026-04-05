@@ -1,5 +1,6 @@
+import * as crypto from 'crypto';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AuthService } from '../../src/services/AuthService';
+import { AuthService, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
 
 function makeTokens(expiresInMs: number): StoredTokens {
@@ -18,7 +19,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, 'token-key');
+    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret);
   });
 
   afterEach(() => {
@@ -69,9 +70,32 @@ describe('AuthService', () => {
     await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
   });
 
-  it('signOut clears the stored secret', async () => {
+  it('signOut clears the stored secret using the hardcoded key', async () => {
     await auth.signOut();
-    expect(setSecret).toHaveBeenCalledWith('token-key', '');
+    expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
+  });
+
+  describe('PKCE helpers', () => {
+    it('generateCodeVerifier returns a base64url string of the right length', () => {
+      const verifier = generateCodeVerifier();
+      // 32 bytes base64url-encoded = 43 chars (no padding)
+      expect(verifier).toMatch(/^[A-Za-z0-9\-_]+$/);
+      expect(verifier.length).toBe(43);
+    });
+
+    it('generateCodeChallenge returns SHA-256 of the verifier in base64url', () => {
+      const verifier = generateCodeVerifier();
+      const challenge = generateCodeChallenge(verifier);
+      // Independently compute expected value
+      const expected = crypto.createHash('sha256').update(verifier).digest('base64url');
+      expect(challenge).toBe(expected);
+    });
+
+    it('different verifiers produce different challenges', () => {
+      const a = generateCodeVerifier();
+      const b = generateCodeVerifier();
+      expect(generateCodeChallenge(a)).not.toBe(generateCodeChallenge(b));
+    });
   });
 
   describe('dynamic getter reads', () => {
@@ -83,7 +107,7 @@ describe('AuthService', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret, 'token-key');
+      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       clientId = 'updated-client';
@@ -101,7 +125,7 @@ describe('AuthService', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret, 'token-key');
+      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       tenantId = 'updated-tenant';
