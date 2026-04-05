@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import * as http from 'http';
 import { StoredTokens } from '../types';
 
@@ -9,6 +10,14 @@ const GRAPH_SCOPES = [
   'User.Read',
   'offline_access',
 ];
+
+function generateCodeVerifier(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
 
 export class AuthService {
   constructor(
@@ -40,8 +49,10 @@ export class AuthService {
   }
 
   async signIn(): Promise<void> {
-    const { code, redirectUri } = await this.startLocalServer();
-    const tokens = await this.exchangeCode(code, redirectUri);
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = generateCodeChallenge(codeVerifier);
+    const { code, redirectUri } = await this.startLocalServer(codeChallenge);
+    const tokens = await this.exchangeCode(code, redirectUri, codeVerifier);
     await this.storeTokens(tokens);
   }
 
@@ -63,7 +74,7 @@ export class AuthService {
     await this.setSecret(TOKEN_SECRET_NAME, JSON.stringify(tokens));
   }
 
-  private async startLocalServer(): Promise<{ code: string; redirectUri: string }> {
+  private async startLocalServer(codeChallenge: string): Promise<{ code: string; redirectUri: string }> {
     return new Promise((resolve, reject) => {
       const server = http.createServer((req, res) => {
         const url = new URL(req.url!, 'http://localhost');
@@ -97,7 +108,7 @@ export class AuthService {
       server.listen(0, '127.0.0.1', () => {
         const port = (server.address() as { port: number }).port;
         const redirectUri = `http://localhost:${port}`;
-        window.open(this.buildAuthUrl(redirectUri));
+        window.open(this.buildAuthUrl(redirectUri, codeChallenge));
       });
 
       setTimeout(() => {
@@ -107,24 +118,27 @@ export class AuthService {
     });
   }
 
-  private buildAuthUrl(redirectUri: string): string {
+  private buildAuthUrl(redirectUri: string, codeChallenge: string): string {
     const params = new URLSearchParams({
       client_id: this.getClientId(),
       response_type: 'code',
       redirect_uri: redirectUri,
       scope: GRAPH_SCOPES.join(' '),
       response_mode: 'query',
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
     });
     return `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/authorize?${params}`;
   }
 
-  private async exchangeCode(code: string, redirectUri: string): Promise<StoredTokens> {
+  private async exchangeCode(code: string, redirectUri: string, codeVerifier: string): Promise<StoredTokens> {
     const body = new URLSearchParams({
       client_id: this.getClientId(),
       code,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
       scope: GRAPH_SCOPES.join(' '),
+      code_verifier: codeVerifier,
     });
 
     const response = await fetch(
