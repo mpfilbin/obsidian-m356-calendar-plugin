@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
 import M365CalendarPlugin from './main';
 import { M365CalendarSettings } from './types';
 
@@ -51,32 +51,41 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       );
 
+    let signInBtn: ButtonComponent;
+
     new Setting(containerEl)
       .setName('Sign in / sign out')
       .setDesc('Authenticate with your Microsoft account.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addButton((btn) =>
-        btn
+      .addButton((btn) => {
+        signInBtn = btn
           .setButtonText('Sign in')
           .setCta()
           .onClick(async () => {
             try {
               await this.plugin.authService.signIn();
+              signInBtn.setDisabled(true);
             } catch (e) {
               console.error('M365 Calendar: Sign in failed', e);
               new Notice('M365 Calendar: Sign in failed. Check the developer console for details.');
             }
-          }),
-      )
+          });
+      })
       .addButton((btn) =>
         btn.setButtonText('Sign out').onClick(async () => {
           try {
             await this.plugin.authService.signOut();
+            signInBtn.setDisabled(false);
           } catch (e) {
             console.error('M365 Calendar: Sign out failed', e);
             new Notice('M365 Calendar: Sign out failed. Check the developer console for details.');
           }
         }),
       );
+
+    // Reflect current auth state — disable Sign In if already authenticated
+    void this.plugin.authService.isAuthenticated().then((authenticated) => {
+      signInBtn.setDisabled(authenticated);
+    });
 
     new Setting(containerEl).setName('Calendar').setHeading();
 
