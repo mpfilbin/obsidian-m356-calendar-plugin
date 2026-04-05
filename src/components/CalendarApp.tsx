@@ -38,11 +38,11 @@ export const CalendarApp: React.FC = () => {
   // doesn't re-fetch them. Reset to false on error so the next refresh retries.
   const calendarsLoadedRef = useRef(false);
 
-  const fetchAll = useCallback(async (reloadCalendars = false) => {
+  const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; notify?: boolean } = {}) => {
     setSyncing(true);
     setError(null);
     try {
-      if (!calendarsLoadedRef.current || reloadCalendars) {
+      if (!calendarsLoadedRef.current || options.reloadCalendars) {
         const fetchedCalendars = await calendarService.getCalendars();
         setCalendars(fetchedCalendars);
         calendarsLoadedRef.current = true;
@@ -58,7 +58,7 @@ export const CalendarApp: React.FC = () => {
       calendarsLoadedRef.current = false;
       const message = e instanceof Error ? e.message : 'Failed to load calendar data';
       console.error('M365 Calendar:', e);
-      new Notice(`M365 Calendar: ${message}`);
+      if (options.notify) new Notice(`M365 Calendar: ${message}`);
       setError(message);
     } finally {
       setSyncing(false);
@@ -73,7 +73,7 @@ export const CalendarApp: React.FC = () => {
   // Background refresh — always reloads calendars in case token was refreshed
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
-    const interval = setInterval(() => void fetchAll(true), ms);
+    const interval = setInterval(() => void fetchAll({ reloadCalendars: true }), ms);
     return () => clearInterval(interval);
   }, [fetchAll, settings.refreshIntervalMinutes]);
 
@@ -128,7 +128,7 @@ export const CalendarApp: React.FC = () => {
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
-        onRefresh={() => void fetchAll(true)}
+        onRefresh={() => void fetchAll({ reloadCalendars: true, notify: true })}
         syncing={syncing}
       />
       <div className="m365-calendar-body">
