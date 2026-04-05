@@ -99,6 +99,7 @@ export class AuthService {
         const error = url.searchParams.get('error');
         const errorDescription = url.searchParams.get('error_description');
 
+        clearTimeout(timeoutHandle);
         server.close();
 
         if (code) {
@@ -123,7 +124,7 @@ export class AuthService {
         window.open(this.buildAuthUrl(redirectUri, codeChallenge));
       });
 
-      setTimeout(() => {
+      const timeoutHandle = setTimeout(() => {
         server.close();
         reject(new Error('Authentication timed out after 120 seconds'));
       }, 120_000);
