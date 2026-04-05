@@ -31,7 +31,7 @@ Before using the plugin you must register an application in Azure Active Directo
 3. Set the following:
    - **Name:** `Obsidian M365 Calendar` (or any name you prefer)
    - **Supported account types:** `Accounts in any organizational directory and personal Microsoft accounts`
-   - **Redirect URI:** Select `Single-page application (SPA)` and enter `http://localhost` — the plugin will dynamically append the port at runtime
+   - **Redirect URI:** Select `Mobile and desktop applications` and enter `http://localhost` — the plugin will dynamically append the port at runtime
 4. Click **Register**
 5. On the app overview page, copy the **Application (client) ID**
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
@@ -47,7 +47,7 @@ Before using the plugin you must register an application in Azure Active Directo
 3. Leave **Tenant ID** as `common` (supports personal + work accounts) or enter your specific tenant ID for work-only accounts
 4. Click **Sign In** — your browser will open for Microsoft login
 5. After signing in, close the browser tab and return to Obsidian
-6. Open the calendar view via the ribbon icon (calendar icon) or **Command Palette → Open M365 Calendar**
+6. Open the calendar view via the ribbon icon (calendar icon) or **Command Palette → M365 Calendar: Open calendar**
 7. Enable the calendars you want to display using the sidebar toggles
 
 ## Usage
@@ -90,7 +90,7 @@ Ensure your Azure app has the `Calendars.Read` and `User.Read` permissions, and 
 Check that the relevant calendars are enabled in the sidebar toggle panel. If the list is empty, click the refresh button (↻) in the toolbar.
 
 **Changing Client ID or Tenant ID doesn't take effect**  
-Disable and re-enable the plugin after changing these settings to reinitialise the authentication service.
+Sign out and sign in again after changing these settings — the new credentials are picked up immediately without restarting the plugin.
 
 ## Architecture
 

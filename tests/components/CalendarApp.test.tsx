@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -39,6 +39,14 @@ function renderCalendarApp(ctx: AppContextValue) {
 }
 
 describe('CalendarApp', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('fetches calendars and events on initial mount', async () => {
     const ctx = makeContext();
     renderCalendarApp(ctx);
@@ -61,6 +69,24 @@ describe('CalendarApp', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Not authenticated')).toBeInTheDocument();
+    });
+  });
+
+  it('logs to the console when calendar load fails', async () => {
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockRejectedValue(new Error('Not authenticated')),
+        getEvents: vi.fn().mockResolvedValue([]),
+        createEvent: vi.fn(),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalledWith(
+        'M365 Calendar:',
+        expect.objectContaining({ message: 'Not authenticated' }),
+      );
     });
   });
 
