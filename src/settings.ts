@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, type ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
 import M365CalendarPlugin from './main';
 import { M365CalendarSettings } from './types';
 
