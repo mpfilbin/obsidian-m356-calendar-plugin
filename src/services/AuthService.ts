@@ -104,12 +104,12 @@ export class AuthService {
 
         if (code) {
           res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<html lang="en"><body><h1>Authentication complete. You can close this tab.</h1></body></html>');
+          res.end('<html lang="en"><body><h1>Authentication complete.</h1><script>window.close()</script></body></html>');
           resolve({ code, redirectUri });
         } else if (error) {
           const message = errorDescription ?? error;
           res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end(`<html lang="en"><body><h1>Authentication failed</h1><p>${message}</p></body></html>`);
+          res.end('<html lang="en"><body><h1>Authentication failed.</h1><p>You may close this window and try again.</p></body></html>');
           reject(new Error(`Authentication failed: ${message}`));
         } else {
           res.writeHead(400, { 'Content-Type': 'text/html' });

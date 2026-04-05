@@ -7,6 +7,7 @@ interface WeekViewProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
+  onEventClick?: (event: M365Event) => void;
 }
 
 function getWeekDays(date: Date): Date[] {
@@ -24,6 +25,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   events,
   calendars,
   onDayClick,
+  onEventClick,
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
@@ -69,7 +71,20 @@ export const WeekView: React.FC<WeekViewProps> = ({
               {dayEvents.map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
-                return <EventCard key={event.id} event={event} calendar={cal} />;
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    className="m365-event-click-btn"
+                    aria-label={`Edit event: ${event.subject}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick?.(event);
+                    }}
+                  >
+                    <EventCard event={event} calendar={cal} />
+                  </button>
+                );
               })}
             </div>
           </div>

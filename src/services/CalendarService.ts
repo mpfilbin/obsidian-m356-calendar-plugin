@@ -1,4 +1,4 @@
-import { M365Calendar, M365Event, NewEventInput } from '../types';
+import { M365Calendar, M365Event, NewEventInput, EventPatch } from '../types';
 import { AuthService } from './AuthService';
 import { CacheService } from './CacheService';
 
@@ -55,6 +55,27 @@ export class CalendarService {
     return this.mapEvent(data, calendarId);
   }
 
+  async updateEvent(eventId: string, patch: EventPatch): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const body: Record<string, unknown> = {};
+    if (patch.subject !== undefined) body.subject = patch.subject;
+    if (patch.location !== undefined) body.location = { displayName: patch.location };
+    if (patch.isAllDay !== undefined) body.isAllDay = patch.isAllDay;
+    if (patch.start !== undefined) body.start = patch.start;
+    if (patch.end !== undefined) body.end = patch.end;
+    if (patch.bodyContent !== undefined) body.body = { contentType: 'text', content: patch.bodyContent };
+    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Failed to update event: ${response.statusText}`);
+    this.cache.clearAll();
+  }
+
   private async getEventsForCalendar(
     calendarId: string,
     start: Date,
@@ -68,7 +89,7 @@ export class CalendarService {
     const params = new URLSearchParams({
       startDateTime: start.toISOString(),
       endDateTime: end.toISOString(),
-      $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink',
+      $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location',
     });
     const response = await fetch(
       `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`,
@@ -93,6 +114,7 @@ export class CalendarService {
       isAllDay: (e.isAllDay as boolean) ?? false,
       bodyPreview: e.bodyPreview as string | undefined,
       webLink: e.webLink as string | undefined,
+      location: (e.location as { displayName?: string } | undefined)?.displayName,
     };
   }
 }

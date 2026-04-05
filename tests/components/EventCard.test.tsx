@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EventCard } from '../../src/components/EventCard';
 import { M365Event, M365Calendar } from '../../src/types';
 
@@ -51,5 +52,12 @@ describe('EventCard', () => {
     // Time label should be present (format varies by locale, just check it's not "All day")
     expect(screen.queryByText('All day')).not.toBeInTheDocument();
     expect(document.querySelector('.m365-calendar-event-time')).toBeInTheDocument();
+  });
+
+  it('calls onClick when the card is clicked', async () => {
+    const onClick = vi.fn();
+    render(<EventCard event={timedEvent} calendar={calendar} onClick={onClick} />);
+    await userEvent.click(document.querySelector('.m365-calendar-event-card')!);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
