@@ -76,6 +76,8 @@ export class AuthService {
 
   private async startLocalServer(codeChallenge: string): Promise<{ code: string; redirectUri: string }> {
     return new Promise((resolve, reject) => {
+      let redirectUri = '';
+
       const server = http.createServer((req, res) => {
         const url = new URL(req.url!, 'http://localhost');
 
@@ -96,8 +98,7 @@ export class AuthService {
         server.close();
 
         if (code) {
-          const port = (server.address() as { port: number }).port;
-          resolve({ code, redirectUri: `http://localhost:${port}` });
+          resolve({ code, redirectUri });
         } else if (error) {
           reject(new Error(`Authentication failed: ${errorDescription ?? error}`));
         } else {
@@ -107,7 +108,7 @@ export class AuthService {
 
       server.listen(0, '127.0.0.1', () => {
         const port = (server.address() as { port: number }).port;
-        const redirectUri = `http://localhost:${port}`;
+        redirectUri = `http://localhost:${port}`;
         window.open(this.buildAuthUrl(redirectUri, codeChallenge));
       });
 
