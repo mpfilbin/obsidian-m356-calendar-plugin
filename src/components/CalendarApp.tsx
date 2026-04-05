@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Notice } from 'obsidian';
 import { M365Calendar, M365Event } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
@@ -55,7 +56,10 @@ export const CalendarApp: React.FC = () => {
       }
     } catch (e) {
       calendarsLoadedRef.current = false;
-      setError(e instanceof Error ? e.message : 'Failed to load calendar data');
+      const message = e instanceof Error ? e.message : 'Failed to load calendar data';
+      console.error('M365 Calendar:', e);
+      new Notice(`M365 Calendar: ${message}`);
+      setError(message);
     } finally {
       setSyncing(false);
     }

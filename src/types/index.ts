@@ -37,7 +37,6 @@ export interface CacheStore {
 export interface M365CalendarSettings {
   clientId: string;
   tenantId: string;
-  tokenSecretName: string;
   enabledCalendarIds: string[];
   defaultCalendarId: string;
   refreshIntervalMinutes: number;

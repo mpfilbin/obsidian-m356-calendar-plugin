@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AuthService } from '../../src/services/AuthService';
+import { AuthService, TOKEN_SECRET_NAME } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
 
 function makeTokens(expiresInMs: number): StoredTokens {
@@ -18,7 +18,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, 'token-key');
+    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret);
   });
 
   afterEach(() => {
@@ -69,9 +69,9 @@ describe('AuthService', () => {
     await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
   });
 
-  it('signOut clears the stored secret', async () => {
+  it('signOut clears the stored secret using the hardcoded key', async () => {
     await auth.signOut();
-    expect(setSecret).toHaveBeenCalledWith('token-key', '');
+    expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
   });
 
   describe('dynamic getter reads', () => {
@@ -83,7 +83,7 @@ describe('AuthService', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret, 'token-key');
+      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       clientId = 'updated-client';
@@ -101,7 +101,7 @@ describe('AuthService', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret, 'token-key');
+      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       tenantId = 'updated-tenant';

@@ -1,6 +1,8 @@
 import * as http from 'http';
 import { StoredTokens } from '../types';
 
+export const TOKEN_SECRET_NAME = 'm365-calendar-token';
+
 const GRAPH_SCOPES = [
   'Calendars.Read',
   'Calendars.ReadWrite',
@@ -14,7 +16,6 @@ export class AuthService {
     private readonly getTenantId: () => string,
     private readonly getSecret: (name: string) => string | null,
     private readonly setSecret: (name: string, value: string) => Promise<void>,
-    private readonly secretName: string,
   ) {}
 
   async isAuthenticated(): Promise<boolean> {
@@ -45,11 +46,11 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
-    await this.setSecret(this.secretName, '');
+    await this.setSecret(TOKEN_SECRET_NAME, '');
   }
 
   private getStoredTokens(): StoredTokens | null {
-    const raw = this.getSecret(this.secretName);
+    const raw = this.getSecret(TOKEN_SECRET_NAME);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as StoredTokens;
@@ -59,7 +60,7 @@ export class AuthService {
   }
 
   private async storeTokens(tokens: StoredTokens): Promise<void> {
-    await this.setSecret(this.secretName, JSON.stringify(tokens));
+    await this.setSecret(TOKEN_SECRET_NAME, JSON.stringify(tokens));
   }
 
   private async startLocalServer(): Promise<{ code: string; redirectUri: string }> {
