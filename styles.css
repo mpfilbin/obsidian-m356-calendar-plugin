@@ -89,6 +89,12 @@
   cursor: default;
 }
 
+.m365-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
 .m365-new-event-btn {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
