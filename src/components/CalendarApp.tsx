@@ -155,6 +155,7 @@ export const CalendarApp: React.FC = () => {
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
+        onNewEvent={() => handleDayClick(new Date())}
         onRefresh={() => void fetchAll({ reloadCalendars: true, userInitiated: true })}
         syncing={syncing}
       />

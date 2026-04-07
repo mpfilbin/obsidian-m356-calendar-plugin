@@ -89,6 +89,21 @@
   cursor: default;
 }
 
+.m365-new-event-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  padding: var(--size-4-1) var(--size-4-3);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.m365-new-event-btn:hover {
+  opacity: 0.9;
+}
+
 /* ─── Body layout ─────────────────────────────────────────────────────────── */
 
 .m365-calendar-body {

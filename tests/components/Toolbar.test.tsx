@@ -64,6 +64,6 @@ describe('Toolbar', () => {
     const onNewEvent = vi.fn();
     render(<Toolbar {...defaultProps} onNewEvent={onNewEvent} />);
     await userEvent.click(screen.getByText('+ New event'));
-    expect(onNewEvent).toHaveBeenCalled();
+    expect(onNewEvent).toHaveBeenCalledTimes(1);
   });
 });
