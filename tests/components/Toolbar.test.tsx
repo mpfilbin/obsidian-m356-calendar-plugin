@@ -9,6 +9,7 @@ const defaultProps = {
   onViewChange: vi.fn(),
   onNavigate: vi.fn(),
   onRefresh: vi.fn(),
+  onNewEvent: vi.fn(),
   syncing: false,
 };
 
@@ -57,5 +58,12 @@ describe('Toolbar', () => {
     const monthBtn = screen.getByText('Month');
     expect(monthBtn).toHaveClass('active');
     expect(screen.getByText('Week')).not.toHaveClass('active');
+  });
+
+  it('calls onNewEvent when "+ New event" button is clicked', async () => {
+    const onNewEvent = vi.fn();
+    render(<Toolbar {...defaultProps} onNewEvent={onNewEvent} />);
+    await userEvent.click(screen.getByText('+ New event'));
+    expect(onNewEvent).toHaveBeenCalled();
   });
 });
