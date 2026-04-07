@@ -329,6 +329,12 @@
   font-weight: var(--font-semibold);
 }
 
+.m365-create-event-form .m365-form-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 .m365-form-field input:not([type="checkbox"]),
 .m365-form-field select,
 .m365-form-field textarea {
