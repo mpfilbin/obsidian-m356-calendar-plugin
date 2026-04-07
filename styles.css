@@ -101,7 +101,7 @@
 }
 
 .m365-new-event-btn:hover {
-  opacity: 0.9;
+  filter: brightness(0.9);
 }
 
 /* ─── Body layout ─────────────────────────────────────────────────────────── */

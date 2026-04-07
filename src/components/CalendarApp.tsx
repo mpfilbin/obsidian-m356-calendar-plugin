@@ -112,7 +112,10 @@ export const CalendarApp: React.FC = () => {
 
   const handleDayClick = (date: Date) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
-    if (enabledCalendars.length === 0) return;
+    if (enabledCalendars.length === 0) {
+      new Notice('Enable at least one calendar to create events.');
+      return;
+    }
     const modal = new CreateEventModal(
       app,
       enabledCalendars,
