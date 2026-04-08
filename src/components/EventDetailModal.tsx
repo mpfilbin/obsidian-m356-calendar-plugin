@@ -35,8 +35,9 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
-    const s = new Date(startStr);
-    const e = new Date(endStr);
+    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
+    const s = parseStr(startStr);
+    const e = parseStr(endStr);
     const safeStart = isNaN(s.getTime()) ? startDate : s;
     const safeEnd = isNaN(e.getTime()) ? endDate : e;
     if (checked) {

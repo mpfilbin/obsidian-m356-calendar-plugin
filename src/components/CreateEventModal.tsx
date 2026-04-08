@@ -36,8 +36,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
-    const s = new Date(startStr);
-    const e = new Date(endStr);
+    // Date-only strings ("YYYY-MM-DD") are parsed as UTC midnight by spec; append
+    // T00:00 to force local-midnight parsing so toggling back to timed preserves the
+    // correct local date rather than shifting to the previous day in negative-offset zones.
+    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
+    const s = parseStr(startStr);
+    const e = parseStr(endStr);
     const safeStart = isNaN(s.getTime()) ? defaultStart : s;
     const safeEnd = isNaN(e.getTime()) ? defaultEnd : e;
     if (checked) {
@@ -67,7 +71,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
     const start = new Date(startStr);
     const end = new Date(endStr);
-    if (!isAllDay && end <= start) {
+    if (isAllDay) {
+      if (endStr <= startStr) {
+        setError('For all-day events, the end date must be after the start date');
+        return;
+      }
+    } else if (end <= start) {
       setError('End time must be after start time');
       return;
     }

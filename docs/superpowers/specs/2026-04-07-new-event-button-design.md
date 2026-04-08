@@ -41,8 +41,7 @@ The button is rendered between the view toggle group and the refresh button:
 ```
 
 Label: **`+ New event`**
-CSS class: `m365-new-event-btn`
-Obsidian accent class: `mod-cta` (fills with `--interactive-accent`, white text via `--text-on-accent`)
+CSS class: `m365-new-event-btn` (custom styles in `styles.css` — does not use `mod-cta`)
 
 ### CalendarApp wiring
 
@@ -55,7 +54,7 @@ onNewEvent={() => handleDayClick(new Date())}
 `handleDayClick` already handles the full flow:
 1. Guards against no enabled calendars (no-op)
 2. Opens `CreateEventModal` with `initialDate = new Date()` (pre-fills 9:00–10:00 AM today)
-3. On successful creation, calls `fetchAll()` to refresh the view
+3. On successful creation, injects the created event into existing local event state so it appears immediately, rather than calling `fetchAll()` — avoids relying on an immediate re-fetch, which can be delayed by Microsoft Graph propagation
 
 No new state is required.
 
@@ -76,7 +75,7 @@ New rule in `styles.css` under the toolbar section:
 }
 
 .m365-new-event-btn:hover {
-  opacity: 0.9;
+  filter: brightness(0.9);
 }
 ```
 

@@ -127,7 +127,11 @@ export const CalendarApp: React.FC = () => {
           // Graph API has a propagation delay for shared calendars — the new event
           // won't appear in calendarView immediately after creation. Inject it
           // directly into local state from the createEvent response instead.
-          setEvents((prev) => [...prev, created]);
+          setEvents((prev) =>
+            [...prev, created].sort(
+              (a, b) => new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
+            ),
+          );
         } catch (e) {
           notifyError(e);
           throw e;

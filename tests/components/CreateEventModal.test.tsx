@@ -148,6 +148,49 @@ describe('CreateEventForm', () => {
     expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({ isAllDay: true }));
   });
 
+  it('restores correct local date when toggling All day off after it was on', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)} // April 10 local time
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    // Toggle on then off
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    // Start should be back to datetime-local with April 10 (not April 9 due to UTC shift)
+    const startInput = screen.getByLabelText('Start') as HTMLInputElement;
+    expect(startInput.type).toBe('datetime-local');
+    expect(startInput.value.startsWith('2026-04-10')).toBe(true);
+  });
+
+  it('shows validation error when all-day end date is not after start date', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText('Title'), 'Conference');
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    // Manually set end to same day as start
+    const endInput = screen.getByLabelText('End') as HTMLInputElement;
+    await userEvent.clear(endInput);
+    await userEvent.type(endInput, '2026-04-10');
+
+    await userEvent.click(screen.getByText('Create'));
+    expect(screen.getByText('For all-day events, the end date must be after the start date')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('submits with isAllDay false when All day is not checked', async () => {
     render(
       <CreateEventForm
