@@ -143,18 +143,19 @@ describe('CalendarService', () => {
   });
 
   it('createEvent posts to Graph and returns mapped event', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
         id: 'evt2',
         subject: 'New Event',
-        start: { dateTime: '2026-04-05T10:00:00Z', timeZone: 'UTC' },
-        end: { dateTime: '2026-04-05T11:00:00Z', timeZone: 'UTC' },
+        start: { dateTime: '2026-04-05T10:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-05T11:00:00', timeZone: 'UTC' },
         isAllDay: false,
         bodyPreview: undefined,
         webLink: undefined,
       }),
-    }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
     const event = await service.createEvent('cal1', {
       subject: 'New Event',
       start: new Date('2026-04-05T10:00:00Z'),
@@ -163,6 +164,31 @@ describe('CalendarService', () => {
     expect(event.subject).toBe('New Event');
     expect(event.calendarId).toBe('cal1');
     expect(event.id).toBe('evt2');
+    // Body should use local time format (no trailing Z, no milliseconds) with IANA timezone
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.start.dateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    expect(body.end.dateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    expect(body.start.timeZone).toBeTruthy();
+    expect(body.end.timeZone).toBeTruthy();
+  });
+
+  it('createEvent clears the cache on success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 'evt2',
+        subject: 'New Event',
+        start: { dateTime: '2026-04-05T10:00:00Z', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-05T11:00:00Z', timeZone: 'UTC' },
+        isAllDay: false,
+      }),
+    }));
+    await service.createEvent('cal1', {
+      subject: 'New Event',
+      start: new Date('2026-04-05T10:00:00Z'),
+      end: new Date('2026-04-05T11:00:00Z'),
+    });
+    expect(cache.clearAll).toHaveBeenCalled();
   });
 
   it('updateEvent sends PATCH to /me/events/{id} with correct body', async () => {
@@ -222,5 +248,75 @@ describe('CalendarService', () => {
     await expect(service.updateEvent('evt1', { subject: 'x' })).rejects.toThrow(
       'Failed to update event: Forbidden',
     );
+  });
+
+  it('getEvents follows @odata.nextLink to collect all pages', async () => {
+    const page2Event = { ...FAKE_EVENT_RESPONSE, id: 'evt2', subject: 'Second Event' };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          value: [FAKE_EVENT_RESPONSE],
+          '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/calendars/cal1/calendarView?$skiptoken=abc',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ value: [page2Event] }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-05-01'));
+
+    expect(events).toHaveLength(2);
+    expect(events[0].id).toBe('evt1');
+    expect(events[1].id).toBe('evt2');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Second call must use the nextLink URL verbatim
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://graph.microsoft.com/v1.0/me/calendars/cal1/calendarView?$skiptoken=abc',
+    );
+  });
+
+  it('getEvents requests $top=999 to minimize pagination round-trips', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-05-01'));
+
+    const url: string = fetchMock.mock.calls[0][0];
+    expect(decodeURIComponent(url)).toContain('$top=999');
+  });
+
+  it('createEvent sends midnight local-date format for all-day events', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 'evt-allday',
+        subject: 'All Day Event',
+        start: { dateTime: '2026-04-10T00:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-11T00:00:00', timeZone: 'UTC' },
+        isAllDay: true,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // new Date('2026-04-10') is parsed as UTC midnight — the bug was that
+    // toLocalISOString would shift this to local time (e.g. 2026-04-09T19:00:00 in UTC-5).
+    // The fix extracts the UTC date string and appends T00:00:00.
+    await service.createEvent('cal1', {
+      subject: 'All Day Event',
+      start: new Date('2026-04-10'),
+      end: new Date('2026-04-11'),
+      isAllDay: true,
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.start.dateTime).toBe('2026-04-10T00:00:00');
+    expect(body.end.dateTime).toBe('2026-04-11T00:00:00');
+    expect(body.isAllDay).toBe(true);
   });
 });

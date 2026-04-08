@@ -79,4 +79,88 @@ describe('CreateEventForm', () => {
       expect.objectContaining({ subject: 'My Event' }),
     );
   });
+
+  it('renders an All day checkbox unchecked by default', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date('2026-04-10')}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it('switches start and end inputs to date type when All day is checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date('2026-04-10')}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    expect((screen.getByLabelText('Start') as HTMLInputElement).type).toBe('datetime-local');
+    expect((screen.getByLabelText('End') as HTMLInputElement).type).toBe('datetime-local');
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    expect((screen.getByLabelText('Start') as HTMLInputElement).type).toBe('date');
+    expect((screen.getByLabelText('End') as HTMLInputElement).type).toBe('date');
+  });
+
+  it('advances end date by one day when toggling All day and start equals end date', async () => {
+    // initialDate sets default start=09:00 and end=10:00 on the same day (2026-04-10)
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)} // April 10 local time
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-10');
+    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-11');
+  });
+
+  it('submits with isAllDay true when All day is checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date('2026-04-10')}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'Day Off');
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({ isAllDay: true }));
+  });
+
+  it('submits with isAllDay false when All day is not checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date('2026-04-10')}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'Standup');
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({ isAllDay: false }));
+  });
 });
