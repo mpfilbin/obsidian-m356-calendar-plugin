@@ -21,14 +21,14 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
   if (view === 'month') {
     return {
       start: new Date(date.getFullYear(), date.getMonth(), 1),
-      end: new Date(date.getFullYear(), date.getMonth() + 1, 0),
+      end: new Date(date.getFullYear(), date.getMonth() + 1, 1), // exclusive: first moment of next month
     };
   }
   const sunday = new Date(date);
   sunday.setDate(date.getDate() - date.getDay());
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-  return { start: sunday, end: saturday };
+  const nextSunday = new Date(sunday);
+  nextSunday.setDate(sunday.getDate() + 7); // exclusive: first moment after Saturday
+  return { start: sunday, end: nextSunday };
 }
 
 export const CalendarApp: React.FC = () => {
@@ -50,9 +50,9 @@ export const CalendarApp: React.FC = () => {
     setError(null);
     try {
       if (!calendarsLoadedRef.current || options.reloadCalendars) {
+        calendarsLoadedRef.current = true;
         const fetchedCalendars = await calendarService.getCalendars();
         setCalendars(fetchedCalendars);
-        calendarsLoadedRef.current = true;
       }
       if (enabledIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
@@ -123,8 +123,11 @@ export const CalendarApp: React.FC = () => {
       date,
       async (calendarId, event) => {
         try {
-          await calendarService.createEvent(calendarId, event);
-          await fetchAll();
+          const created = await calendarService.createEvent(calendarId, event);
+          // Graph API has a propagation delay for shared calendars — the new event
+          // won't appear in calendarView immediately after creation. Inject it
+          // directly into local state from the createEvent response instead.
+          setEvents((prev) => [...prev, created]);
         } catch (e) {
           notifyError(e);
           throw e;
