@@ -1,6 +1,7 @@
 import React from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
+import { toDateOnly } from '../lib/datetime';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -35,7 +36,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
     <div className="m365-calendar-week-view">
       {weekDays.map((day) => {
         const isToday = day.toDateString() === today.toDateString();
-        const cellDateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+        const cellDateStr = toDateOnly(day);
         const dayEvents = events
           .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
           .sort(

@@ -1,6 +1,7 @@
 import { M365Calendar, M365Event, NewEventInput, EventPatch } from '../types';
 import { AuthService } from './AuthService';
 import { CacheService } from './CacheService';
+import { toLocalISOString } from '../lib/datetime';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -35,12 +36,16 @@ export class CalendarService {
 
   async createEvent(calendarId: string, input: NewEventInput): Promise<M365Event> {
     const token = await this.auth.getValidToken();
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const isAllDay = input.isAllDay ?? false;
+    const formatDateTime = (d: Date) =>
+      isAllDay ? `${d.toISOString().slice(0, 10)}T00:00:00` : toLocalISOString(d);
     const body = {
       subject: input.subject,
       body: { contentType: 'text', content: input.description ?? '' },
-      start: { dateTime: input.start.toISOString(), timeZone: 'UTC' },
-      end: { dateTime: input.end.toISOString(), timeZone: 'UTC' },
-      isAllDay: input.isAllDay ?? false,
+      start: { dateTime: formatDateTime(input.start), timeZone },
+      end: { dateTime: formatDateTime(input.end), timeZone },
+      isAllDay,
     };
     const response = await fetch(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
       method: 'POST',
@@ -52,6 +57,7 @@ export class CalendarService {
     });
     if (!response.ok) throw new Error(`Failed to create event: ${response.statusText}`);
     const data = await response.json();
+    this.cache.clearAll();
     return this.mapEvent(data, calendarId);
   }
 
@@ -90,16 +96,17 @@ export class CalendarService {
       startDateTime: start.toISOString(),
       endDateTime: end.toISOString(),
       $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location',
+      $top: '999',
     });
-    const response = await fetch(
-      `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
-    const data = await response.json();
-    const events = data.value.map((e: Record<string, unknown>) =>
-      this.mapEvent(e, calendarId),
-    );
+    const events: M365Event[] = [];
+    let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
+    while (url) {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
+      const data = await response.json() as Record<string, unknown>;
+      (data.value as Record<string, unknown>[]).forEach((e) => events.push(this.mapEvent(e, calendarId)));
+      url = (data['@odata.nextLink'] as string | undefined) ?? null;
+    }
     await this.cache.set(cacheKey, events);
     return events;
   }

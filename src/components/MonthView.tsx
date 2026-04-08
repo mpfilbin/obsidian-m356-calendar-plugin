@@ -1,6 +1,7 @@
 import React from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
+import { toDateOnly } from '../lib/datetime';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -57,11 +58,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
         {days.map((day) => {
           const isCurrentMonth = day.getMonth() === currentDate.getMonth();
           const isToday = day.toDateString() === today.toDateString();
-          const dayEvents = events.filter((e) => {
-            const eventDateStr = e.start.dateTime.slice(0, 10); // 'YYYY-MM-DD'
-            const cellDateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-            return eventDateStr === cellDateStr;
-          });
+          const cellDateStr = toDateOnly(day);
+          const dayEvents = events.filter(
+            (e) => e.start.dateTime.slice(0, 10) === cellDateStr,
+          );
           return (
             <div
               key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
