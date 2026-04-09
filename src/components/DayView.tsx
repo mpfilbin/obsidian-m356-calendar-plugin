@@ -11,6 +11,7 @@ export interface LayoutEvent {
 export const PX_PER_MIN = 1;
 export const HOURS_IN_DAY = 24;
 export const MIN_EVENT_HEIGHT = 15;
+export const TIME_LABEL_WIDTH_PX = 52;
 
 export function layoutEvents(events: M365Event[]): LayoutEvent[] {
   const valid = events.filter((e) => {
@@ -132,58 +133,70 @@ export const DayView: React.FC<DayViewProps> = ({
         onClick={handleTimelineClick}
         data-testid="m365-day-timeline"
       >
-        {Array.from({ length: HOURS_IN_DAY }, (_, h) => (
-          <div
-            key={h}
-            className="m365-day-view-hour"
-            style={{ position: 'absolute', top: `${h * 60 * PX_PER_MIN}px`, width: '100%' }}
-          >
-            <span className="m365-day-view-hour-label">
-              {String(h).padStart(2, '0')}:00
-            </span>
-          </div>
-        ))}
-        {laid.map(({ event, column, columnCount }) => {
-          const cal = calendarMap.get(event.calendarId);
-          if (!cal) return null;
-          const start = new Date(event.start.dateTime);
-          const end = new Date(event.end.dateTime);
-          const startMin = start.getHours() * 60 + start.getMinutes();
-          const durationMin = (end.getTime() - start.getTime()) / 60000;
-          const height = Math.max(durationMin, MIN_EVENT_HEIGHT) * PX_PER_MIN;
-          const width = 100 / columnCount;
-          const left = column * width;
+        {Array.from({ length: HOURS_IN_DAY * 4 }, (_, i) => {
+          const slotMin = i * 15;
+          const hour = Math.floor(slotMin / 60);
+          const minute = slotMin % 60;
+          const isHour = minute === 0;
+          const isHalf = minute === 30;
           return (
-            <button
-              key={event.id}
-              type="button"
-              className="m365-event-click-btn"
-              aria-label={`Edit event: ${event.subject}`}
-              style={{
-                position: 'absolute',
-                top: `${startMin * PX_PER_MIN}px`,
-                height: `${height}px`,
-                width: `${width}%`,
-                left: `${left}%`,
-                backgroundColor: `${cal.color}26`,
-                overflow: 'hidden',
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEventClick?.(event);
-              }}
+            <div
+              key={i}
+              className={`m365-day-view-slot${isHour ? ' m365-day-view-slot--hour' : isHalf ? ' m365-day-view-slot--half' : ' m365-day-view-slot--quarter'}`}
+              style={{ position: 'absolute', top: `${slotMin * PX_PER_MIN}px`, width: '100%' }}
             >
-              <div className="m365-day-event-content">
-                <span className="m365-day-event-time" style={{ color: cal.color }}>
-                  {new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {isHour && (
+                <span className="m365-day-view-hour-label">
+                  {String(hour).padStart(2, '0')}:00
                 </span>
-                <span className="m365-day-event-title" style={{ color: cal.color }}>
-                  {event.subject}
-                </span>
-              </div>
-            </button>
+              )}
+            </div>
           );
         })}
+        <div className="m365-day-view-events">
+          {laid.map(({ event, column, columnCount }) => {
+            const cal = calendarMap.get(event.calendarId);
+            if (!cal) return null;
+            const start = new Date(event.start.dateTime);
+            const end = new Date(event.end.dateTime);
+            const startMin = start.getHours() * 60 + start.getMinutes();
+            const durationMin = (end.getTime() - start.getTime()) / 60000;
+            const height = Math.max(durationMin, MIN_EVENT_HEIGHT) * PX_PER_MIN;
+            const width = 100 / columnCount;
+            const left = column * width;
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className="m365-event-click-btn m365-day-event-block"
+                aria-label={`Edit event: ${event.subject}`}
+                style={{
+                  position: 'absolute',
+                  top: `${startMin * PX_PER_MIN}px`,
+                  height: `${height}px`,
+                  width: `${width}%`,
+                  left: `${left}%`,
+                  backgroundColor: `${cal.color}26`,
+                  border: `1px solid ${cal.color}`,
+                  overflow: 'hidden',
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEventClick?.(event);
+                }}
+              >
+                <div className="m365-day-event-content">
+                  <span className="m365-day-event-time" style={{ color: cal.color }}>
+                    {new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="m365-day-event-title" style={{ color: cal.color }}>
+                    {event.subject}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

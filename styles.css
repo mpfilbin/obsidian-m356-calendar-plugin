@@ -385,6 +385,52 @@
   color: var(--text-normal);
 }
 
+/* ─── Day View Timeline Grid ─────────────────────────────────────────────── */
+
+.m365-day-view-slot {
+  border-top: 1px solid var(--background-modifier-border);
+  width: 100%;
+}
+
+.m365-day-view-slot--half {
+  border-top-style: dashed;
+  border-top-color: var(--background-modifier-border);
+  opacity: 0.6;
+}
+
+.m365-day-view-slot--quarter {
+  border-top-style: dashed;
+  border-top-color: var(--background-modifier-border);
+  opacity: 0.3;
+}
+
+.m365-day-view-hour-label {
+  display: inline-block;
+  width: 48px;
+  text-align: right;
+  padding-right: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.m365-day-view-events {
+  position: absolute;
+  top: 0;
+  left: 52px;
+  right: 0;
+  bottom: 0;
+}
+
+.m365-day-event-block {
+  border-radius: var(--radius-s);
+  box-sizing: border-box;
+  margin: 1px 2px;
+}
+
 /* ─── Day View Event Content ─────────────────────────────────────────────── */
 
 .m365-day-event-content {
