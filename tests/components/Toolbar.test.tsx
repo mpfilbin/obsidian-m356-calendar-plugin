@@ -66,4 +66,9 @@ describe('Toolbar', () => {
     await userEvent.click(screen.getByText('+ New event'));
     expect(onNewEvent).toHaveBeenCalledTimes(1);
   });
+
+  it('shows full date label in day view', () => {
+    render(<Toolbar {...defaultProps} view={'day' as never} currentDate={new Date(2026, 3, 9)} />);
+    expect(screen.getByText(/April 9.*2026/i)).toBeInTheDocument();
+  });
 });

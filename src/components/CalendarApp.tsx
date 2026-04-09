@@ -5,11 +5,12 @@ import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
+import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
 import { EventDetailModal } from './EventDetailModal';
 import { useAppContext } from '../context';
 
-type ViewType = 'month' | 'week';
+type ViewType = 'month' | 'week' | 'day';
 
 function notifyError(e: unknown): void {
   const message = e instanceof Error ? e.message : 'An error occurred';
@@ -21,19 +22,26 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
   if (view === 'month') {
     return {
       start: new Date(date.getFullYear(), date.getMonth(), 1),
-      end: new Date(date.getFullYear(), date.getMonth() + 1, 1), // exclusive: first moment of next month
+      end: new Date(date.getFullYear(), date.getMonth() + 1, 1),
     };
   }
+  if (view === 'day') {
+    return {
+      start: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+      end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
+    };
+  }
+  // week
   const sunday = new Date(date);
   sunday.setDate(date.getDate() - date.getDay());
   const nextSunday = new Date(sunday);
-  nextSunday.setDate(sunday.getDate() + 7); // exclusive: first moment after Saturday
+  nextSunday.setDate(sunday.getDate() + 7);
   return { start: sunday, end: nextSunday };
 }
 
 export const CalendarApp: React.FC = () => {
   const { app, calendarService, settings, saveSettings } = useAppContext();
-  const [view, setView] = useState<ViewType>(settings.defaultView);
+  const [view, setView] = useState<ViewType>(settings.defaultView as ViewType);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
   const [events, setEvents] = useState<M365Event[]>([]);
@@ -41,8 +49,6 @@ export const CalendarApp: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Tracks whether calendars have been successfully loaded so navigation
-  // doesn't re-fetch them. Reset to false on error so the next refresh retries.
   const calendarsLoadedRef = useRef(false);
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
@@ -71,12 +77,10 @@ export const CalendarApp: React.FC = () => {
     }
   }, [calendarService, enabledIds, currentDate, view]);
 
-  // Initial load and re-fetch when view, date, or enabled calendars change
   useEffect(() => {
     void fetchAll();
   }, [fetchAll]);
 
-  // Background refresh — always reloads calendars in case token was refreshed
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
     const interval = setInterval(() => void fetchAll({ reloadCalendars: true }), ms);
@@ -91,6 +95,8 @@ export const CalendarApp: React.FC = () => {
     const d = new Date(currentDate);
     if (view === 'month') {
       d.setMonth(d.getMonth() + (direction === 'next' ? 1 : -1));
+    } else if (view === 'day') {
+      d.setDate(d.getDate() + (direction === 'next' ? 1 : -1));
     } else {
       d.setDate(d.getDate() + (direction === 'next' ? 7 : -7));
     }
@@ -110,13 +116,13 @@ export const CalendarApp: React.FC = () => {
     }
   };
 
-  const handleDayClick = (date: Date) => {
+  const openCreateEventModal = (date: Date) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
     if (enabledCalendars.length === 0) {
       new Notice('Enable at least one calendar to create events.');
       return;
     }
-    const modal = new CreateEventModal(
+    new CreateEventModal(
       app,
       enabledCalendars,
       settings.defaultCalendarId,
@@ -124,9 +130,6 @@ export const CalendarApp: React.FC = () => {
       async (calendarId, event) => {
         try {
           const created = await calendarService.createEvent(calendarId, event);
-          // Graph API has a propagation delay for shared calendars — the new event
-          // won't appear in calendarView immediately after creation. Inject it
-          // directly into local state from the createEvent response instead.
           setEvents((prev) =>
             [...prev, created].sort(
               (a, b) => new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
@@ -137,8 +140,12 @@ export const CalendarApp: React.FC = () => {
           throw e;
         }
       },
-    );
-    modal.open();
+    ).open();
+  };
+
+  const handleDayClick = (date: Date) => {
+    setView('day');
+    setCurrentDate(date);
   };
 
   const handleEventClick = (event: M365Event) => {
@@ -150,7 +157,6 @@ export const CalendarApp: React.FC = () => {
           new Notice('Event deleted');
         }
       : undefined;
-
     new EventDetailModal(
       app,
       event,
@@ -175,7 +181,7 @@ export const CalendarApp: React.FC = () => {
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
-        onNewEvent={() => handleDayClick(new Date())}
+        onNewEvent={() => openCreateEventModal(new Date())}
         onRefresh={() => void fetchAll({ reloadCalendars: true, userInitiated: true })}
         syncing={syncing}
       />
@@ -186,7 +192,7 @@ export const CalendarApp: React.FC = () => {
           onToggle={(id) => void handleToggleCalendar(id)}
         />
         <div className="m365-calendar-main">
-          {view === 'month' ? (
+          {view === 'month' && (
             <MonthView
               currentDate={currentDate}
               events={events}
@@ -194,12 +200,22 @@ export const CalendarApp: React.FC = () => {
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
             />
-          ) : (
+          )}
+          {view === 'week' && (
             <WeekView
               currentDate={currentDate}
               events={events}
               calendars={calendars}
               onDayClick={handleDayClick}
+              onEventClick={handleEventClick}
+            />
+          )}
+          {view === 'day' && (
+            <DayView
+              currentDate={currentDate}
+              events={events}
+              calendars={calendars}
+              onTimeClick={openCreateEventModal}
               onEventClick={handleEventClick}
             />
           )}
