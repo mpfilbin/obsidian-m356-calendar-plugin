@@ -366,6 +366,25 @@
   cursor: pointer;
 }
 
+.m365-month-overflow-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 1px 0;
+  cursor: pointer;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.m365-month-overflow-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 .m365-form-checkbox {
   display: flex;
   flex-direction: row;

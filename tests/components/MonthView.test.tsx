@@ -176,6 +176,26 @@ describe('MonthView', () => {
     expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
   });
 
+  it('overflow button click calls onDayClick exactly once (stopPropagation works)', async () => {
+    const onDayClick = vi.fn();
+    const events = Array.from({ length: 8 }, (_, i) => ({
+      ...eventOnApril4,
+      id: `evt${i}`,
+      subject: `Event ${i}`,
+    }));
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events}
+        calendars={[calendar]}
+        onDayClick={onDayClick}
+        maxEventsPerDay={6}
+      />,
+    );
+    await userEvent.click(screen.getByText('+ 2 more'));
+    expect(onDayClick).toHaveBeenCalledTimes(1);
+  });
+
   it('uses default limit of 6 when maxEventsPerDay is not specified', () => {
     const events = Array.from({ length: 7 }, (_, i) => ({
       ...eventOnApril4,
