@@ -89,6 +89,27 @@
   cursor: default;
 }
 
+.m365-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.m365-new-event-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  padding: var(--size-4-1) var(--size-4-3);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.m365-new-event-btn:hover {
+  filter: brightness(0.9);
+}
+
 /* ─── Body layout ─────────────────────────────────────────────────────────── */
 
 .m365-calendar-body {
@@ -283,6 +304,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--size-4-3);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .m365-form-error {
@@ -297,12 +320,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--size-4-1);
+  width: 100%;
 }
 
 .m365-form-field label {
   font-size: var(--font-ui-small);
   color: var(--text-muted);
   font-weight: var(--font-semibold);
+}
+
+.m365-create-event-form .m365-form-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .m365-form-field input:not([type="checkbox"]),
@@ -317,6 +347,12 @@
   font-family: var(--font-interface);
   width: 100%;
   box-sizing: border-box;
+}
+
+.m365-form-field input:not([type="checkbox"]),
+.m365-form-field select {
+  height: 30px;
+  padding: 0 0 0 5px;
 }
 
 .m365-event-click-btn {

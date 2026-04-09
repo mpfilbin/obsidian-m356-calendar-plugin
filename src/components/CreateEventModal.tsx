@@ -2,6 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Calendar, NewEventInput } from '../types';
+import { toDateOnly, toDateTimeLocal } from '../lib/datetime';
 
 interface CreateEventFormProps {
   calendars: M365Calendar[];
@@ -9,14 +10,6 @@ interface CreateEventFormProps {
   initialDate: Date;
   onSubmit: (calendarId: string, event: NewEventInput) => void;
   onCancel: () => void;
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function toDateTimeLocal(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export const CreateEventForm: React.FC<CreateEventFormProps> = ({
@@ -35,10 +28,37 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const defaultEnd = new Date(initialDate);
   defaultEnd.setHours(10, 0, 0, 0);
 
+  const [isAllDay, setIsAllDay] = useState(false);
   const [startStr, setStartStr] = useState(toDateTimeLocal(defaultStart));
   const [endStr, setEndStr] = useState(toDateTimeLocal(defaultEnd));
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+
+  const handleAllDayChange = (checked: boolean) => {
+    setIsAllDay(checked);
+    // Date-only strings ("YYYY-MM-DD") are parsed as UTC midnight by spec; append
+    // T00:00 to force local-midnight parsing so toggling back to timed preserves the
+    // correct local date rather than shifting to the previous day in negative-offset zones.
+    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
+    const s = parseStr(startStr);
+    const e = parseStr(endStr);
+    const safeStart = isNaN(s.getTime()) ? defaultStart : s;
+    const safeEnd = isNaN(e.getTime()) ? defaultEnd : e;
+    if (checked) {
+      const startDateStr = toDateOnly(safeStart);
+      let endDateStr = toDateOnly(safeEnd);
+      if (endDateStr <= startDateStr) {
+        const nextDay = new Date(safeStart);
+        nextDay.setDate(nextDay.getDate() + 1);
+        endDateStr = toDateOnly(nextDay);
+      }
+      setStartStr(startDateStr);
+      setEndStr(endDateStr);
+    } else {
+      setStartStr(toDateTimeLocal(safeStart));
+      setEndStr(toDateTimeLocal(safeEnd));
+    }
+  };
 
   const handleSubmit = () => {
     if (!subject.trim()) {
@@ -51,7 +71,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
     const start = new Date(startStr);
     const end = new Date(endStr);
-    if (end <= start) {
+    if (isAllDay) {
+      if (endStr <= startStr) {
+        setError('For all-day events, the end date must be after the start date');
+        return;
+      }
+    } else if (end <= start) {
       setError('End time must be after start time');
       return;
     }
@@ -59,6 +84,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       subject: subject.trim(),
       start,
       end,
+      isAllDay,
       description: description.trim() || undefined,
     });
   };
@@ -67,8 +93,9 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     <div className="m365-create-event-form">
       {error && <div className="m365-form-error">{error}</div>}
       <div className="m365-form-field">
-        <label>Title</label>
+        <label htmlFor="m365-create-subject">Title</label>
         <input
+          id="m365-create-subject"
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
@@ -77,8 +104,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         />
       </div>
       <div className="m365-form-field">
-        <label>Calendar</label>
-        <select value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
+        <label htmlFor="m365-create-calendar">Calendar</label>
+        <select id="m365-create-calendar" value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
           {calendars.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -86,25 +113,38 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           ))}
         </select>
       </div>
+      <div className="m365-form-checkbox">
+        <label>
+          <input
+            type="checkbox"
+            checked={isAllDay}
+            onChange={(e) => handleAllDayChange(e.target.checked)}
+          />
+          All day
+        </label>
+      </div>
       <div className="m365-form-field">
-        <label>Start</label>
+        <label htmlFor="m365-create-start">Start</label>
         <input
-          type="datetime-local"
+          id="m365-create-start"
+          type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
           onChange={(e) => setStartStr(e.target.value)}
         />
       </div>
       <div className="m365-form-field">
-        <label>End</label>
+        <label htmlFor="m365-create-end">End</label>
         <input
-          type="datetime-local"
+          id="m365-create-end"
+          type={isAllDay ? 'date' : 'datetime-local'}
           value={endStr}
           onChange={(e) => setEndStr(e.target.value)}
         />
       </div>
       <div className="m365-form-field">
-        <label>Description (optional)</label>
+        <label htmlFor="m365-create-description">Description (optional)</label>
         <textarea
+          id="m365-create-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}

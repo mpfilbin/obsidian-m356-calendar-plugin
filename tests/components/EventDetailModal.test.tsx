@@ -87,4 +87,60 @@ describe('EventDetailForm', () => {
     expect(screen.getByText('Title is required')).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  it('renders All day checkbox reflecting event.isAllDay', () => {
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} />);
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it('renders All day checkbox checked for all-day events', () => {
+    const allDayEvent = {
+      ...event,
+      isAllDay: true,
+      start: { dateTime: '2026-04-04T00:00:00', timeZone: 'America/New_York' },
+      end: { dateTime: '2026-04-05T00:00:00', timeZone: 'America/New_York' },
+    };
+    render(<EventDetailForm event={allDayEvent} onSave={onSave} onCancel={onCancel} />);
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('advances end date by one day when toggling All day on a same-day timed event', async () => {
+    // event: start=2026-04-04T09:00, end=2026-04-04T10:00 — both on the 4th
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} />);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-04');
+    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-05');
+  });
+
+  it('restores correct local date when toggling All day off after it was on', async () => {
+    // event start = 2026-04-04T09:00 local — same day as end
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} />);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    const startInput = screen.getByLabelText('Start') as HTMLInputElement;
+    expect(startInput.type).toBe('datetime-local');
+    // Must still be April 4, not shifted to April 3 by UTC parsing
+    expect(startInput.value.startsWith('2026-04-04')).toBe(true);
+  });
+
+  it('keeps the original end date when toggling All day on a multi-day timed event', async () => {
+    const multiDayEvent = {
+      ...event,
+      start: { dateTime: '2026-04-04T09:00:00', timeZone: 'America/New_York' },
+      end: { dateTime: '2026-04-06T10:00:00', timeZone: 'America/New_York' },
+    };
+    render(<EventDetailForm event={multiDayEvent} onSave={onSave} onCancel={onCancel} />);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+
+    expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-04');
+    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-06');
+  });
 });

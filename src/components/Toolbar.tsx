@@ -8,6 +8,7 @@ interface ToolbarProps {
   onViewChange: (view: ViewType) => void;
   onNavigate: (direction: 'prev' | 'next' | 'today') => void;
   onRefresh: () => void;
+  onNewEvent: () => void;
   syncing: boolean;
 }
 
@@ -17,6 +18,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onViewChange,
   onNavigate,
   onRefresh,
+  onNewEvent,
   syncing,
 }) => {
   const label =
@@ -46,13 +48,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           Week
         </button>
       </div>
-      <button
-        className="m365-calendar-refresh"
-        onClick={onRefresh}
-        disabled={syncing}
-      >
-        {syncing ? '↻ Syncing…' : '↻'}
-      </button>
+      <div className="m365-toolbar-actions">
+        <button className="m365-new-event-btn" onClick={onNewEvent}>
+          + New event
+        </button>
+        <button
+          className="m365-calendar-refresh"
+          onClick={onRefresh}
+          disabled={syncing}
+        >
+          {syncing ? '↻ Syncing…' : '↻'}
+        </button>
+      </div>
     </div>
   );
 };

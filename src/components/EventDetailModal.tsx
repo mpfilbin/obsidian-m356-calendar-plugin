@@ -2,20 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Event, EventPatch } from '../types';
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function toDateTimeLocal(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function toDateOnly(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+import { toDateOnly, toDateTimeLocal } from '../lib/datetime';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -48,13 +35,21 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
-    const s = new Date(startStr);
-    const e = new Date(endStr);
+    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
+    const s = parseStr(startStr);
+    const e = parseStr(endStr);
     const safeStart = isNaN(s.getTime()) ? startDate : s;
     const safeEnd = isNaN(e.getTime()) ? endDate : e;
     if (checked) {
-      setStartStr(toDateOnly(safeStart));
-      setEndStr(toDateOnly(safeEnd));
+      const startDateStr = toDateOnly(safeStart);
+      let endDateStr = toDateOnly(safeEnd);
+      if (endDateStr <= startDateStr) {
+        const nextDay = new Date(safeStart);
+        nextDay.setDate(nextDay.getDate() + 1);
+        endDateStr = toDateOnly(nextDay);
+      }
+      setStartStr(startDateStr);
+      setEndStr(endDateStr);
     } else {
       setStartStr(toDateTimeLocal(safeStart));
       setEndStr(toDateTimeLocal(safeEnd));
