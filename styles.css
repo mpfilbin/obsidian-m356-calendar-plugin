@@ -276,8 +276,6 @@
   display: flex;
   align-items: center;
   gap: var(--size-4-1);
-  border-left: 3px solid transparent;
-  background: var(--background-secondary);
   border-radius: var(--radius-s);
   padding: 2px var(--size-4-1);
   margin-bottom: 2px;
@@ -286,7 +284,6 @@
 
 .m365-calendar-event-time {
   font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
   flex-shrink: 0;
 }
 

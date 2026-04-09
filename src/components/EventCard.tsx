@@ -16,7 +16,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event, calendar, onClick }
   return (
     <div
       className="m365-calendar-event-card"
-      style={{ borderLeftColor: calendar.color }}
+      style={{
+        backgroundColor: `${calendar.color}26`,
+        border: `1px solid ${calendar.color}`,
+        color: calendar.color,
+      }}
       title={event.subject}
       onClick={onClick}
     >
