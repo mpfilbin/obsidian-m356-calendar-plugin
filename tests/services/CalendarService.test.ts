@@ -319,4 +319,28 @@ describe('CalendarService', () => {
     expect(body.end.dateTime).toBe('2026-04-11T00:00:00');
     expect(body.isAllDay).toBe(true);
   });
+
+  it('deleteEvent sends DELETE to /me/events/{id} with correct auth header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.deleteEvent('evt1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events/evt1',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+      }),
+    );
+  });
+
+  it('deleteEvent clears the cache on success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    await service.deleteEvent('evt1');
+    expect(cache.clearAll).toHaveBeenCalled();
+  });
+
+  it('deleteEvent throws when Graph returns error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+    await expect(service.deleteEvent('evt1')).rejects.toThrow('Failed to delete event: Not Found');
+  });
 });

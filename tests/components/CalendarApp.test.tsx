@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import * as obsidianMock from '../../tests/__mocks__/obsidian';
 import { CalendarApp } from '../../src/components/CalendarApp';
 import { AppContext, AppContextValue } from '../../src/context';
 import { DEFAULT_SETTINGS } from '../../src/settings';
@@ -9,6 +10,25 @@ import type { NewEventInput } from '../../src/types';
 
 // Capture the onSubmit callback passed to CreateEventModal so tests can invoke it directly.
 const modalCallbacks = vi.hoisted(() => ({ onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null }));
+
+const eventDetailModalCallbacks = vi.hoisted(() => ({
+  onDelete: undefined as (() => Promise<void>) | undefined,
+}));
+
+vi.mock('../../src/components/EventDetailModal', () => ({
+  EventDetailModal: class {
+    constructor(
+      _app: unknown,
+      _event: unknown,
+      _onSave: unknown,
+      _onSaved: unknown,
+      onDelete?: () => Promise<void>,
+    ) {
+      eventDetailModalCallbacks.onDelete = onDelete;
+    }
+    open() {}
+  },
+}));
 
 vi.mock('../../src/components/CreateEventModal', () => ({
   CreateEventModal: class {
@@ -43,6 +63,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       getEvents: vi.fn().mockResolvedValue([mockEvent]),
       createEvent: vi.fn(),
       updateEvent: vi.fn(),
+      deleteEvent: vi.fn().mockResolvedValue(undefined),
     } as unknown as AppContextValue['calendarService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -61,6 +82,8 @@ function renderCalendarApp(ctx: AppContextValue) {
 describe('CalendarApp', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    // sentinel reset so canEdit=false tests don't false-positive
+    eventDetailModalCallbacks.onDelete = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
   });
 
   afterEach(() => {
@@ -221,5 +244,75 @@ describe('CalendarApp', () => {
 
     // Calendars should still only have been fetched once
     expect(ctx.calendarService.getCalendars).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes onDelete to EventDetailModal when calendar canEdit is true', async () => {
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDelete).toBeDefined();
+  });
+
+  it('does not pass onDelete to EventDetailModal when calendar canEdit is false', async () => {
+    const readOnlyCalendar = { ...mockCalendar, canEdit: false };
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([readOnlyCalendar]),
+        getEvents: vi.fn().mockResolvedValue([mockEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn(),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDelete).toBeUndefined();
+  });
+
+  it('removes deleted event from state without re-fetching when onDelete resolves', async () => {
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const getEvents = vi.fn().mockResolvedValue([mockEvent]);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents,
+        createEvent: vi.fn(),
+        updateEvent: vi.fn(),
+        deleteEvent,
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+
+    // Invoke the captured onDelete callback directly
+    await eventDetailModalCallbacks.onDelete!();
+
+    expect(deleteEvent).toHaveBeenCalledWith('evt-1');
+    expect(NoticeSpy).toHaveBeenCalledWith('Event deleted');
+    expect(getEvents).toHaveBeenCalledTimes(1); // no re-fetch
+    await waitFor(() => expect(screen.queryByText('Standup')).not.toBeInTheDocument());
+  });
+
+  it('onDelete rejects when deleteEvent throws', async () => {
+    const error = new Error('Graph error');
+    const deleteEvent = vi.fn().mockRejectedValue(error);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([mockEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn(),
+        deleteEvent,
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+
+    await expect(eventDetailModalCallbacks.onDelete!()).rejects.toThrow('Graph error');
   });
 });
