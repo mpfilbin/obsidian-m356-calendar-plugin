@@ -212,6 +212,25 @@ describe('DayView', () => {
     expect(onEventClick).toHaveBeenCalledWith(timedEvent);
   });
 
+  it('clamps click at bottom of timeline to 23:45', () => {
+    const onTimeClick = vi.fn();
+    const currentDate = new Date('2026-04-09');
+    render(
+      <DayView
+        currentDate={currentDate}
+        events={[]}
+        calendars={[]}
+        onTimeClick={onTimeClick}
+      />,
+    );
+    // 1440px = end of timeline — should clamp to 23:45, not advance to next day
+    fireEvent.click(screen.getByTestId('m365-day-timeline'), { clientY: 1440 });
+    const date = onTimeClick.mock.calls[0][0] as Date;
+    expect(date.getHours()).toBe(23);
+    expect(date.getMinutes()).toBe(45);
+    expect(date.getDate()).toBe(currentDate.getDate()); // same day, not the next
+  });
+
   it('clicking an event does not trigger onTimeClick', async () => {
     const onTimeClick = vi.fn();
     render(

@@ -94,7 +94,7 @@ export const DayView: React.FC<DayViewProps> = ({
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
-    const totalMinutes = Math.round(offsetY / PX_PER_MIN / 15) * 15;
+    const totalMinutes = Math.min(Math.round(offsetY / PX_PER_MIN / 15) * 15, 23 * 60 + 45);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     const date = new Date(currentDate);
