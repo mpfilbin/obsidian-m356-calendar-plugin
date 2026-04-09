@@ -385,6 +385,34 @@
   color: var(--text-normal);
 }
 
+/* ─── Day View Event Content ─────────────────────────────────────────────── */
+
+.m365-day-event-content {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: calc(100% - 4px);
+  pointer-events: none;
+}
+
+.m365-day-event-time {
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.m365-day-event-title {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .m365-form-checkbox {
   display: flex;
   flex-direction: row;

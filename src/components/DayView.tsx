@@ -166,13 +166,21 @@ export const DayView: React.FC<DayViewProps> = ({
                 width: `${width}%`,
                 left: `${left}%`,
                 backgroundColor: `${cal.color}26`,
+                overflow: 'hidden',
               }}
               onClick={(e) => {
                 e.stopPropagation();
                 onEventClick?.(event);
               }}
             >
-              <EventCard event={event} calendar={cal} />
+              <div className="m365-day-event-content">
+                <span className="m365-day-event-time" style={{ color: cal.color }}>
+                  {new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="m365-day-event-title" style={{ color: cal.color }}>
+                  {event.subject}
+                </span>
+              </div>
             </button>
           );
         })}
