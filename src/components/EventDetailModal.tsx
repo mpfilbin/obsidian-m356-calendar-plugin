@@ -10,12 +10,14 @@ interface EventDetailFormProps {
   event: M365Event;
   onSave: (patch: EventPatch) => Promise<void>;
   onCancel: () => void;
+  onDelete?: () => Promise<void>;
 }
 
 export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   event,
   onSave,
   onCancel,
+  onDelete,
 }) => {
   const startDate = new Date(event.start.dateTime);
   const endDate = new Date(event.end.dateTime);
@@ -32,6 +34,8 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   const [description, setDescription] = useState(event.bodyPreview ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
@@ -53,6 +57,20 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     } else {
       setStartStr(toDateTimeLocal(safeStart));
       setEndStr(toDateTimeLocal(safeEnd));
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      await onDelete!();
+    } catch (e) {
+      console.error('M365 Calendar:', e);
+      setError(e instanceof Error ? e.message : 'Failed to delete event');
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -97,6 +115,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           autoFocus
+          disabled={confirmingDelete || saving}
         />
       </div>
       <div className="m365-form-field">
@@ -107,6 +126,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Add location"
+          disabled={confirmingDelete || saving}
         />
       </div>
       <div className="m365-form-checkbox">
@@ -115,6 +135,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
             type="checkbox"
             checked={isAllDay}
             onChange={(e) => handleAllDayChange(e.target.checked)}
+            disabled={confirmingDelete || saving}
           />
           All day
         </label>
@@ -126,6 +147,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
           onChange={(e) => setStartStr(e.target.value)}
+          disabled={confirmingDelete || saving}
         />
       </div>
       <div className="m365-form-field">
@@ -135,6 +157,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           type={isAllDay ? 'date' : 'datetime-local'}
           value={endStr}
           onChange={(e) => setEndStr(e.target.value)}
+          disabled={confirmingDelete || saving}
         />
       </div>
       <div className="m365-form-field">
@@ -144,16 +167,34 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
+          disabled={confirmingDelete || saving}
         />
       </div>
-      <div className="m365-form-actions">
-        <button onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
-        <button className="mod-cta" onClick={() => void handleSave()} disabled={saving}>
-          {saving ? 'Saving…' : 'OK'}
-        </button>
-      </div>
+      {confirmingDelete ? (
+        <div className="m365-form-actions">
+          <span>This will permanently delete the event.</span>
+          <button onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+            Cancel
+          </button>
+          <button className="mod-warning" onClick={() => void handleDelete()} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete event'}
+          </button>
+        </div>
+      ) : (
+        <div className="m365-form-actions">
+          <button onClick={onCancel} disabled={saving}>
+            Cancel
+          </button>
+          {onDelete && (
+            <button onClick={() => setConfirmingDelete(true)} disabled={saving}>
+              Delete
+            </button>
+          )}
+          <button className="mod-cta" onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : 'OK'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

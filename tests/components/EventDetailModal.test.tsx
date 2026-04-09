@@ -143,4 +143,61 @@ describe('EventDetailForm', () => {
     expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-04');
     expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-06');
   });
+
+  it('does not render a Delete button when onDelete is not provided', () => {
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} />);
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+  });
+
+  it('renders a Delete button when onDelete is provided', () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    expect(screen.getByText('Delete')).toBeInTheDocument();
+  });
+
+  it('shows confirm UI and disables inputs when Delete is clicked', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    expect(screen.getByText('This will permanently delete the event.')).toBeInTheDocument();
+    expect(screen.getByText('Delete event')).toBeInTheDocument();
+    expect((screen.getByLabelText('Title') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('returns to normal state when Cancel is clicked in confirm mode', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByText('This will permanently delete the event.')).not.toBeInTheDocument();
+    expect(screen.getByText('OK')).toBeInTheDocument();
+  });
+
+  it('calls onDelete when Delete event button is clicked', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Delete event'));
+    await waitFor(() => expect(onDelete).toHaveBeenCalled());
+  });
+
+  it('shows inline error and resets confirm state when onDelete rejects', async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error('Server error'));
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Delete event'));
+    await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
+    expect(screen.queryByText('This will permanently delete the event.')).not.toBeInTheDocument();
+  });
+
+  it('logs to console.error when onDelete rejects', async () => {
+    const error = new Error('Server error');
+    const onDelete = vi.fn().mockRejectedValue(error);
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Delete event'));
+    await waitFor(() =>
+      expect(console.error).toHaveBeenCalledWith('M365 Calendar:', error),
+    );
+  });
 });
