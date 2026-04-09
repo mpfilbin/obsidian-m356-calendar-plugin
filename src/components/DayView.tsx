@@ -1,6 +1,5 @@
-import React from 'react';
-import { M365Event } from '../types';
-import { M365Calendar } from '../types';
+import React, { useMemo } from 'react';
+import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
 
 export interface LayoutEvent {
@@ -87,10 +86,10 @@ export const DayView: React.FC<DayViewProps> = ({
   onTimeClick,
   onEventClick,
 }) => {
-  const calendarMap = new Map(calendars.map((c) => [c.id, c]));
-  const allDayEvents = events.filter((e) => e.isAllDay);
-  const timedEvents = events.filter((e) => !e.isAllDay);
-  const laid = layoutEvents(timedEvents);
+  const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
+  const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
+  const timedEvents = useMemo(() => events.filter((e) => !e.isAllDay), [events]);
+  const laid = useMemo(() => layoutEvents(timedEvents), [timedEvents]);
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
