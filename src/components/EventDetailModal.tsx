@@ -209,6 +209,7 @@ export class EventDetailModal extends Modal {
     private readonly event: M365Event,
     private readonly onSaveCallback: (patch: EventPatch) => Promise<void>,
     private readonly onSaved: () => void,
+    private readonly onDeleteCallback?: () => Promise<void>,
   ) {
     super(app);
   }
@@ -216,6 +217,12 @@ export class EventDetailModal extends Modal {
   onOpen(): void {
     this.titleEl.setText('Edit event');
     this.root = createRoot(this.contentEl);
+    const onDelete = this.onDeleteCallback
+      ? async () => {
+          await this.onDeleteCallback!();
+          this.close();
+        }
+      : undefined;
     this.root.render(
       <StrictMode>
         <EventDetailForm
@@ -226,6 +233,7 @@ export class EventDetailModal extends Modal {
             this.onSaved();
           }}
           onCancel={() => this.close()}
+          onDelete={onDelete}
         />
       </StrictMode>,
     );

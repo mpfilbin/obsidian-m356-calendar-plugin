@@ -142,6 +142,15 @@ export const CalendarApp: React.FC = () => {
   };
 
   const handleEventClick = (event: M365Event) => {
+    const calendar = calendars.find((c) => c.id === event.calendarId);
+    const onDelete = calendar?.canEdit
+      ? async () => {
+          await calendarService.deleteEvent(event.id);
+          setEvents((prev) => prev.filter((e) => e.id !== event.id));
+          new Notice('Event deleted');
+        }
+      : undefined;
+
     new EventDetailModal(
       app,
       event,
@@ -154,6 +163,7 @@ export const CalendarApp: React.FC = () => {
         }
       },
       () => void fetchAll({ reloadCalendars: false }),
+      onDelete,
     ).open();
   };
 
