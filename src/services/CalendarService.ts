@@ -82,6 +82,16 @@ export class CalendarService {
     this.cache.clearAll();
   }
 
+  async deleteEvent(eventId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error(`Failed to delete event: ${response.statusText}`);
+    this.cache.clearAll();
+  }
+
   private async getEventsForCalendar(
     calendarId: string,
     start: Date,
