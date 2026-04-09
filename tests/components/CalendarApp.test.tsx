@@ -344,7 +344,7 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(3));
     const [, nextDayStart, nextDayEnd] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[2];
 
-    expect(nextDayStart.getDate()).toBe(dayStart.getDate() + 1);
+    expect(nextDayStart.getTime() - dayStart.getTime()).toBe(24 * 60 * 60 * 1000);
     expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
   });
 });

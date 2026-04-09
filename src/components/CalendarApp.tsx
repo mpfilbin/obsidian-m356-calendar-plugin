@@ -41,7 +41,7 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
 
 export const CalendarApp: React.FC = () => {
   const { app, calendarService, settings, saveSettings } = useAppContext();
-  const [view, setView] = useState<ViewType>(settings.defaultView as ViewType);
+  const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
   const [events, setEvents] = useState<M365Event[]>([]);
