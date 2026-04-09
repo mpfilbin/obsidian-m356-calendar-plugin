@@ -12,6 +12,7 @@ export const PX_PER_MIN = 1;
 export const HOURS_IN_DAY = 24;
 export const MIN_EVENT_HEIGHT = 15;
 export const TIME_LABEL_WIDTH_PX = 52;
+export const COLUMN_GAP_PX = 6;
 
 export function layoutEvents(events: M365Event[]): LayoutEvent[] {
   const valid = events.filter((e) => {
@@ -162,8 +163,14 @@ export const DayView: React.FC<DayViewProps> = ({
             const startMin = start.getHours() * 60 + start.getMinutes();
             const durationMin = (end.getTime() - start.getTime()) / 60000;
             const height = Math.max(durationMin, MIN_EVENT_HEIGHT) * PX_PER_MIN;
-            const width = 100 / columnCount;
-            const left = column * width;
+            // Distribute COLUMN_GAP_PX of space between adjacent columns
+            const gapPx = columnCount > 1 ? COLUMN_GAP_PX : 0;
+            const widthStyle = `calc(${100 / columnCount}% - ${(columnCount - 1) * gapPx / columnCount}px)`;
+            const leftStyle = column === 0
+              ? '0'
+              : `calc(${column * 100 / columnCount}% + ${column * gapPx / columnCount}px)`;
+            const startTimeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const endTimeStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return (
               <button
                 key={event.id}
@@ -174,8 +181,8 @@ export const DayView: React.FC<DayViewProps> = ({
                   position: 'absolute',
                   top: `${startMin * PX_PER_MIN}px`,
                   height: `${height}px`,
-                  width: `${width}%`,
-                  left: `${left}%`,
+                  width: widthStyle,
+                  left: leftStyle,
                   backgroundColor: `${cal.color}26`,
                   border: `1px solid ${cal.color}`,
                   overflow: 'hidden',
@@ -187,7 +194,7 @@ export const DayView: React.FC<DayViewProps> = ({
               >
                 <div className="m365-day-event-content">
                   <span className="m365-day-event-time" style={{ color: cal.color }}>
-                    {new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {startTimeStr} – {endTimeStr}
                   </span>
                   <span className="m365-day-event-title" style={{ color: cal.color }}>
                     {event.subject}

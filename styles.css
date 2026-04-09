@@ -448,6 +448,7 @@
   font-size: var(--font-ui-smaller);
   line-height: 1.2;
   white-space: nowrap;
+  text-align: right;
 }
 
 .m365-day-event-title {
@@ -457,6 +458,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  text-align: right;
 }
 
 .m365-form-checkbox {
