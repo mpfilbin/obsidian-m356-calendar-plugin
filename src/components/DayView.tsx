@@ -165,6 +165,7 @@ export const DayView: React.FC<DayViewProps> = ({
                 height: `${height}px`,
                 width: `${width}%`,
                 left: `${left}%`,
+                backgroundColor: `${cal.color}26`,
               }}
               onClick={(e) => {
                 e.stopPropagation();
