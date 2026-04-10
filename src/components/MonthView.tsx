@@ -9,6 +9,7 @@ interface MonthViewProps {
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
+  maxEventsPerDay?: number;
 }
 
 function getDaysInMonthView(date: Date): Date[] {
@@ -40,6 +41,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   calendars,
   onDayClick,
   onEventClick,
+  maxEventsPerDay = 6,
 }) => {
   const days = getDaysInMonthView(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
@@ -75,7 +77,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
               onClick={() => onDayClick(day)}
             >
               <span className="m365-calendar-day-number">{day.getDate()}</span>
-              {dayEvents.map((event) => {
+              {dayEvents.slice(0, maxEventsPerDay).map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
                 return (
@@ -93,6 +95,19 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   </button>
                 );
               })}
+              {dayEvents.length > maxEventsPerDay && (
+                <button
+                  type="button"
+                  className="m365-month-overflow-btn"
+                  aria-label={`Show ${dayEvents.length - maxEventsPerDay} more events`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDayClick(day);
+                  }}
+                >
+                  + {dayEvents.length - maxEventsPerDay} more
+                </button>
+              )}
             </div>
           );
         })}

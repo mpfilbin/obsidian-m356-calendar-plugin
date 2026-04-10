@@ -50,7 +50,7 @@ export interface M365CalendarSettings {
   enabledCalendarIds: string[];
   defaultCalendarId: string;
   refreshIntervalMinutes: number;
-  defaultView: 'month' | 'week';
+  defaultView: 'month' | 'week' | 'day';
 }
 
 export interface StoredTokens {

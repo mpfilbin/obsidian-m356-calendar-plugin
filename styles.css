@@ -276,8 +276,6 @@
   display: flex;
   align-items: center;
   gap: var(--size-4-1);
-  border-left: 3px solid transparent;
-  background: var(--background-secondary);
   border-radius: var(--radius-s);
   padding: 2px var(--size-4-1);
   margin-bottom: 2px;
@@ -286,7 +284,6 @@
 
 .m365-calendar-event-time {
   font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -364,6 +361,101 @@
   background: none;
   text-align: left;
   cursor: pointer;
+}
+
+.m365-month-overflow-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 1px 0;
+  cursor: pointer;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.m365-month-overflow-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* ─── Day View Timeline Grid ─────────────────────────────────────────────── */
+
+.m365-day-view-slot {
+  border-top: 1px solid var(--background-modifier-border);
+  width: 100%;
+}
+
+.m365-day-view-slot--half {
+  border-top-style: dashed;
+  border-top-color: var(--background-modifier-border);
+  opacity: 0.6;
+}
+
+.m365-day-view-slot--quarter {
+  border-top-style: dashed;
+  border-top-color: var(--background-modifier-border);
+  opacity: 0.3;
+}
+
+.m365-day-view-hour-label {
+  display: inline-block;
+  width: 48px;
+  text-align: left;
+  padding-right: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.m365-day-view-events {
+  position: absolute;
+  top: 0;
+  left: 52px;
+  right: 0;
+  bottom: 0;
+}
+
+.m365-day-event-block {
+  border-radius: var(--radius-s);
+  box-sizing: border-box;
+  margin: 1px 2px;
+}
+
+/* ─── Day View Event Content ─────────────────────────────────────────────── */
+
+.m365-day-event-content {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.m365-day-event-time {
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.m365-day-event-title {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: left;
 }
 
 .m365-form-checkbox {

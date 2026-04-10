@@ -1,6 +1,6 @@
 import React from 'react';
 
-type ViewType = 'month' | 'week';
+type ViewType = 'month' | 'week' | 'day';
 
 interface ToolbarProps {
   currentDate: Date;
@@ -24,7 +24,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const label =
     view === 'month'
       ? currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : `Week of ${currentDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      : view === 'week'
+      ? `Week of ${currentDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+      : currentDate.toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
 
   return (
     <div className="m365-calendar-toolbar">

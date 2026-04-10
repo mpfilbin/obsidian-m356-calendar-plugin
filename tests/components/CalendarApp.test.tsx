@@ -182,8 +182,8 @@ describe('CalendarApp', () => {
     renderCalendarApp(ctx);
     await waitFor(() => expect(getEvents).toHaveBeenCalledTimes(1));
 
-    // Trigger handleDayClick to register the modal's onSubmit callback
-    await userEvent.click(screen.getByText('4'));
+    // Trigger create event modal via toolbar button
+    await userEvent.click(screen.getByText('+ New event'));
 
     // Simulate form submission via the captured callback
     await modalCallbacks.onSubmit!('cal-1', {
@@ -314,5 +314,37 @@ describe('CalendarApp', () => {
     await userEvent.click(screen.getByText('Standup'));
 
     await expect(eventDetailModalCallbacks.onDelete!()).rejects.toThrow('Graph error');
+  });
+
+  it('clicking a day cell in month view navigates to day view for that date', async () => {
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByText('4'));
+
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(2));
+    const [, start, end] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[1];
+    // Day view fetches exactly one day
+    expect(end.getTime() - start.getTime()).toBe(24 * 60 * 60 * 1000);
+    expect(start.getDate()).toBe(4);
+    expect(start.getHours()).toBe(0);
+  });
+
+  it('navigates forward one day when › is clicked in day view', async () => {
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByText('4'));
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(2));
+    const [, dayStart] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[1];
+
+    await userEvent.click(screen.getByText('›'));
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(3));
+    const [, nextDayStart, nextDayEnd] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[2];
+
+    expect(nextDayStart.getTime() - dayStart.getTime()).toBe(24 * 60 * 60 * 1000);
+    expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
   });
 });
