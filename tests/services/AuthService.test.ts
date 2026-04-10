@@ -1,7 +1,12 @@
 import * as crypto from 'crypto';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { requestUrl, type RequestUrlResponse } from 'obsidian';
 import { AuthService, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
+
+function makeRequestUrlResponse(status: number, json: unknown): RequestUrlResponse {
+  return { status, json, headers: {}, arrayBuffer: new ArrayBuffer(0), text: '' } as RequestUrlResponse;
+}
 
 function makeTokens(expiresInMs: number): StoredTokens {
   return {
@@ -24,6 +29,7 @@ describe('AuthService', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.mocked(requestUrl).mockReset();
   });
 
   it('isAuthenticated returns false when no token stored', async () => {
@@ -48,14 +54,9 @@ describe('AuthService', () => {
 
   it('getValidToken refreshes token when within 60s buffer', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        access_token: 'new-token',
-        refresh_token: 'new-refresh',
-        expires_in: 3600,
-      }),
-    }));
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 }),
+    );
     const token = await auth.getValidToken();
     expect(token).toBe('new-token');
     expect(setSecret).toHaveBeenCalled();
@@ -63,10 +64,9 @@ describe('AuthService', () => {
 
   it('getValidToken throws when refresh fails', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      statusText: 'Unauthorized',
-    }));
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(401, { error: 'Unauthorized' }),
+    );
     await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
   });
 
@@ -101,11 +101,9 @@ describe('AuthService', () => {
   describe('dynamic getter reads', () => {
     it('uses the current clientId at the time of token refresh, not the value at construction', async () => {
       let clientId = 'original-client';
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
-      });
-      vi.stubGlobal('fetch', fetchMock);
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
 
       const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
@@ -113,17 +111,16 @@ describe('AuthService', () => {
       clientId = 'updated-client';
       await dynamicAuth.getValidToken();
 
-      const body = new URLSearchParams(fetchMock.mock.calls[0][1].body as string);
+      const opts = vi.mocked(requestUrl).mock.calls[0][0] as { body: string };
+      const body = new URLSearchParams(opts.body);
       expect(body.get('client_id')).toBe('updated-client');
     });
 
     it('uses the current tenantId at the time of token refresh, not the value at construction', async () => {
       let tenantId = 'original-tenant';
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
-      });
-      vi.stubGlobal('fetch', fetchMock);
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
 
       const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
@@ -131,8 +128,8 @@ describe('AuthService', () => {
       tenantId = 'updated-tenant';
       await dynamicAuth.getValidToken();
 
-      const [url] = fetchMock.mock.calls[0] as [string, unknown];
-      expect(url).toContain('/updated-tenant/');
+      const opts = vi.mocked(requestUrl).mock.calls[0][0] as { url: string };
+      expect(opts.url).toContain('/updated-tenant/');
     });
   });
 });

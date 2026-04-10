@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as http from 'http';
+import { requestUrl } from 'obsidian';
 import { StoredTokens } from '../types';
 
 export const TOKEN_SECRET_NAME = 'm365-calendar-token';
@@ -154,17 +155,19 @@ export class AuthService {
       code_verifier: codeVerifier,
     });
 
-    const response = await fetch(
-      `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-      },
-    );
+    const response = await requestUrl({
+      url: `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      throw: false,
+    });
 
-    if (!response.ok) throw new Error(`Token exchange failed: ${response.statusText}`);
-    const data = await response.json();
+    if (response.status >= 400) {
+      const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      throw new Error(`Token exchange failed (${response.status}): ${detail}`);
+    }
+    const data = response.json;
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -180,17 +183,19 @@ export class AuthService {
       scope: GRAPH_SCOPES.join(' '),
     });
 
-    const response = await fetch(
-      `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-      },
-    );
+    const response = await requestUrl({
+      url: `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      throw: false,
+    });
 
-    if (!response.ok) throw new Error(`Token refresh failed: ${response.statusText}`);
-    const data = await response.json();
+    if (response.status >= 400) {
+      const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      throw new Error(`Token refresh failed (${response.status}): ${detail}`);
+    }
+    const data = response.json;
     const tokens: StoredTokens = {
       accessToken: data.access_token,
       refreshToken: data.refresh_token ?? refreshToken,
