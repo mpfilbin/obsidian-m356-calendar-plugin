@@ -163,7 +163,10 @@ export class AuthService {
       throw: false,
     });
 
-    if (response.status >= 400) throw new Error(`Token exchange failed: ${JSON.stringify(response.json)}`);
+    if (response.status >= 400) {
+      const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      throw new Error(`Token exchange failed (${response.status}): ${detail}`);
+    }
     const data = response.json;
     return {
       accessToken: data.access_token,
@@ -188,7 +191,10 @@ export class AuthService {
       throw: false,
     });
 
-    if (response.status >= 400) throw new Error(`Token refresh failed: ${JSON.stringify(response.json)}`);
+    if (response.status >= 400) {
+      const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      throw new Error(`Token refresh failed (${response.status}): ${detail}`);
+    }
     const data = response.json;
     const tokens: StoredTokens = {
       accessToken: data.access_token,

@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-10
 **Status:** Approved
-**Scope:** Azure Portal configuration only — no plugin code changes
+**Scope:** Azure Portal configuration change + plugin code change in `AuthService`
 
 ## Problem
 
@@ -18,9 +18,11 @@ The plugin's actual auth flow — spinning up a local HTTP server to capture the
 
 ## Solution
 
-Reconfigure the Azure app registration to use the **Mobile and desktop applications** platform type. No plugin code changes are required.
+Two changes are required:
 
-Desktop/native app registrations use a sliding-window refresh token policy: tokens are valid for 90 days and the window resets on every use. Since the plugin refreshes the access token automatically (polling every 10 minutes by default), the refresh token will effectively never expire during normal use.
+**1. Azure Portal reconfiguration:** Change the app registration platform from Single Page Application to **Mobile and desktop applications**. Desktop/native app registrations use a sliding-window refresh token policy: tokens are valid for 90 days and reset on every use. Since the plugin refreshes the access token automatically (polling every 10 minutes by default), the refresh token will effectively never expire during normal use.
+
+**2. Plugin code change:** Switching to the desktop platform type exposes a second issue — Obsidian's `fetch` sends an `Origin: app://obsidian.md` header, which Microsoft rejects for non-SPA registrations (`AADSTS9002326`). The token exchange and refresh calls in `AuthService` must use Obsidian's `requestUrl` API instead, which routes through Electron's main process without adding CORS headers.
 
 ## Steps
 

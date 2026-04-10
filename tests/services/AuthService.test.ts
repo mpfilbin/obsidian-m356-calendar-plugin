@@ -1,8 +1,12 @@
 import * as crypto from 'crypto';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { requestUrl } from 'obsidian';
+import { requestUrl, type RequestUrlResponse } from 'obsidian';
 import { AuthService, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
+
+function makeRequestUrlResponse(status: number, json: unknown): RequestUrlResponse {
+  return { status, json, headers: {}, arrayBuffer: new ArrayBuffer(0), text: '' } as RequestUrlResponse;
+}
 
 function makeTokens(expiresInMs: number): StoredTokens {
   return {
@@ -50,10 +54,9 @@ describe('AuthService', () => {
 
   it('getValidToken refreshes token when within 60s buffer', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
-    vi.mocked(requestUrl).mockResolvedValue({
-      status: 200,
-      json: { access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 },
-    } as never);
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 }),
+    );
     const token = await auth.getValidToken();
     expect(token).toBe('new-token');
     expect(setSecret).toHaveBeenCalled();
@@ -61,10 +64,9 @@ describe('AuthService', () => {
 
   it('getValidToken throws when refresh fails', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
-    vi.mocked(requestUrl).mockResolvedValue({
-      status: 401,
-      json: { error: 'Unauthorized' },
-    } as never);
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(401, { error: 'Unauthorized' }),
+    );
     await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
   });
 
@@ -99,10 +101,9 @@ describe('AuthService', () => {
   describe('dynamic getter reads', () => {
     it('uses the current clientId at the time of token refresh, not the value at construction', async () => {
       let clientId = 'original-client';
-      vi.mocked(requestUrl).mockResolvedValue({
-        status: 200,
-        json: { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 },
-      } as never);
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
 
       const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
@@ -117,10 +118,9 @@ describe('AuthService', () => {
 
     it('uses the current tenantId at the time of token refresh, not the value at construction', async () => {
       let tenantId = 'original-tenant';
-      vi.mocked(requestUrl).mockResolvedValue({
-        status: 200,
-        json: { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 },
-      } as never);
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
 
       const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret);
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));

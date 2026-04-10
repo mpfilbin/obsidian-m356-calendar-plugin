@@ -1,5 +1,13 @@
 import { vi } from 'vitest';
 
+export interface RequestUrlResponse {
+  status: number;
+  headers: Record<string, string>;
+  arrayBuffer: ArrayBuffer;
+  json: unknown;
+  text: string;
+}
+
 export const requestUrl = vi.fn();
 
 export class Modal {
