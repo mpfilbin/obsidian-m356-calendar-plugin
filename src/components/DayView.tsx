@@ -16,9 +16,9 @@ export const COLUMN_GAP_PX = 6;
 
 export function layoutEvents(events: M365Event[]): LayoutEvent[] {
   const valid = events.filter((e) => {
-    const s = new Date(e.start.dateTime);
-    const end = new Date(e.end.dateTime);
-    return !isNaN(s.getTime()) && !isNaN(end.getTime());
+    const startMs = new Date(e.start.dateTime).getTime();
+    const endMs = new Date(e.end.dateTime).getTime();
+    return !isNaN(startMs) && !isNaN(endMs) && endMs > startMs;
   });
 
   if (valid.length === 0) return [];

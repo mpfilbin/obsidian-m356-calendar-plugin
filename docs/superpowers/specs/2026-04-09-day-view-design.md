@@ -94,7 +94,7 @@ Two sections stacked vertically:
 - A positioned container, `1440px` tall.
 - Hour labels (`00:00`–`23:00`) on the left as decorative row dividers.
 - Timed events absolutely positioned within the container.
-- Clicking the timeline background (not on an event) computes the time from `e.nativeEvent.offsetY`, rounds to the nearest 15 minutes, and calls `onTimeClick` with a `Date` set to that day and time.
+- Clicking the timeline background (not on an event) computes the vertical offset using `e.clientY - getBoundingClientRect().top`, rounds to the nearest 15 minutes, and calls `onTimeClick` with a `Date` set to that day and time.
 
 ### Event positioning
 
@@ -120,7 +120,7 @@ interface LayoutEvent {
 
 **Algorithm:**
 1. Sort events by start time.
-2. Group events into clusters: a cluster is a maximal set of events where every pair shares overlapping time.
+2. Group events into overlap clusters: a cluster is a maximal connected component in the overlap graph (events are nodes; an edge exists between two events if their time ranges overlap). Events in a cluster need not all overlap each other pairwise.
 3. Within each cluster, assign column indices greedily: each event takes the lowest available column not already occupied by an overlapping event.
 4. `columnCount` for each event is the total number of columns in its cluster.
 

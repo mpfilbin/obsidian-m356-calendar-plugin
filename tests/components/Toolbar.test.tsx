@@ -68,7 +68,7 @@ describe('Toolbar', () => {
   });
 
   it('shows full date label in day view', () => {
-    render(<Toolbar {...defaultProps} view={'day' as never} currentDate={new Date(2026, 3, 9)} />);
+    render(<Toolbar {...defaultProps} view="day" currentDate={new Date(2026, 3, 9)} />);
     expect(screen.getByText(/April 9.*2026/i)).toBeInTheDocument();
   });
 });

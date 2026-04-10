@@ -21,7 +21,7 @@ export class CalendarService {
     return data.value.map((c: Record<string, unknown>) => ({
       id: c.id,
       name: c.name,
-      color: (c.hexColor as string) || (c.color as string) || '#0078d4',
+      color: (c.hexColor as string) || '#0078d4',
       isDefaultCalendar: (c.isDefaultCalendar as boolean) ?? false,
       canEdit: (c.canEdit as boolean) ?? false,
     }));
