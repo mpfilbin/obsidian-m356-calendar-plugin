@@ -81,7 +81,10 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 ## Troubleshooting
 
 **The sign-in window opens but nothing happens after I log in**  
-Make sure `http://localhost` is listed as a redirect URI in your Azure app registration (Platform: Single-page application).
+Make sure `http://localhost` is listed as a redirect URI under the **Mobile and desktop applications** platform in your Azure app registration. Do not use the Single-page application platform — it issues short-lived refresh tokens and will require daily re-authentication.
+
+**I get an error saying the token was issued to a Single-page application and the refresh token has expired**  
+Your Azure app registration is using the wrong platform type. In Azure Portal → your app → Authentication, remove the Single-page application redirect URI and add a Mobile and desktop applications platform with `http://localhost` as the redirect URI. Sign out and sign back in once to get a new token.
 
 **I see "Failed to fetch calendars" after signing in**  
 Ensure your Azure app has the `Calendars.Read` and `User.Read` permissions, and that consent has been granted.
