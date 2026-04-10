@@ -1,3 +1,7 @@
+import { vi } from 'vitest';
+
+export const requestUrl = vi.fn();
+
 export class Modal {
   contentEl: HTMLElement;
   titleEl: { setText: (s: string) => void };
