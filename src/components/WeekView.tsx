@@ -31,6 +31,17 @@ export const WeekView: React.FC<WeekViewProps> = ({
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, { allDay: M365Event[]; timed: M365Event[] }>();
+    for (const event of events) {
+      const key = event.start.dateTime.slice(0, 10);
+      if (!map.has(key)) map.set(key, { allDay: [], timed: [] });
+      const bucket = map.get(key)!;
+      if (event.isAllDay) bucket.allDay.push(event);
+      else bucket.timed.push(event);
+    }
+    return map;
+  }, [events]);
   const today = new Date();
 
   return (
@@ -70,9 +81,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
         <div className="m365-week-allday-gutter" />
         {weekDays.map((day) => {
           const cellDateStr = toDateOnly(day);
-          const allDayEvents = events.filter(
-            (e) => e.isAllDay && e.start.dateTime.slice(0, 10) === cellDateStr,
-          );
+          const allDayEvents = eventsByDate.get(cellDateStr)?.allDay ?? [];
           return (
             <div key={`allday-${cellDateStr}`} className="m365-week-allday-cell">
               {allDayEvents.map((event) => {
@@ -116,9 +125,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
         </div>
         {weekDays.map((day) => {
           const cellDateStr = toDateOnly(day);
-          const timedEvents = events.filter(
-            (e) => !e.isAllDay && e.start.dateTime.slice(0, 10) === cellDateStr,
-          );
+          const timedEvents = eventsByDate.get(cellDateStr)?.timed ?? [];
           return (
             <TimelineColumn
               key={`timeline-${cellDateStr}`}

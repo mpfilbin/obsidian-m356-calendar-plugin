@@ -13,35 +13,30 @@ export const MIN_EVENT_HEIGHT = 15;
 export const TIME_LABEL_WIDTH_PX = 52;
 export const COLUMN_GAP_PX = 6;
 
+type StampedEvent = { event: M365Event; startMs: number; endMs: number };
+
 export function layoutEvents(events: M365Event[]): LayoutEvent[] {
-  const valid = events.filter((e) => {
-    const startMs = new Date(e.start.dateTime).getTime();
-    const endMs = new Date(e.end.dateTime).getTime();
-    return !isNaN(startMs) && !isNaN(endMs) && endMs > startMs;
-  });
+  const stamped: StampedEvent[] = events
+    .map((e) => ({
+      event: e,
+      startMs: new Date(e.start.dateTime).getTime(),
+      endMs: new Date(e.end.dateTime).getTime(),
+    }))
+    .filter(({ startMs, endMs }) => !isNaN(startMs) && !isNaN(endMs) && endMs > startMs);
 
-  if (valid.length === 0) return [];
+  if (stamped.length === 0) return [];
 
-  const sorted = [...valid].sort(
-    (a, b) =>
-      new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
-  );
+  const sorted = [...stamped].sort((a, b) => a.startMs - b.startMs);
 
-  const clusters: M365Event[][] = [];
-  for (const event of sorted) {
-    const eStart = new Date(event.start.dateTime).getTime();
-    const eEnd = new Date(event.end.dateTime).getTime();
+  const clusters: StampedEvent[][] = [];
+  for (const s of sorted) {
     const existing = clusters.find((cluster) =>
-      cluster.some((other) => {
-        const oStart = new Date(other.start.dateTime).getTime();
-        const oEnd = new Date(other.end.dateTime).getTime();
-        return eStart < oEnd && eEnd > oStart;
-      }),
+      cluster.some((other) => s.startMs < other.endMs && s.endMs > other.startMs),
     );
     if (existing) {
-      existing.push(event);
+      existing.push(s);
     } else {
-      clusters.push([event]);
+      clusters.push([s]);
     }
   }
 
@@ -49,13 +44,11 @@ export function layoutEvents(events: M365Event[]): LayoutEvent[] {
   for (const cluster of clusters) {
     const assignments: number[] = new Array(cluster.length).fill(-1);
     for (let i = 0; i < cluster.length; i++) {
-      const eStart = new Date(cluster[i].start.dateTime).getTime();
-      const eEnd = new Date(cluster[i].end.dateTime).getTime();
       const used = new Set<number>();
       for (let j = 0; j < i; j++) {
-        const oStart = new Date(cluster[j].start.dateTime).getTime();
-        const oEnd = new Date(cluster[j].end.dateTime).getTime();
-        if (eStart < oEnd && eEnd > oStart) used.add(assignments[j]);
+        if (cluster[i].startMs < cluster[j].endMs && cluster[i].endMs > cluster[j].startMs) {
+          used.add(assignments[j]);
+        }
       }
       let col = 0;
       while (used.has(col)) col++;
@@ -63,7 +56,7 @@ export function layoutEvents(events: M365Event[]): LayoutEvent[] {
     }
     const colCount = assignments.reduce((m, v) => Math.max(m, v), -1) + 1;
     for (let i = 0; i < cluster.length; i++) {
-      result.push({ event: cluster[i], column: assignments[i], columnCount: colCount });
+      result.push({ event: cluster[i].event, column: assignments[i], columnCount: colCount });
     }
   }
 

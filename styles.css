@@ -313,9 +313,12 @@
 
 .m365-timeline-column {
   flex: 1;
+  box-sizing: border-box;
+}
+
+.m365-week-timeline-area .m365-timeline-column {
   border-right: 1px solid var(--background-modifier-border);
   overflow: hidden;
-  box-sizing: border-box;
 }
 
 /* ─── Event Card ──────────────────────────────────────────────────────────── */
