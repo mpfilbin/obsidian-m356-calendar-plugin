@@ -1,4 +1,4 @@
-import { CachedEvents, CacheStore, M365Event } from '../types';
+import { CacheStore, M365Event } from '../types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -16,15 +16,33 @@ export class CacheService {
     this.purgeExpired();
   }
 
-  get(key: string): CachedEvents | null {
-    const entry = this.store[key];
+  getEventsForRange(calendarId: string, start: Date, end: Date): M365Event[] | null {
+    const entry = this.store[calendarId];
     if (!entry) return null;
-    if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) return null;
-    return entry;
+    const now = Date.now();
+    const startISO = start.toISOString();
+    const endISO = end.toISOString();
+    const covered = entry.intervals.some(
+      (iv) => iv.start <= startISO && iv.end >= endISO && now - iv.fetchedAt <= CACHE_TTL_MS,
+    );
+    if (!covered) return null;
+    return entry.events.filter((e) => {
+      const eventStart = new Date(e.start.dateTime);
+      return eventStart >= start && eventStart < end;
+    });
   }
 
-  async set(key: string, events: M365Event[]): Promise<void> {
-    this.store[key] = { events, fetchedAt: Date.now() };
+  async addEvents(calendarId: string, start: Date, end: Date, events: M365Event[]): Promise<void> {
+    const entry = this.store[calendarId] ?? { events: [], intervals: [] };
+    const existingIds = new Set(entry.events.map((e) => e.id));
+    for (const event of events) {
+      if (!existingIds.has(event.id)) {
+        entry.events.push(event);
+        existingIds.add(event.id);
+      }
+    }
+    entry.intervals.push({ start: start.toISOString(), end: end.toISOString(), fetchedAt: Date.now() });
+    this.store[calendarId] = entry;
     await this.save(this.store);
   }
 
@@ -34,10 +52,21 @@ export class CacheService {
 
   purgeExpired(): void {
     const now = Date.now();
-    for (const key of Object.keys(this.store)) {
-      if (now - this.store[key].fetchedAt > CACHE_TTL_MS) {
-        delete this.store[key];
+    for (const calendarId of Object.keys(this.store)) {
+      const entry = this.store[calendarId];
+      entry.intervals = entry.intervals.filter((iv) => now - iv.fetchedAt <= CACHE_TTL_MS);
+      if (entry.intervals.length === 0) {
+        delete this.store[calendarId];
+        continue;
       }
+      entry.events = entry.events.filter((e) =>
+        entry.intervals.some((iv) => {
+          const eventStart = new Date(e.start.dateTime);
+          const ivStart = new Date(iv.start);
+          const ivEnd = new Date(iv.end);
+          return eventStart >= ivStart && eventStart < ivEnd;
+        }),
+      );
     }
   }
 }
