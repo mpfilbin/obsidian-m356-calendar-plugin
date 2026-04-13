@@ -85,7 +85,7 @@ export const CalendarApp: React.FC = () => {
   }, [calendarService, enabledIds, currentDate, view]);
 
   useEffect(() => {
-    void fetchAll();
+    void fetchAll({ userInitiated: true });
   }, [fetchAll]);
 
   useEffect(() => {

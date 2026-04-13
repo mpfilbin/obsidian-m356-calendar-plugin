@@ -11,6 +11,7 @@ const defaultProps = {
   onRefresh: vi.fn(),
   onNewEvent: vi.fn(),
   syncing: false,
+  refreshFailed: false,
 };
 
 describe('Toolbar', () => {
@@ -70,5 +71,13 @@ describe('Toolbar', () => {
   it('shows full date label in day view', () => {
     render(<Toolbar {...defaultProps} view="day" currentDate={new Date(2026, 3, 9)} />);
     expect(screen.getByText(/April 9.*2026/i)).toBeInTheDocument();
+  });
+
+  it('shows ⚠ ↻ with m365-refresh-failed class and retry title when refreshFailed is true', () => {
+    render(<Toolbar {...defaultProps} refreshFailed={true} />);
+    const btn = screen.getByTitle('Last refresh failed — click to retry');
+    expect(btn).toHaveTextContent('⚠ ↻');
+    expect(btn).toHaveClass('m365-refresh-failed');
+    expect(btn).toHaveAttribute('title', 'Last refresh failed — click to retry');
   });
 });

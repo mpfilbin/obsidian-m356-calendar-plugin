@@ -100,7 +100,7 @@ describe('CalendarApp', () => {
     });
   });
 
-  it('shows refresh-failed indicator (not error banner) when background load fails', async () => {
+  it('shows error banner (not refresh-failed indicator) when initial load fails', async () => {
     const ctx = makeContext({
       calendarService: {
         getCalendars: vi.fn().mockRejectedValue(new Error('Not authenticated')),
@@ -111,11 +111,11 @@ describe('CalendarApp', () => {
     });
     renderCalendarApp(ctx);
 
-    // Background failure: toolbar shows ⚠ ↻ but no error banner
+    // Initial load failure: error banner is shown
     await waitFor(() => {
-      expect(screen.getByTitle('Last refresh failed — click to retry')).toBeInTheDocument();
+      expect(screen.getByText('Not authenticated')).toBeInTheDocument();
     });
-    expect(screen.queryByText('Not authenticated')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Last refresh failed — click to retry')).not.toBeInTheDocument();
   });
 
   it('logs to the console when calendar load fails', async () => {
@@ -148,18 +148,18 @@ describe('CalendarApp', () => {
 
     renderCalendarApp(ctx);
 
-    // Background failure: toolbar shows ⚠ ↻ warning indicator
-    await waitFor(() => expect(screen.getByTitle('Last refresh failed — click to retry')).toBeInTheDocument());
+    // Initial load failure: error banner is shown
+    await waitFor(() => expect(screen.getByText('Not authenticated')).toBeInTheDocument());
     expect(getCalendars).toHaveBeenCalledTimes(1);
 
-    // Click Refresh (button text is ⚠ ↻ when refreshFailed)
-    await userEvent.click(screen.getByTitle('Last refresh failed — click to retry'));
+    // Click Refresh to retry
+    await userEvent.click(screen.getByText('↻'));
 
     await waitFor(() => {
       expect(getCalendars).toHaveBeenCalledTimes(2);
     });
-    // Warning cleared after successful retry
-    expect(screen.queryByTitle('Last refresh failed — click to retry')).not.toBeInTheDocument();
+    // Error banner cleared after successful retry
+    expect(screen.queryByText('Not authenticated')).not.toBeInTheDocument();
   });
 
   it('injects created event into state from createEvent response without re-fetching', async () => {
