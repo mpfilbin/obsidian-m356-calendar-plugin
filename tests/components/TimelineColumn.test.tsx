@@ -135,4 +135,34 @@ describe('TimelineColumn', () => {
     await userEvent.click(screen.getByText('Standup'));
     expect(onTimeClick).not.toHaveBeenCalled();
   });
+
+  it('renders hour labels when showLabels is true', () => {
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-09')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        showLabels={true}
+        data-testid="col"
+      />,
+    );
+    // 24 hour labels should be rendered (00:00 through 23:00)
+    expect(screen.getByText('00:00')).toBeInTheDocument();
+    expect(screen.getByText('12:00')).toBeInTheDocument();
+    expect(screen.getByText('23:00')).toBeInTheDocument();
+  });
+
+  it('does not render hour labels when showLabels is false', () => {
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-09')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        data-testid="col"
+      />,
+    );
+    expect(screen.queryByText('00:00')).not.toBeInTheDocument();
+  });
 });
