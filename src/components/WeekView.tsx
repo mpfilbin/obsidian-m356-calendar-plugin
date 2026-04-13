@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
+import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly } from '../lib/datetime';
 
 interface WeekViewProps {
@@ -29,47 +30,52 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onEventClick,
 }) => {
   const weekDays = getWeekDays(currentDate);
-  const calendarMap = new Map(calendars.map((c) => [c.id, c]));
+  const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const today = new Date();
 
   return (
     <div className="m365-calendar-week-view">
-      {weekDays.map((day) => {
-        const isToday = day.toDateString() === today.toDateString();
-        const cellDateStr = toDateOnly(day);
-        const dayEvents = events
-          .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
-          .sort(
-            (a, b) =>
-              new Date(a.start.dateTime).getTime() -
-              new Date(b.start.dateTime).getTime(),
-          );
-
-        return (
-          <div
-            key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
-            className={['m365-calendar-week-day', isToday ? 'today' : '']
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => onDayClick(day)}
-          >
-            <div className="m365-calendar-week-day-header">
-              <span className="m365-calendar-week-day-name">
-                {day.toLocaleDateString(undefined, { weekday: 'short' })}
-              </span>
-              <span
-                className={[
-                  'm365-calendar-week-day-number',
-                  isToday ? 'today' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                {day.getDate()}
-              </span>
+      {/* Day header row */}
+      <div className="m365-week-column-headers">
+        <div className="m365-week-gutter-spacer" />
+        {weekDays.map((day) => {
+          const isToday = day.toDateString() === today.toDateString();
+          return (
+            <div
+              key={`header-${toDateOnly(day)}`}
+              className={['m365-calendar-week-day', isToday ? 'today' : '']
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onDayClick(day)}
+            >
+              <div className="m365-calendar-week-day-header">
+                <span className="m365-calendar-week-day-name">
+                  {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                </span>
+                <span
+                  className={['m365-calendar-week-day-number', isToday ? 'today' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  {day.getDate()}
+                </span>
+              </div>
             </div>
-            <div className="m365-calendar-week-day-events">
-              {dayEvents.map((event) => {
+          );
+        })}
+      </div>
+
+      {/* All-day events row */}
+      <div className="m365-week-allday-row">
+        <div className="m365-week-allday-gutter" />
+        {weekDays.map((day) => {
+          const cellDateStr = toDateOnly(day);
+          const allDayEvents = events.filter(
+            (e) => e.isAllDay && e.start.dateTime.slice(0, 10) === cellDateStr,
+          );
+          return (
+            <div key={`allday-${cellDateStr}`} className="m365-week-allday-cell">
+              {allDayEvents.map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
                 return (
@@ -88,9 +94,44 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 );
               })}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {/* Timeline area */}
+      <div className="m365-week-timeline-area">
+        <div
+          className="m365-week-time-gutter"
+          style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}
+        >
+          {Array.from({ length: HOURS_IN_DAY }, (_, hour) => (
+            <span
+              key={hour}
+              className="m365-day-view-hour-label"
+              style={{ position: 'absolute', top: `${hour * 60 * PX_PER_MIN}px` }}
+            >
+              {String(hour).padStart(2, '0')}:00
+            </span>
+          ))}
+        </div>
+        {weekDays.map((day) => {
+          const cellDateStr = toDateOnly(day);
+          const timedEvents = events.filter(
+            (e) => !e.isAllDay && e.start.dateTime.slice(0, 10) === cellDateStr,
+          );
+          return (
+            <TimelineColumn
+              key={`timeline-${cellDateStr}`}
+              date={day}
+              events={timedEvents}
+              calendars={calendars}
+              onTimeClick={onDayClick}
+              onEventClick={onEventClick}
+              data-testid={`m365-week-timeline-${cellDateStr}`}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };
