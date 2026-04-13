@@ -151,6 +151,15 @@
   min-height: 0;
 }
 
+/* ─── Day View ────────────────────────────────────────────────────────────── */
+
+.m365-day-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
 /* ─── Month View ──────────────────────────────────────────────────────────── */
 
 .m365-calendar-month-view {
