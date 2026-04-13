@@ -210,8 +210,9 @@ describe('CalendarService', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     const promise = service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-05-01'));
+    const assertion = expect(promise).rejects.toThrow('Failed to fetch events: Too Many Requests');
     await vi.runAllTimersAsync();
-    await expect(promise).rejects.toThrow('Failed to fetch events: Too Many Requests');
+    await assertion;
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
