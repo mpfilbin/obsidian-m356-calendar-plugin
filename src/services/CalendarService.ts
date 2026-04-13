@@ -109,9 +109,15 @@ export class CalendarService {
       $top: '999',
     });
     const events: M365Event[] = [];
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
     while (url) {
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Prefer: `outlook.timezone="${timeZone}"`,
+        },
+      });
       if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
       const data = await response.json() as Record<string, unknown>;
       (data.value as Record<string, unknown>[]).forEach((e) => events.push(this.mapEvent(e, calendarId)));
