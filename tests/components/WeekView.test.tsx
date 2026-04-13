@@ -183,4 +183,19 @@ describe('WeekView timeline layout', () => {
     expect(date.getHours()).toBe(1);
     expect(date.getMinutes()).toBe(30);
   });
+
+  it('calls onEventClick when an all-day event is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[allDayEventOnMonday]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByText('Conference Day'));
+    expect(onEventClick).toHaveBeenCalledWith(allDayEventOnMonday);
+  });
 });
