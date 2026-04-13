@@ -147,7 +147,8 @@
 
 .m365-calendar-main {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ─── Month View ──────────────────────────────────────────────────────────── */
@@ -299,6 +300,8 @@
 .m365-week-time-gutter {
   width: 52px;
   flex-shrink: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--background-modifier-border);
 }
 
 .m365-timeline-column {
