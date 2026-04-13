@@ -61,7 +61,7 @@ export function layoutEvents(events: M365Event[]): LayoutEvent[] {
       while (used.has(col)) col++;
       assignments[i] = col;
     }
-    const colCount = assignments.reduce((m, v) => Math.max(m, v), 0) + 1;
+    const colCount = assignments.reduce((m, v) => Math.max(m, v), -1) + 1;
     for (let i = 0; i < cluster.length; i++) {
       result.push({ event: cluster[i], column: assignments[i], columnCount: colCount });
     }
