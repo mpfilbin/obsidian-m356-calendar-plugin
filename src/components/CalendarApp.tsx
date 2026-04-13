@@ -31,9 +31,10 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
       end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
     };
   }
-  // week
+  // week — normalize to local midnight so cache keys are stable
   const sunday = new Date(date);
   sunday.setDate(date.getDate() - date.getDay());
+  sunday.setHours(0, 0, 0, 0);
   const nextSunday = new Date(sunday);
   nextSunday.setDate(sunday.getDate() + 7);
   return { start: sunday, end: nextSunday };
@@ -48,12 +49,14 @@ export const CalendarApp: React.FC = () => {
   const [enabledIds, setEnabledIds] = useState<string[]>(settings.enabledCalendarIds);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   const calendarsLoadedRef = useRef(false);
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
     setSyncing(true);
     setError(null);
+    setRefreshFailed(false);
     try {
       if (!calendarsLoadedRef.current || options.reloadCalendars) {
         calendarsLoadedRef.current = true;
@@ -70,8 +73,12 @@ export const CalendarApp: React.FC = () => {
     } catch (e) {
       calendarsLoadedRef.current = false;
       console.error('M365 Calendar:', e);
-      if (options.userInitiated) notifyError(e);
-      setError(e instanceof Error ? e.message : 'Failed to load calendar data');
+      if (options.userInitiated) {
+        notifyError(e);
+        setError(e instanceof Error ? e.message : 'Failed to load calendar data');
+      } else {
+        setRefreshFailed(true);
+      }
     } finally {
       setSyncing(false);
     }
@@ -184,6 +191,7 @@ export const CalendarApp: React.FC = () => {
         onNewEvent={() => openCreateEventModal(new Date())}
         onRefresh={() => void fetchAll({ reloadCalendars: true, userInitiated: true })}
         syncing={syncing}
+        refreshFailed={refreshFailed}
       />
       <div className="m365-calendar-body">
         <CalendarSelector
