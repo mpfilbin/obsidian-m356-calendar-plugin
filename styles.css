@@ -216,17 +216,26 @@
 /* ─── Week View ───────────────────────────────────────────────────────────── */
 
 .m365-calendar-week-view {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
-.m365-calendar-week-day {
-  border-right: 1px solid var(--background-modifier-border);
-  cursor: pointer;
-  overflow: hidden;
+.m365-week-column-headers {
   display: flex;
-  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.m365-week-gutter-spacer {
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.m365-calendar-week-day {
+  flex: 1;
+  cursor: pointer;
+  border-right: 1px solid var(--background-modifier-border);
 }
 
 .m365-calendar-week-day:hover {
@@ -238,8 +247,6 @@
   flex-direction: column;
   align-items: center;
   padding: var(--size-4-2);
-  border-bottom: 1px solid var(--background-modifier-border);
-  flex-shrink: 0;
 }
 
 .m365-calendar-week-day-name {
@@ -264,10 +271,41 @@
   color: var(--text-on-accent);
 }
 
-.m365-calendar-week-day-events {
-  padding: var(--size-4-1);
-  overflow-y: auto;
+.m365-week-allday-row {
+  display: flex;
+  flex-shrink: 0;
+  min-height: 24px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.m365-week-allday-gutter {
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.m365-week-allday-cell {
   flex: 1;
+  padding: 2px var(--size-4-1);
+  border-right: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.m365-week-timeline-area {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.m365-week-time-gutter {
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.m365-timeline-column {
+  flex: 1;
+  border-right: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ─── Event Card ──────────────────────────────────────────────────────────── */
@@ -417,7 +455,6 @@
 .m365-day-view-events {
   position: absolute;
   top: 0;
-  left: 52px;
   right: 0;
   bottom: 0;
 }
