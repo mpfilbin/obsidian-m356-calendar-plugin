@@ -72,11 +72,11 @@ export const CalendarApp: React.FC = () => {
       }
     } catch (e) {
       calendarsLoadedRef.current = false;
-      console.error('M365 Calendar:', e);
       if (options.userInitiated) {
         notifyError(e);
         setError(e instanceof Error ? e.message : 'Failed to load calendar data');
       } else {
+        console.error('M365 Calendar:', e);
         setRefreshFailed(true);
       }
     } finally {
