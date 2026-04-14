@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { M365Event, M365Calendar } from '../types';
+import { useNow } from '../hooks/useNow';
 
 export interface LayoutEvent {
   event: M365Event;
@@ -70,6 +71,7 @@ interface TimelineColumnProps {
   onTimeClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
   showLabels?: boolean;
+  showNowLine?: boolean;
   'data-testid'?: string;
 }
 
@@ -80,10 +82,14 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   onTimeClick,
   onEventClick,
   showLabels = false,
+  showNowLine = false,
   'data-testid': testId,
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const laid = useMemo(() => layoutEvents(events), [events]);
+
+  const now = useNow();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -178,6 +184,12 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
           );
         })}
       </div>
+      {showNowLine && (
+        <div
+          className="m365-now-line"
+          style={{ top: `${nowMinutes * PX_PER_MIN}px` }}
+        />
+      )}
     </div>
   );
 };

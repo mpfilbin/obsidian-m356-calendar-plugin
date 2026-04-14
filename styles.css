@@ -472,6 +472,18 @@
   bottom: 0;
 }
 
+/* ─── Now line ────────────────────────────────────────────────────────────── */
+
+.m365-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--color-red, red);
+  pointer-events: none;
+  z-index: 10;
+}
+
 .m365-day-event-block {
   border-radius: var(--radius-s);
   box-sizing: border-box;
