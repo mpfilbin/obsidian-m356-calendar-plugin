@@ -31,18 +31,18 @@ describe('useNow', () => {
   });
 
   it('continues updating on the 60-second interval after the first tick', () => {
-    // Starting at :00 — next boundary is 60 000 ms away
+    // Starting at :00 — next boundary is 60 000 ms away.
+    // Use only advanceTimersByTime (not setSystemTime) so Date.now() inside
+    // the callbacks reflects only the timer-driven advance, not a double-shift.
     vi.setSystemTime(new Date('2026-04-14T14:30:00.000'));
     const { result } = renderHook(() => useNow());
 
     act(() => {
-      vi.setSystemTime(new Date('2026-04-14T14:31:00.000'));
       vi.advanceTimersByTime(60000);
     });
     expect(result.current.getMinutes()).toBe(31);
 
     act(() => {
-      vi.setSystemTime(new Date('2026-04-14T14:32:00.000'));
       vi.advanceTimersByTime(60000);
     });
     expect(result.current.getMinutes()).toBe(32);
@@ -53,5 +53,18 @@ describe('useNow', () => {
     const { unmount } = renderHook(() => useNow());
     unmount();
     expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it('clears the interval on unmount after first tick', () => {
+    const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+    vi.setSystemTime(new Date('2026-04-14T14:30:00.000'));
+    const { unmount } = renderHook(() => useNow());
+
+    act(() => {
+      vi.advanceTimersByTime(60000);
+    });
+
+    unmount();
+    expect(clearIntervalSpy).toHaveBeenCalled();
   });
 });
