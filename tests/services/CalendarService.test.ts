@@ -86,6 +86,18 @@ describe('CalendarService', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('getEvents bypasses cache when bypassCache=true', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [FAKE_EVENT_RESPONSE] }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    (cache.getEventsForRange as ReturnType<typeof vi.fn>).mockReturnValue([EXPECTED_EVENT]);
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'), true);
+    expect(fetchSpy).toHaveBeenCalled(); // must fetch even though cache would hit
+    expect(events[0].subject).toBe('Team Standup');
+  });
+
   it('getEvents fetches from Graph on cache miss and calls addEvents', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

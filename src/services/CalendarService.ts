@@ -30,9 +30,9 @@ export class CalendarService {
     }));
   }
 
-  async getEvents(calendarIds: string[], start: Date, end: Date): Promise<M365Event[]> {
+  async getEvents(calendarIds: string[], start: Date, end: Date, bypassCache = false): Promise<M365Event[]> {
     const results = await Promise.all(
-      calendarIds.map((id) => this.getEventsForCalendar(id, start, end)),
+      calendarIds.map((id) => this.getEventsForCalendar(id, start, end, bypassCache)),
     );
     return results.flat();
   }
@@ -99,8 +99,9 @@ export class CalendarService {
     calendarId: string,
     start: Date,
     end: Date,
+    bypassCache = false,
   ): Promise<M365Event[]> {
-    const cached = this.cache.getEventsForRange(calendarId, start, end);
+    const cached = bypassCache ? null : this.cache.getEventsForRange(calendarId, start, end);
     if (cached !== null) return cached;
 
     await this.semaphore.acquire();
@@ -140,7 +141,8 @@ export class CalendarService {
       const response = await fetch(url, options);
       if (response.status !== 429) return response;
       if (attempt < MAX_RETRIES - 1) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') ?? '10', 10);
+        const raw = parseInt(response.headers.get('Retry-After') ?? '', 10);
+        const retryAfter = Number.isFinite(raw) && raw > 0 ? raw : 10;
         await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
       }
     }

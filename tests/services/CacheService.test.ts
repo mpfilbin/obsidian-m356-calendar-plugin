@@ -103,6 +103,15 @@ describe('CacheService', () => {
     expect(ids.filter((id) => id === 'e2')).toHaveLength(1); // no duplicate
   });
 
+  it('upserts events: replaces existing event fields when id already exists', async () => {
+    await cache.addEvents('cal1', APR_START, APR_END, [evtApr4]);
+    const updated = { ...evtApr4, subject: 'Updated Subject' };
+    await cache.addEvents('cal1', APR_START, APR_END, [updated]);
+    const result = cache.getEventsForRange('cal1', APR_START, APR_END);
+    expect(result!.filter((e) => e.id === evtApr4.id)).toHaveLength(1);
+    expect(result!.find((e) => e.id === evtApr4.id)!.subject).toBe('Updated Subject');
+  });
+
   it('accumulates multiple intervals for the same calendar', async () => {
     await cache.addEvents('cal1', APR_START, WEEK_START, [evtApr4]);
     await cache.addEvents('cal1', WEEK_START, APR_END, [evtApr15]);

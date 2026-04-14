@@ -20,7 +20,11 @@ export class CacheService {
         ([, v]) => Array.isArray((v as unknown as Record<string, unknown>).intervals),
       ),
     );
+    const sizeBefore = Object.keys(this.store).length;
     this.purgeExpired();
+    if (Object.keys(this.store).length !== sizeBefore) {
+      await this.save(this.store);
+    }
   }
 
   getEventsForRange(calendarId: string, start: Date, end: Date): M365Event[] | null {
@@ -41,11 +45,14 @@ export class CacheService {
 
   async addEvents(calendarId: string, start: Date, end: Date, events: M365Event[]): Promise<void> {
     const entry = this.store[calendarId] ?? { events: [], intervals: [] };
-    const existingIds = new Set(entry.events.map((e) => e.id));
+    const idToIndex = new Map(entry.events.map((e, i) => [e.id, i]));
     for (const event of events) {
-      if (!existingIds.has(event.id)) {
+      const idx = idToIndex.get(event.id);
+      if (idx !== undefined) {
+        entry.events[idx] = event;
+      } else {
+        idToIndex.set(event.id, entry.events.length);
         entry.events.push(event);
-        existingIds.add(event.id);
       }
     }
     entry.intervals.push({ start: start.toISOString(), end: end.toISOString(), fetchedAt: Date.now() });

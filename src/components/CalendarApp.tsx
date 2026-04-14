@@ -55,23 +55,27 @@ export const CalendarApp: React.FC = () => {
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
     setSyncing(true);
-    setError(null);
+    if (options.userInitiated) setError(null);
     setRefreshFailed(false);
+    let calendarsFetchAttempted = false;
     try {
       if (!calendarsLoadedRef.current || options.reloadCalendars) {
+        calendarsFetchAttempted = true;
         calendarsLoadedRef.current = true;
         const fetchedCalendars = await calendarService.getCalendars();
         setCalendars(fetchedCalendars);
       }
       if (enabledIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
-        const fetched = await calendarService.getEvents(enabledIds, start, end);
+        const bypassCache = !!(options.reloadCalendars || options.userInitiated);
+        const fetched = await calendarService.getEvents(enabledIds, start, end, bypassCache);
         setEvents(fetched);
       } else {
         setEvents([]);
       }
+      if (options.userInitiated) setError(null);
     } catch (e) {
-      calendarsLoadedRef.current = false;
+      if (calendarsFetchAttempted) calendarsLoadedRef.current = false;
       if (options.userInitiated) {
         notifyError(e);
         setError(e instanceof Error ? e.message : 'Failed to load calendar data');
