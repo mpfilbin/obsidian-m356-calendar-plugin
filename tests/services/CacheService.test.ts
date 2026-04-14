@@ -123,12 +123,14 @@ describe('CacheService', () => {
 
   // --- clearAll ---
 
-  it('clearAll removes all calendar entries', async () => {
+  it('clearAll removes all calendar entries and persists the cleared store', async () => {
     await cache.addEvents('cal1', APR_START, APR_END, [evtApr4]);
     await cache.addEvents('cal2', APR_START, APR_END, [evtApr15]);
-    cache.clearAll();
+    save.mockClear();
+    await cache.clearAll();
     expect(cache.getEventsForRange('cal1', APR_START, APR_END)).toBeNull();
     expect(cache.getEventsForRange('cal2', APR_START, APR_END)).toBeNull();
+    expect(save).toHaveBeenCalledWith({});
   });
 
   // --- purgeExpired (via init) ---

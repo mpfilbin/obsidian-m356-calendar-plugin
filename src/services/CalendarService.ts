@@ -60,7 +60,7 @@ export class CalendarService {
     });
     if (!response.ok) throw new Error(`Failed to create event: ${response.statusText}`);
     const data = await response.json();
-    this.cache.clearAll();
+    await this.cache.clearAll();
     return this.mapEvent(data, calendarId);
   }
 
@@ -82,7 +82,7 @@ export class CalendarService {
       body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error(`Failed to update event: ${response.statusText}`);
-    this.cache.clearAll();
+    await this.cache.clearAll();
   }
 
   async deleteEvent(eventId: string): Promise<void> {
@@ -92,7 +92,7 @@ export class CalendarService {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error(`Failed to delete event: ${response.statusText}`);
-    this.cache.clearAll();
+    await this.cache.clearAll();
   }
 
   private async getEventsForCalendar(

@@ -60,8 +60,9 @@ export class CacheService {
     await this.save(this.store);
   }
 
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     this.store = {};
+    await this.save(this.store);
   }
 
   purgeExpired(): void {
