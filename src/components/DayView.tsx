@@ -38,13 +38,12 @@ export const DayView: React.FC<DayViewProps> = ({
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   const isToday = useMemo(() => {
-    const today = new Date();
     return (
-      currentDate.getFullYear() === today.getFullYear() &&
-      currentDate.getMonth() === today.getMonth() &&
-      currentDate.getDate() === today.getDate()
+      currentDate.getFullYear() === now.getFullYear() &&
+      currentDate.getMonth() === now.getMonth() &&
+      currentDate.getDate() === now.getDate()
     );
-  }, [currentDate]);
+  }, [currentDate, now]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -55,7 +54,9 @@ export const DayView: React.FC<DayViewProps> = ({
     const timelineTop = timelineRef.current.offsetTop;
     const target = timelineTop + nowMinutes - container.clientHeight / 2;
     container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
-  }, []); // intentionally empty: fires once on mount to center the now-line
+  }, []); // intentionally empty: fires once on mount. isToday and nowMinutes are
+  // read from the initial render closure — that is the desired behaviour: scroll
+  // to the current time as it was when the view first opened, not on every tick.
 
   return (
     <div className="m365-day-view" ref={scrollRef}>

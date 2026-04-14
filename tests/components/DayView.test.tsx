@@ -287,19 +287,26 @@ describe('DayView now-line', () => {
 });
 
 describe('DayView scroll-to-center', () => {
+  let originalClientHeight: PropertyDescriptor | undefined;
+  let originalScrollHeight: PropertyDescriptor | undefined;
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-14T14:30:00'));
-    // jsdom returns 0 for clientHeight/scrollHeight by default; override so
-    // the clamping math in the scroll effect produces a non-zero result.
+    originalClientHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight');
+    originalScrollHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight');
     Object.defineProperty(Element.prototype, 'clientHeight', { configurable: true, get: () => 400 });
     Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 1440 });
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    Object.defineProperty(Element.prototype, 'clientHeight', { configurable: true, get: () => 0 });
-    Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 0 });
+    if (originalClientHeight) {
+      Object.defineProperty(Element.prototype, 'clientHeight', originalClientHeight);
+    }
+    if (originalScrollHeight) {
+      Object.defineProperty(Element.prototype, 'scrollHeight', originalScrollHeight);
+    }
   });
 
   it('scrolls to center the now-line when viewing today', () => {
