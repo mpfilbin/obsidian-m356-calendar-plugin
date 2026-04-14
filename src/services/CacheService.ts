@@ -17,7 +17,7 @@ export class CacheService {
     // (e.g. persisted data from the old exact-key cache format).
     this.store = Object.fromEntries(
       Object.entries(raw).filter(
-        ([, v]) => Array.isArray((v as Record<string, unknown>).intervals),
+        ([, v]) => Array.isArray((v as unknown as Record<string, unknown>).intervals),
       ),
     );
     this.purgeExpired();
