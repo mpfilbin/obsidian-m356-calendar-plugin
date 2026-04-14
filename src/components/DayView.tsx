@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn } from './TimelineColumn';
+import { useNow } from '../hooks/useNow';
 
 // Re-export layout utilities so existing importers (tests, etc.) are unaffected
 export {
@@ -33,8 +34,31 @@ export const DayView: React.FC<DayViewProps> = ({
   const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
   const timedEvents = useMemo(() => events.filter((e) => !e.isAllDay), [events]);
 
+  const now = useNow();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const isToday = useMemo(() => {
+    // Compare as UTC dates to avoid timezone-offset issues with date-only strings
+    return (
+      currentDate.getUTCFullYear() === now.getFullYear() &&
+      currentDate.getUTCMonth() === now.getMonth() &&
+      currentDate.getUTCDate() === now.getDate()
+    );
+  }, [currentDate, now]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isToday || !scrollRef.current || !timelineRef.current) return;
+    const container = scrollRef.current;
+    const timelineTop = timelineRef.current.offsetTop;
+    const target = timelineTop + nowMinutes - container.clientHeight / 2;
+    container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
+  }, []); // intentionally empty: fires once on mount to center the now-line
+
   return (
-    <div className="m365-day-view">
+    <div className="m365-day-view" ref={scrollRef}>
       {allDayEvents.length > 0 && (
         <div className="m365-day-view-allday">
           {allDayEvents.map((event) => {
@@ -57,15 +81,18 @@ export const DayView: React.FC<DayViewProps> = ({
           })}
         </div>
       )}
-      <TimelineColumn
-        date={currentDate}
-        events={timedEvents}
-        calendars={calendars}
-        onTimeClick={onTimeClick}
-        onEventClick={onEventClick}
-        showLabels={true}
-        data-testid="m365-day-timeline"
-      />
+      <div ref={timelineRef}>
+        <TimelineColumn
+          date={currentDate}
+          events={timedEvents}
+          calendars={calendars}
+          onTimeClick={onTimeClick}
+          onEventClick={onEventClick}
+          showLabels={true}
+          showNowLine={isToday}
+          data-testid="m365-day-timeline"
+        />
+      </div>
     </div>
   );
 };
