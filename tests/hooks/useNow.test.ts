@@ -18,16 +18,15 @@ describe('useNow', () => {
   });
 
   it('updates after the next whole-minute boundary fires', () => {
-    // At :30s into the minute, next boundary is 30 000 ms away
+    // At :30s into the minute, next boundary is 30 000 ms away.
     vi.setSystemTime(new Date('2026-04-14T14:30:30.000'));
     const { result } = renderHook(() => useNow());
 
     act(() => {
-      vi.setSystemTime(new Date('2026-04-14T14:31:00.000'));
       vi.advanceTimersByTime(30000);
     });
 
-    expect(result.current.getMinutes()).toBe(31);
+    expect(result.current).toEqual(new Date('2026-04-14T14:31:00.000'));
   });
 
   it('continues updating on the 60-second interval after the first tick', () => {
