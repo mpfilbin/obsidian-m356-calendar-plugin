@@ -1,4 +1,4 @@
-import { CachedEvents, CacheStore, M365Event } from '../types';
+import { CacheStore, M365Event } from '../types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -12,32 +12,76 @@ export class CacheService {
 
   async init(): Promise<void> {
     const data = await this.load();
-    this.store = data ?? {};
+    const raw = data ?? {};
+    // Discard entries that don't match the current CalendarCacheEntry shape
+    // (e.g. persisted data from the old exact-key cache format).
+    this.store = Object.fromEntries(
+      Object.entries(raw).filter(
+        ([, v]) => Array.isArray((v as unknown as Record<string, unknown>).intervals),
+      ),
+    );
+    const sizeBefore = Object.keys(this.store).length;
     this.purgeExpired();
+    if (Object.keys(this.store).length !== sizeBefore) {
+      await this.save(this.store);
+    }
   }
 
-  get(key: string): CachedEvents | null {
-    const entry = this.store[key];
+  getEventsForRange(calendarId: string, start: Date, end: Date): M365Event[] | null {
+    const entry = this.store[calendarId];
     if (!entry) return null;
-    if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) return null;
-    return entry;
+    const now = Date.now();
+    const startISO = start.toISOString();
+    const endISO = end.toISOString();
+    const covered = entry.intervals.some(
+      (iv) => iv.start <= startISO && iv.end >= endISO && now - iv.fetchedAt <= CACHE_TTL_MS,
+    );
+    if (!covered) return null;
+    return entry.events.filter((e) => {
+      const eventStart = new Date(e.start.dateTime);
+      return eventStart >= start && eventStart < end;
+    });
   }
 
-  async set(key: string, events: M365Event[]): Promise<void> {
-    this.store[key] = { events, fetchedAt: Date.now() };
+  async addEvents(calendarId: string, start: Date, end: Date, events: M365Event[]): Promise<void> {
+    const entry = this.store[calendarId] ?? { events: [], intervals: [] };
+    const idToIndex = new Map(entry.events.map((e, i) => [e.id, i]));
+    for (const event of events) {
+      const idx = idToIndex.get(event.id);
+      if (idx !== undefined) {
+        entry.events[idx] = event;
+      } else {
+        idToIndex.set(event.id, entry.events.length);
+        entry.events.push(event);
+      }
+    }
+    entry.intervals.push({ start: start.toISOString(), end: end.toISOString(), fetchedAt: Date.now() });
+    this.store[calendarId] = entry;
     await this.save(this.store);
   }
 
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     this.store = {};
+    await this.save(this.store);
   }
 
   purgeExpired(): void {
     const now = Date.now();
-    for (const key of Object.keys(this.store)) {
-      if (now - this.store[key].fetchedAt > CACHE_TTL_MS) {
-        delete this.store[key];
+    for (const calendarId of Object.keys(this.store)) {
+      const entry = this.store[calendarId];
+      entry.intervals = entry.intervals.filter((iv) => now - iv.fetchedAt <= CACHE_TTL_MS);
+      if (entry.intervals.length === 0) {
+        delete this.store[calendarId];
+        continue;
       }
+      entry.events = entry.events.filter((e) =>
+        entry.intervals.some((iv) => {
+          const eventStart = new Date(e.start.dateTime);
+          const ivStart = new Date(iv.start);
+          const ivEnd = new Date(iv.end);
+          return eventStart >= ivStart && eventStart < ivEnd;
+        }),
+      );
     }
   }
 }

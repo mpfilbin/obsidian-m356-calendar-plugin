@@ -100,7 +100,7 @@ describe('CalendarApp', () => {
     });
   });
 
-  it('shows error banner when calendar load fails', async () => {
+  it('shows error banner (not refresh-failed indicator) when initial load fails', async () => {
     const ctx = makeContext({
       calendarService: {
         getCalendars: vi.fn().mockRejectedValue(new Error('Not authenticated')),
@@ -111,9 +111,11 @@ describe('CalendarApp', () => {
     });
     renderCalendarApp(ctx);
 
+    // Initial load failure: error banner is shown
     await waitFor(() => {
       expect(screen.getByText('Not authenticated')).toBeInTheDocument();
     });
+    expect(screen.queryByTitle('Last refresh failed — click to retry')).not.toBeInTheDocument();
   });
 
   it('logs to the console when calendar load fails', async () => {
@@ -146,16 +148,17 @@ describe('CalendarApp', () => {
 
     renderCalendarApp(ctx);
 
-    // Wait for initial error
+    // Initial load failure: error banner is shown
     await waitFor(() => expect(screen.getByText('Not authenticated')).toBeInTheDocument());
     expect(getCalendars).toHaveBeenCalledTimes(1);
 
-    // Click Refresh
+    // Click Refresh to retry
     await userEvent.click(screen.getByText('↻'));
 
     await waitFor(() => {
       expect(getCalendars).toHaveBeenCalledTimes(2);
     });
+    // Error banner cleared after successful retry
     expect(screen.queryByText('Not authenticated')).not.toBeInTheDocument();
   });
 

@@ -10,6 +10,7 @@ interface ToolbarProps {
   onRefresh: () => void;
   onNewEvent: () => void;
   syncing: boolean;
+  refreshFailed: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -20,6 +21,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onRefresh,
   onNewEvent,
   syncing,
+  refreshFailed,
 }) => {
   const label =
     view === 'month'
@@ -32,6 +34,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           day: 'numeric',
           year: 'numeric',
         });
+
+  const refreshLabel = syncing ? '↻ Syncing…' : refreshFailed ? '⚠ ↻' : '↻';
+  const refreshTitle = refreshFailed ? 'Last refresh failed — click to retry' : undefined;
 
   return (
     <div className="m365-calendar-toolbar">
@@ -60,11 +65,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           + New event
         </button>
         <button
-          className="m365-calendar-refresh"
+          className={`m365-calendar-refresh${refreshFailed ? ' m365-refresh-failed' : ''}`}
           onClick={onRefresh}
           disabled={syncing}
+          title={refreshTitle}
         >
-          {syncing ? '↻ Syncing…' : '↻'}
+          {refreshLabel}
         </button>
       </div>
     </div>

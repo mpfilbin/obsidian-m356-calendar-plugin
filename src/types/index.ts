@@ -35,14 +35,12 @@ export interface EventPatch {
   bodyContent?: string;
 }
 
-export interface CachedEvents {
+export interface CalendarCacheEntry {
   events: M365Event[];
-  fetchedAt: number;
+  intervals: Array<{ start: string; end: string; fetchedAt: number }>;
 }
 
-export interface CacheStore {
-  [key: string]: CachedEvents;
-}
+export type CacheStore = Record<string, CalendarCacheEntry>;
 
 export interface M365CalendarSettings {
   clientId: string;

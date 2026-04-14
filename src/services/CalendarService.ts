@@ -1,11 +1,14 @@
 import { M365Calendar, M365Event, NewEventInput, EventPatch } from '../types';
 import { AuthService } from './AuthService';
 import { CacheService } from './CacheService';
+import { Semaphore } from '../lib/semaphore';
 import { toLocalISOString } from '../lib/datetime';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 export class CalendarService {
+  private readonly semaphore = new Semaphore(2);
+
   constructor(
     private readonly auth: AuthService,
     private readonly cache: CacheService,
@@ -27,9 +30,9 @@ export class CalendarService {
     }));
   }
 
-  async getEvents(calendarIds: string[], start: Date, end: Date): Promise<M365Event[]> {
+  async getEvents(calendarIds: string[], start: Date, end: Date, bypassCache = false): Promise<M365Event[]> {
     const results = await Promise.all(
-      calendarIds.map((id) => this.getEventsForCalendar(id, start, end)),
+      calendarIds.map((id) => this.getEventsForCalendar(id, start, end, bypassCache)),
     );
     return results.flat();
   }
@@ -57,7 +60,7 @@ export class CalendarService {
     });
     if (!response.ok) throw new Error(`Failed to create event: ${response.statusText}`);
     const data = await response.json();
-    this.cache.clearAll();
+    await this.cache.clearAll();
     return this.mapEvent(data, calendarId);
   }
 
@@ -79,7 +82,7 @@ export class CalendarService {
       body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error(`Failed to update event: ${response.statusText}`);
-    this.cache.clearAll();
+    await this.cache.clearAll();
   }
 
   async deleteEvent(eventId: string): Promise<void> {
@@ -89,42 +92,61 @@ export class CalendarService {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error(`Failed to delete event: ${response.statusText}`);
-    this.cache.clearAll();
+    await this.cache.clearAll();
   }
 
   private async getEventsForCalendar(
     calendarId: string,
     start: Date,
     end: Date,
+    bypassCache = false,
   ): Promise<M365Event[]> {
-    const cacheKey = `${calendarId}:${start.toISOString()}:${end.toISOString()}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached) return cached.events;
+    const cached = bypassCache ? null : this.cache.getEventsForRange(calendarId, start, end);
+    if (cached !== null) return cached;
 
-    const token = await this.auth.getValidToken();
-    const params = new URLSearchParams({
-      startDateTime: start.toISOString(),
-      endDateTime: end.toISOString(),
-      $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location',
-      $top: '999',
-    });
-    const events: M365Event[] = [];
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
-    while (url) {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Prefer: `outlook.timezone="${timeZone}"`,
-        },
+    await this.semaphore.acquire();
+    try {
+      const token = await this.auth.getValidToken();
+      const params = new URLSearchParams({
+        startDateTime: start.toISOString(),
+        endDateTime: end.toISOString(),
+        $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location',
+        $top: '999',
       });
-      if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
-      const data = await response.json() as Record<string, unknown>;
-      (data.value as Record<string, unknown>[]).forEach((e) => events.push(this.mapEvent(e, calendarId)));
-      url = (data['@odata.nextLink'] as string | undefined) ?? null;
+      const events: M365Event[] = [];
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
+      while (url) {
+        const response = await this.fetchWithRetry(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Prefer: `outlook.timezone="${timeZone}"`,
+          },
+        });
+        if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
+        const data = await response.json() as Record<string, unknown>;
+        (data.value as Record<string, unknown>[]).forEach((e) => events.push(this.mapEvent(e, calendarId)));
+        url = (data['@odata.nextLink'] as string | undefined) ?? null;
+      }
+      await this.cache.addEvents(calendarId, start, end, events);
+      return events;
+    } finally {
+      this.semaphore.release();
     }
-    await this.cache.set(cacheKey, events);
-    return events;
+  }
+
+  private async fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+    const MAX_RETRIES = 3;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const response = await fetch(url, options);
+      if (response.status !== 429) return response;
+      if (attempt < MAX_RETRIES - 1) {
+        const raw = parseInt(response.headers.get('Retry-After') ?? '', 10);
+        const retryAfter = Number.isFinite(raw) && raw > 0 ? raw : 10;
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      }
+    }
+    throw new Error('Failed to fetch events: Too Many Requests');
   }
 
   private mapEvent(e: Record<string, unknown>, calendarId: string): M365Event {
