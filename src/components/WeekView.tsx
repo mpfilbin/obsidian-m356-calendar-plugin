@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly } from '../lib/datetime';
+import { useNow } from '../hooks/useNow';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -43,6 +44,29 @@ export const WeekView: React.FC<WeekViewProps> = ({
     return map;
   }, [events]);
   const today = new Date();
+
+  const now = useNow();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const isCurrentWeek = useMemo(() => {
+    return weekDays.some(
+      (d) =>
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate(),
+    );
+  }, [weekDays, now]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isCurrentWeek || !scrollRef.current) return;
+    const container = scrollRef.current;
+    const target = nowMinutes - container.clientHeight / 2;
+    container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
+  }, []); // intentionally empty: fires once on mount. isCurrentWeek and nowMinutes are
+  // read from the initial render closure — scroll targets the current time when
+  // the view first opened, not on every tick.
 
   return (
     <div className="m365-calendar-week-view">
@@ -108,7 +132,13 @@ export const WeekView: React.FC<WeekViewProps> = ({
       </div>
 
       {/* Timeline area */}
-      <div className="m365-week-timeline-area">
+      <div className="m365-week-timeline-area" ref={scrollRef}>
+        {isCurrentWeek && (
+          <div
+            className="m365-now-line"
+            style={{ top: `${nowMinutes * PX_PER_MIN}px` }}
+          />
+        )}
         <div
           className="m365-week-time-gutter"
           style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}

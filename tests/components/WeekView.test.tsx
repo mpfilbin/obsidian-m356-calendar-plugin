@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { WeekView } from '../../src/components/WeekView';
 import { M365Event, M365Calendar } from '../../src/types';
 
+vi.mock('../../src/hooks/useNow', () => ({
+  useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
+}));
+
 const calendar: M365Calendar = {
   id: 'cal1',
   name: 'Work',
@@ -197,5 +201,99 @@ describe('WeekView timeline layout', () => {
     );
     await userEvent.click(screen.getByText('Conference Day'));
     expect(onEventClick).toHaveBeenCalledWith(allDayEventOnMonday);
+  });
+});
+
+describe('WeekView now-line', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-14T14:30:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders the full-width now-line overlay when showing the current week', () => {
+    // 2026-04-14 is a Tuesday; its week (Sun Apr 12–Sat Apr 18) includes today
+    render(
+      <WeekView
+        currentDate={new Date(2026, 3, 14)}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const line = document.querySelector('.m365-now-line') as HTMLElement;
+    expect(line).toBeInTheDocument();
+    // 14:30 → 870 minutes * PX_PER_MIN(1) = 870px
+    expect(line.style.top).toBe('870px');
+  });
+
+  it('does not render the now-line when showing a different week', () => {
+    // 2026-04-06 is a Monday; its week (Sun Apr 5–Sat Apr 11) does not include Apr 14
+    render(
+      <WeekView
+        currentDate={new Date(2026, 3, 6)}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-now-line')).not.toBeInTheDocument();
+  });
+});
+
+describe('WeekView scroll-to-center', () => {
+  let originalClientHeight: PropertyDescriptor | undefined;
+  let originalScrollHeight: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-14T14:30:00'));
+    originalClientHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight');
+    originalScrollHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight');
+    Object.defineProperty(Element.prototype, 'clientHeight', { configurable: true, get: () => 400 });
+    Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 1440 });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalClientHeight) {
+      Object.defineProperty(Element.prototype, 'clientHeight', originalClientHeight);
+    }
+    if (originalScrollHeight) {
+      Object.defineProperty(Element.prototype, 'scrollHeight', originalScrollHeight);
+    }
+  });
+
+  it('scrolls the timeline area to center the now-line when showing the current week', () => {
+    // useNow → 14:30 → nowMinutes = 870
+    // No offsetTop adjustment needed (all-day row is outside .m365-week-timeline-area)
+    // target = 870 - 400/2 = 670
+    // clamped: max(0, min(670, 1440-400=1040)) = 670
+    render(
+      <WeekView
+        currentDate={new Date(2026, 3, 14)}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const timelineArea = document.querySelector('.m365-week-timeline-area') as HTMLElement;
+    expect(timelineArea.scrollTop).toBe(670);
+  });
+
+  it('does not scroll when showing a different week', () => {
+    render(
+      <WeekView
+        currentDate={new Date(2026, 3, 6)}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const timelineArea = document.querySelector('.m365-week-timeline-area') as HTMLElement;
+    expect(timelineArea.scrollTop).toBe(0);
   });
 });
