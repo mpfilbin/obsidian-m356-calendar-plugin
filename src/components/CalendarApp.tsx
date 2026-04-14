@@ -67,7 +67,7 @@ export const CalendarApp: React.FC = () => {
       }
       if (enabledIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
-        const bypassCache = !!(options.reloadCalendars || options.userInitiated);
+        const bypassCache = !!options.reloadCalendars;
         const fetched = await calendarService.getEvents(enabledIds, start, end, bypassCache);
         setEvents(fetched);
       } else {
