@@ -12,7 +12,14 @@ export class CacheService {
 
   async init(): Promise<void> {
     const data = await this.load();
-    this.store = data ?? {};
+    const raw = data ?? {};
+    // Discard entries that don't match the current CalendarCacheEntry shape
+    // (e.g. persisted data from the old exact-key cache format).
+    this.store = Object.fromEntries(
+      Object.entries(raw).filter(
+        ([, v]) => Array.isArray((v as Record<string, unknown>).intervals),
+      ),
+    );
     this.purgeExpired();
   }
 
