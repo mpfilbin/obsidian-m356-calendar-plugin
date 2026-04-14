@@ -43,8 +43,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
     }
     return map;
   }, [events]);
-  const today = new Date();
-
   const now = useNow();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -74,7 +72,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
       <div className="m365-week-column-headers">
         <div className="m365-week-gutter-spacer" />
         {weekDays.map((day) => {
-          const isToday = day.toDateString() === today.toDateString();
+          const isToday = day.toDateString() === now.toDateString();
           return (
             <div
               key={`header-${toDateOnly(day)}`}
