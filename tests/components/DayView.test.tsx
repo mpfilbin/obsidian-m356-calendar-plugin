@@ -264,7 +264,7 @@ describe('DayView now-line', () => {
   it('renders the now-line when currentDate is today', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-14')}
+        currentDate={new Date(2026, 3, 14)}
         events={[]}
         calendars={[]}
         onTimeClick={vi.fn()}
@@ -276,7 +276,7 @@ describe('DayView now-line', () => {
   it('does not render the now-line when currentDate is not today', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-13')}
+        currentDate={new Date(2026, 3, 13)}
         events={[]}
         calendars={[]}
         onTimeClick={vi.fn()}
@@ -309,7 +309,7 @@ describe('DayView scroll-to-center', () => {
     // clamped: max(0, min(670, 1440-400=1040)) = 670
     render(
       <DayView
-        currentDate={new Date('2026-04-14')}
+        currentDate={new Date(2026, 3, 14)}
         events={[]}
         calendars={[]}
         onTimeClick={vi.fn()}
@@ -322,7 +322,7 @@ describe('DayView scroll-to-center', () => {
   it('does not scroll when currentDate is not today', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-13')}
+        currentDate={new Date(2026, 3, 13)}
         events={[]}
         calendars={[]}
         onTimeClick={vi.fn()}

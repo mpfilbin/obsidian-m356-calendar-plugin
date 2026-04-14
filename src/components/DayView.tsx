@@ -38,13 +38,13 @@ export const DayView: React.FC<DayViewProps> = ({
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   const isToday = useMemo(() => {
-    // Compare as UTC dates to avoid timezone-offset issues with date-only strings
+    const today = new Date();
     return (
-      currentDate.getUTCFullYear() === now.getFullYear() &&
-      currentDate.getUTCMonth() === now.getMonth() &&
-      currentDate.getUTCDate() === now.getDate()
+      currentDate.getFullYear() === today.getFullYear() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getDate() === today.getDate()
     );
-  }, [currentDate, now]);
+  }, [currentDate]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
