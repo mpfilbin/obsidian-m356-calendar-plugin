@@ -1,10 +1,13 @@
 import { WeatherCacheStore, DailyWeather } from '../types';
 
+export const WEATHER_CACHE_KEY = 'weatherCache';
+
 const FORECAST_TTL_MS = 60 * 60 * 1000;          // 1 hour
 const HISTORICAL_TTL_MS = 24 * 60 * 60 * 1000;   // 24 hours
 
 function isForecastDate(dateStr: string): boolean {
-  const date = new Date(dateStr);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // local midnight — avoids UTC-parse offset bug
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return date >= today;

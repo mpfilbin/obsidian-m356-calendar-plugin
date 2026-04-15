@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WeatherCacheService } from '../../src/services/WeatherCacheService';
 import { DailyWeather, WeatherCacheStore } from '../../src/types';
+import { toDateOnly } from '../../src/lib/datetime';
 
 const LOCATION = 'New York, US';
 // Far future — always a forecast date (TTL: 1 hour)
@@ -71,9 +72,8 @@ describe('WeatherCacheService', () => {
         fetchedAt: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
       },
     };
-    // @ts-expect-error accessing private store for test setup
     const c = new WeatherCacheService(vi.fn().mockResolvedValue(expiredStore), vi.fn().mockResolvedValue(undefined));
-    // @ts-expect-error
+    // @ts-expect-error accessing private store for test setup
     c['store'] = expiredStore;
     expect(c.get(HISTORICAL_DATE, LOCATION)).toBeNull();
   });
@@ -140,5 +140,19 @@ describe('WeatherCacheService', () => {
     const c = new WeatherCacheService(vi.fn().mockResolvedValue(freshStore), vi.fn().mockResolvedValue(undefined));
     await c.init();
     expect(c.get(HISTORICAL_DATE, LOCATION)).not.toBeNull();
+  });
+
+  it('treats today as a forecast date (1-hour TTL, not 24-hour)', () => {
+    const today = toDateOnly(new Date());
+    const expiredForForecast: WeatherCacheStore = {
+      [`${today}:${LOCATION}`]: {
+        data: makeWeather(today),
+        fetchedAt: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago — expired under 1h TTL
+      },
+    };
+    const c = new WeatherCacheService(vi.fn().mockResolvedValue(expiredForForecast), vi.fn().mockResolvedValue(undefined));
+    // @ts-expect-error accessing private store for test setup
+    c['store'] = expiredForForecast;
+    expect(c.get(today, LOCATION)).toBeNull(); // expired under 1-hour forecast TTL
   });
 });
