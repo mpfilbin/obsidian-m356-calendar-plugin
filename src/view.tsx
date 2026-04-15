@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { CalendarApp } from './components/CalendarApp';
 import { AppContext, AppContextValue } from './context';
+import { PopoverProvider } from './PopoverContext';
 
 export const VIEW_TYPE_M365_CALENDAR = 'm365-calendar-view';
 
@@ -33,7 +34,9 @@ export class M365CalendarView extends ItemView {
     this.root.render(
       <StrictMode>
         <AppContext.Provider value={this.contextValue}>
-          <CalendarApp />
+          <PopoverProvider>
+            <CalendarApp />
+          </PopoverProvider>
         </AppContext.Provider>
       </StrictMode>,
     );
