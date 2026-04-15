@@ -2,6 +2,7 @@ import React from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
 import { toDateOnly } from '../lib/datetime';
+import { usePopoverContext } from '../PopoverContext';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -46,6 +47,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   const days = getDaysInMonthView(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
   const today = new Date();
+  const { showPopover, hidePopover } = usePopoverContext();
 
   return (
     <div className="m365-calendar-month-view">
@@ -86,6 +88,8 @@ export const MonthView: React.FC<MonthViewProps> = ({
                     type="button"
                     className="m365-event-click-btn"
                     aria-label={`Edit event: ${event.subject}`}
+                    onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
+                    onMouseLeave={() => hidePopover()}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEventClick?.(event);
