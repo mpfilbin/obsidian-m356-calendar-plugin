@@ -1,9 +1,10 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { M365Event, M365Calendar } from '../types';
+import { M365Event, M365Calendar, DailyWeather } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn, PX_PER_MIN } from './TimelineColumn';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
+import { toDateOnly } from '../lib/datetime';
 
 // Re-export layout utilities so existing importers (tests, etc.) are unaffected
 export {
@@ -22,6 +23,8 @@ interface DayViewProps {
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
+  weather?: Map<string, DailyWeather | null>;
+  weatherUnits?: 'imperial' | 'metric';
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -30,6 +33,8 @@ export const DayView: React.FC<DayViewProps> = ({
   calendars,
   onTimeClick,
   onEventClick,
+  weather,
+  weatherUnits = 'imperial',
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
@@ -47,6 +52,8 @@ export const DayView: React.FC<DayViewProps> = ({
       currentDate.getDate() === now.getDate()
     );
   }, [currentDate, now]);
+
+  const dailyWeather = weather !== undefined ? weather.get(toDateOnly(currentDate)) : undefined;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -85,6 +92,38 @@ export const DayView: React.FC<DayViewProps> = ({
               </button>
             );
           })}
+        </div>
+      )}
+      {dailyWeather !== undefined && (
+        <div className="m365-weather-banner">
+          {dailyWeather === null ? (
+            <>
+              <span className="m365-weather-unknown">?</span>
+              <span className="m365-weather-unavailable">Weather data unavailable</span>
+            </>
+          ) : (
+            <>
+              <img
+                className="m365-weather-icon"
+                src={`https://openweathermap.org/img/wn/${dailyWeather.condition.iconCode}.png`}
+                alt={dailyWeather.condition.description}
+                width={32}
+                height={32}
+              />
+              <span className="m365-weather-current">
+                {dailyWeather.tempCurrent !== null ? `${Math.round(dailyWeather.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}
+              </span>
+              <span className="m365-weather-high">
+                {dailyWeather.tempHigh !== null ? `H: ${Math.round(dailyWeather.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>H:</span> <span>—</span></>}
+              </span>
+              <span className="m365-weather-low">
+                {dailyWeather.tempLow !== null ? `L: ${Math.round(dailyWeather.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>L:</span> <span>—</span></>}
+              </span>
+              <span className="m365-weather-precip">
+                {dailyWeather.precipProbability !== null ? `☂ ${Math.round(dailyWeather.precipProbability * 100)}%` : <><span>☂</span> <span>—</span></>}
+              </span>
+            </>
+          )}
         </div>
       )}
       <div ref={timelineRef}>

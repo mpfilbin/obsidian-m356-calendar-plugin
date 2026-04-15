@@ -266,6 +266,8 @@ export const CalendarApp: React.FC = () => {
               calendars={calendars}
               onTimeClick={openCreateEventModal}
               onEventClick={handleEventClick}
+              weather={weather}
+              weatherUnits={settings.weatherUnits}
             />
           )}
         </div>
