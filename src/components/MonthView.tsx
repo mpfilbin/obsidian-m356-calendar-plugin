@@ -1,5 +1,5 @@
 import React from 'react';
-import { M365Event, M365Calendar } from '../types';
+import { M365Event, M365Calendar, DailyWeather } from '../types';
 import { EventCard } from './EventCard';
 import { toDateOnly } from '../lib/datetime';
 import { usePopoverContext } from '../PopoverContext';
@@ -11,6 +11,7 @@ interface MonthViewProps {
   onDayClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
   maxEventsPerDay?: number;
+  weather?: Map<string, DailyWeather | null>;
 }
 
 function getDaysInMonthView(date: Date): Date[] {
@@ -43,6 +44,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onDayClick,
   onEventClick,
   maxEventsPerDay = 6,
+  weather,
 }) => {
   const days = getDaysInMonthView(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
@@ -79,6 +81,20 @@ export const MonthView: React.FC<MonthViewProps> = ({
               onClick={() => onDayClick(day)}
             >
               <span className="m365-calendar-day-number">{day.getDate()}</span>
+              {weather !== undefined && (() => {
+                const w = weather.get(cellDateStr);
+                if (w === undefined) return null;
+                if (w === null) return <span className="m365-weather-unknown m365-weather-month">?</span>;
+                return (
+                  <img
+                    className="m365-weather-icon m365-weather-month"
+                    src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
+                    alt={w.condition.description}
+                    width={24}
+                    height={24}
+                  />
+                );
+              })()}
               {dayEvents.slice(0, maxEventsPerDay).map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
