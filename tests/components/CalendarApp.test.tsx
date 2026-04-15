@@ -353,4 +353,27 @@ describe('CalendarApp', () => {
     expect(nextDayStart.getTime() - dayStart.getTime()).toBe(24 * 60 * 60 * 1000);
     expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
   });
+
+  it('calls weatherService.getWeatherForDates when weatherEnabled is true', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], weatherEnabled: true, weatherLocation: 'New York, US', openWeatherApiKey: 'key' },
+    });
+    renderCalendarApp(ctx);
+
+    await waitFor(() => {
+      expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalled();
+    });
+  });
+
+  it('does not call weatherService.getWeatherForDates when weatherEnabled is false', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], weatherEnabled: false },
+    });
+    renderCalendarApp(ctx);
+
+    // Wait for calendar fetch to complete so we know the component mounted
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
+
+    expect(ctx.weatherService.getWeatherForDates).not.toHaveBeenCalled();
+  });
 });
