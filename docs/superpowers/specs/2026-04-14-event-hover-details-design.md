@@ -52,7 +52,7 @@ Renders (each field only if present):
 - Formatted time range (start–end) or "All day" for all-day events
 - Location
 - `bodyPreview` — truncated to ~3 lines via CSS `-webkit-line-clamp`
-- "Open in Outlook" link using `webLink`
+- "Open in Outlook" label (non-interactive) when `webLink` is present — the popover uses `pointer-events: none` so no anchor tag
 
 Uses CSS class `m365-event-hover-popover` for visual styling.
 
@@ -99,7 +99,7 @@ New block in `styles.css` for `.m365-event-hover-popover`:
 
 ### `tests/components/EventHoverPopover.test.tsx`
 
-- Renders all fields when all are present (subject, time range, location, bodyPreview, webLink)
+- Renders all fields when all are present (subject, time range, location, bodyPreview, webLink indicator)
 - Omits optional fields when absent from the event
 - Shows "All day" instead of a time range for all-day events
 - Positions to the left when `anchorRect` is near the right viewport edge
