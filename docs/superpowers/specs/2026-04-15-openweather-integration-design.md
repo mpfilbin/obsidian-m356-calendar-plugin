@@ -196,7 +196,21 @@ A small weather icon is absolutely positioned in the upper-right corner of each 
 
 ### Week View (`src/components/WeekView.tsx`)
 
-A weather icon appears in the day column header below the day number, between the header row and the all-day events row. No layout changes to the timeline below.
+A weather strip appears in each day column header below the day number, between the header row and the all-day events row. It mirrors the day view banner content in a compact stacked layout:
+
+```
+[icon]
+72°F  H: 78°F  L: 61°F  ☂ 20%
+```
+
+- Icon: 24×24px OpenWeather CDN image (or `?` on null)
+- Current temp: `tempCurrent` formatted with unit suffix, or `—` if `null`
+- High/Low: always present when `DailyWeather` is available
+- Precipitation: `precipProbability * 100` rounded to nearest integer, shown as `☂ N%`
+- If weather is `null`: shows `?` placeholder
+- If weather disabled: strip is not rendered
+
+No layout disruption to the timeline below.
 
 ### Day View (`src/components/DayView.tsx`)
 
