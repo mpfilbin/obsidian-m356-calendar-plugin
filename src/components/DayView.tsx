@@ -3,6 +3,7 @@ import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn, PX_PER_MIN } from './TimelineColumn';
 import { useNow } from '../hooks/useNow';
+import { usePopoverContext } from '../PopoverContext';
 
 // Re-export layout utilities so existing importers (tests, etc.) are unaffected
 export {
@@ -33,6 +34,8 @@ export const DayView: React.FC<DayViewProps> = ({
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
   const timedEvents = useMemo(() => events.filter((e) => !e.isAllDay), [events]);
+
+  const { showPopover, hidePopover } = usePopoverContext();
 
   const now = useNow();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -71,6 +74,8 @@ export const DayView: React.FC<DayViewProps> = ({
                 type="button"
                 className="m365-event-click-btn"
                 aria-label={`Edit event: ${event.subject}`}
+                onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
+                onMouseLeave={() => hidePopover()}
                 onClick={(e) => {
                   e.stopPropagation();
                   onEventClick?.(event);
