@@ -9,6 +9,10 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   defaultCalendarId: '',
   refreshIntervalMinutes: 10,
   defaultView: 'month',
+  weatherEnabled: false,
+  openWeatherApiKey: '',
+  weatherLocation: '',
+  weatherUnits: 'imperial',
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {

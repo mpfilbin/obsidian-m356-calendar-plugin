@@ -49,6 +49,10 @@ export interface M365CalendarSettings {
   defaultCalendarId: string;
   refreshIntervalMinutes: number;
   defaultView: 'month' | 'week' | 'day';
+  weatherEnabled: boolean;
+  openWeatherApiKey: string;
+  weatherLocation: string;
+  weatherUnits: 'imperial' | 'metric';
 }
 
 export interface StoredTokens {
@@ -56,3 +60,25 @@ export interface StoredTokens {
   refreshToken: string;
   expiresAt: number;
 }
+
+export interface WeatherCondition {
+  code: number;          // OpenWeather condition code e.g. 800
+  description: string;   // e.g. "clear sky"
+  iconCode: string;      // e.g. "01d" — appended to CDN icon URL
+}
+
+export interface DailyWeather {
+  date: string;                   // "YYYY-MM-DD" in local time
+  condition: WeatherCondition;
+  tempCurrent: number | null;     // null for historical dates (timemachine doesn't guarantee current)
+  tempHigh: number | null;        // null for historical dates (timemachine doesn't return daily min/max)
+  tempLow: number | null;         // null for historical dates
+  precipProbability: number | null; // 0–1; null for historical dates
+}
+
+export interface WeatherCacheEntry {
+  data: DailyWeather;
+  fetchedAt: number;
+}
+
+export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location"
