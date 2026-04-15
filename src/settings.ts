@@ -137,15 +137,16 @@ export class M365CalendarSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('OpenWeather API key') // eslint-disable-line obsidianmd/ui/sentence-case
       .setDesc('One Call API 3.0 key from openweathermap.org.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addText((text) =>
-        text
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        return text
           .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
           .setValue(this.plugin.settings.openWeatherApiKey)
           .onChange(async (value) => {
             this.plugin.settings.openWeatherApiKey = value.trim();
             await this.plugin.saveSettings();
-          }),
-      );
+          });
+      });
 
     new Setting(containerEl)
       .setName('Location')
