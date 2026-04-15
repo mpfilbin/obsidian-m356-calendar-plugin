@@ -4,6 +4,7 @@ import { EventCard } from './EventCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly } from '../lib/datetime';
 import { useNow } from '../hooks/useNow';
+import { usePopoverContext } from '../PopoverContext';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -45,6 +46,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   }, [events]);
   const now = useNow();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const { showPopover, hidePopover } = usePopoverContext();
 
   const isCurrentWeek = useMemo(() => {
     return weekDays.some(
@@ -115,6 +117,8 @@ export const WeekView: React.FC<WeekViewProps> = ({
                     type="button"
                     className="m365-event-click-btn"
                     aria-label={`Edit event: ${event.subject}`}
+                    onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
+                    onMouseLeave={() => hidePopover()}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEventClick?.(event);
