@@ -146,6 +146,23 @@ describe('WeekView', () => {
     expect(screen.getByText('☂ 20%')).toBeInTheDocument();
   });
 
+  it('renders temperatures with °C suffix when weatherUnits is metric', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-06', weekWeather]]);
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+        weatherUnits="metric"
+      />,
+    );
+    expect(screen.getByText('72°C')).toBeInTheDocument();
+    expect(screen.getByText('H: 78°C')).toBeInTheDocument();
+    expect(screen.getByText('L: 61°C')).toBeInTheDocument();
+  });
+
   it('renders ? placeholder in header when weather is null for a day', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-06', null]]);
     render(

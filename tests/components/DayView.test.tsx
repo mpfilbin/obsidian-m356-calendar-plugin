@@ -333,6 +333,23 @@ describe('DayView', () => {
       );
       expect(document.querySelector('.m365-weather-banner')).toBeNull();
     });
+
+    it('renders temperatures with °C suffix when weatherUnits is metric', () => {
+      const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', forecastWeather]]);
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+          weather={weatherMap}
+          weatherUnits="metric"
+        />,
+      );
+      expect(screen.getByText('72°C')).toBeInTheDocument();
+      expect(screen.getByText(/H: 78°C/)).toBeInTheDocument();
+      expect(screen.getByText(/L: 61°C/)).toBeInTheDocument();
+    });
   });
 });
 

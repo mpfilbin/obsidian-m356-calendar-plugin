@@ -124,7 +124,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show weather')
-      .setDesc('Display weather conditions in calendar views. Requires an OpenWeather API key.')
+      .setDesc('Display weather conditions in calendar views. Requires an OpenWeather API key.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.weatherEnabled)
@@ -150,7 +150,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Location')
-      .setDesc('City and country code, e.g. "New York, US" or "London, GB".')
+      .setDesc('City and country code, e.g. "New York, US" or "London, GB".') // eslint-disable-line obsidianmd/ui/sentence-case
       .addText((text) =>
         text
           .setPlaceholder('New York, US') // eslint-disable-line obsidianmd/ui/sentence-case
@@ -165,8 +165,8 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       .setName('Temperature units')
       .addDropdown((dropdown) =>
         dropdown
-          .addOption('imperial', 'Fahrenheit (°F)')
-          .addOption('metric', 'Celsius (°C)')
+          .addOption('imperial', 'Fahrenheit (°F)') // eslint-disable-line obsidianmd/ui/sentence-case
+          .addOption('metric', 'Celsius (°C)') // eslint-disable-line obsidianmd/ui/sentence-case
           .setValue(this.plugin.settings.weatherUnits)
           .onChange(async (value) => {
             this.plugin.settings.weatherUnits = value as 'imperial' | 'metric';

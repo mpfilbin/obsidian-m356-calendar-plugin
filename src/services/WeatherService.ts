@@ -3,7 +3,7 @@ import { WeatherCacheService } from './WeatherCacheService';
 import { Semaphore } from '../lib/semaphore';
 import { toDateOnly } from '../lib/datetime';
 
-const GEO_BASE = 'http://api.openweathermap.org/geo/1.0/direct';
+const GEO_BASE = 'https://api.openweathermap.org/geo/1.0/direct';
 const OWM_BASE = 'https://api.openweathermap.org/data/3.0/onecall';
 
 interface Coords { lat: number; lon: number }
