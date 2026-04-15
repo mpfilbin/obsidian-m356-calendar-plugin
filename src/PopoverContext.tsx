@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { M365Event, M365Calendar } from './types';
 import { EventHoverPopover } from './components/EventHoverPopover';
@@ -40,6 +40,12 @@ export const PopoverProvider: React.FC<{ children: ReactNode }> = ({ children })
       timerRef.current = null;
     }
     setPopover(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
   }, []);
 
   const value = useMemo(() => ({ showPopover, hidePopover }), [showPopover, hidePopover]);

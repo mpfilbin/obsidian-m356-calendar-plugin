@@ -7,8 +7,8 @@ interface EventHoverPopoverProps {
   anchorRect: DOMRect;
 }
 
-const POPOVER_WIDTH = 280;
-const GAP = 8;
+export const POPOVER_WIDTH = 280;
+export const GAP = 8;
 
 export const EventHoverPopover: React.FC<EventHoverPopoverProps> = ({
   event,

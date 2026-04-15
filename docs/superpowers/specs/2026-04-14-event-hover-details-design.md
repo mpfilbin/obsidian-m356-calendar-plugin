@@ -30,7 +30,7 @@ A single `<EventHoverPopover>` renders via `ReactDOM.createPortal` into `documen
 
 ## Components
 
-### New: `src/context/PopoverContext.tsx`
+### New: `src/PopoverContext.tsx`
 
 Exports `PopoverProvider`, `usePopoverContext`, and supporting types.
 
@@ -87,7 +87,7 @@ No new props added to any of these components.
 
 New block in `styles.css` for `.m365-event-hover-popover`:
 
-- `position: fixed`
+- `position: fixed` is applied via inline style in `EventHoverPopover.tsx`, not this CSS block
 - `z-index` high enough to clear Obsidian UI layers
 - Themed background, border, box shadow, padding
 - `max-width: 280px`
@@ -104,7 +104,7 @@ New block in `styles.css` for `.m365-event-hover-popover`:
 - Shows "All day" instead of a time range for all-day events
 - Positions to the left when `anchorRect` is near the right viewport edge
 
-### `tests/context/PopoverContext.test.tsx`
+### `tests/PopoverContext.test.tsx`
 
 - `showPopover` does not display the popover before 300ms
 - `showPopover` displays the popover after 300ms

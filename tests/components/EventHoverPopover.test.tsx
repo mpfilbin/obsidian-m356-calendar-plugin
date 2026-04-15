@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { EventHoverPopover } from '../../src/components/EventHoverPopover';
+import { EventHoverPopover, POPOVER_WIDTH, GAP } from '../../src/components/EventHoverPopover';
 import { M365Event, M365Calendar } from '../../src/types';
 
 const calendar: M365Calendar = {
@@ -62,22 +62,22 @@ describe('EventHoverPopover', () => {
   });
 
   it('positions to the left when anchorRect is near the right viewport edge', () => {
-    // right=900: 900 + 8 (gap) + 280 (width) = 1188 > 1024 → flip left
-    // expected left: 50 - 8 - 280 = -238
+    // right=900: 900 + GAP + POPOVER_WIDTH = 1188 > 1024 → flip left
+    // expected left: 50 - GAP - POPOVER_WIDTH = -238
     const { container } = render(
       <EventHoverPopover event={baseEvent} calendar={calendar} anchorRect={makeRect(900)} />,
     );
     const popover = container.firstChild as HTMLElement;
-    expect(popover.style.left).toBe('-238px');
+    expect(popover.style.left).toBe(`${50 - GAP - POPOVER_WIDTH}px`);
   });
 
   it('positions to the right when there is space', () => {
-    // right=200: 200 + 8 + 280 = 488 < 1024 → no flip
-    // expected left: 200 + 8 = 208
+    // right=200: 200 + GAP + POPOVER_WIDTH = 488 < 1024 → no flip
+    // expected left: 200 + GAP = 208
     const { container } = render(
       <EventHoverPopover event={baseEvent} calendar={calendar} anchorRect={makeRect(200)} />,
     );
     const popover = container.firstChild as HTMLElement;
-    expect(popover.style.left).toBe('208px');
+    expect(popover.style.left).toBe(`${200 + GAP}px`);
   });
 });
