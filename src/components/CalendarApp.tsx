@@ -256,6 +256,7 @@ export const CalendarApp: React.FC = () => {
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
               weather={weather}
+              weatherUnits={settings.weatherUnits}
             />
           )}
           {view === 'day' && (

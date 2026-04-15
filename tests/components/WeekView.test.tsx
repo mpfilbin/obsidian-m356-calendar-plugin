@@ -139,10 +139,11 @@ describe('WeekView', () => {
     const img = document.querySelector('.m365-weather-icon') as HTMLImageElement;
     expect(img).not.toBeNull();
     expect(img.src).toContain('01d');
-    // Temperature values should appear
-    expect(screen.getByText(/78/)).toBeInTheDocument();
-    expect(screen.getByText(/61/)).toBeInTheDocument();
-    expect(screen.getByText(/20%/)).toBeInTheDocument();
+    // Temperature values should appear with unit suffix (default imperial = °F)
+    expect(screen.getByText('72°F')).toBeInTheDocument();
+    expect(screen.getByText('H: 78°F')).toBeInTheDocument();
+    expect(screen.getByText('L: 61°F')).toBeInTheDocument();
+    expect(screen.getByText('☂ 20%')).toBeInTheDocument();
   });
 
   it('renders ? placeholder in header when weather is null for a day', () => {

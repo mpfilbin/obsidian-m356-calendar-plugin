@@ -13,6 +13,7 @@ interface WeekViewProps {
   onDayClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
   weather?: Map<string, DailyWeather | null>;
+  weatherUnits?: 'imperial' | 'metric';
 }
 
 function getWeekDays(date: Date): Date[] {
@@ -32,6 +33,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onDayClick,
   onEventClick,
   weather,
+  weatherUnits = 'imperial',
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
@@ -115,9 +117,9 @@ export const WeekView: React.FC<WeekViewProps> = ({
                         height={24}
                       />
                       <div className="m365-weather-temps">
-                        <span className="m365-weather-current">{w.tempCurrent !== null ? `${Math.round(w.tempCurrent)}°` : '—'}</span>
-                        <span className="m365-weather-high">H: {w.tempHigh !== null ? `${Math.round(w.tempHigh)}°` : '—'}</span>
-                        <span className="m365-weather-low">L: {w.tempLow !== null ? `${Math.round(w.tempLow)}°` : '—'}</span>
+                        <span className="m365-weather-current">{w.tempCurrent !== null ? `${Math.round(w.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
+                        <span className="m365-weather-high">H: {w.tempHigh !== null ? `${Math.round(w.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
+                        <span className="m365-weather-low">L: {w.tempLow !== null ? `${Math.round(w.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
                         <span className="m365-weather-precip">☂ {w.precipProbability !== null ? `${Math.round(w.precipProbability * 100)}%` : '—'}</span>
                       </div>
                     </div>
