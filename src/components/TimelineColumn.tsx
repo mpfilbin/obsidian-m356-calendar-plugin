@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { useNow } from '../hooks/useNow';
+import { usePopoverContext } from '../PopoverContext';
 
 export interface LayoutEvent {
   event: M365Event;
@@ -87,6 +88,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const laid = useMemo(() => layoutEvents(events), [events]);
+  const { showPopover, hidePopover } = usePopoverContext();
 
   const now = useNow(showNowLine);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -167,6 +169,8 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
                 border: `1px solid ${cal.color}`,
                 overflow: 'hidden',
               }}
+              onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
+              onMouseLeave={() => hidePopover()}
               onClick={(e) => {
                 e.stopPropagation();
                 onEventClick?.(event);
