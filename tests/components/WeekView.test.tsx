@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WeekView } from '../../src/components/WeekView';
-import { M365Event, M365Calendar } from '../../src/types';
+import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
 
 vi.mock('../../src/hooks/useNow', () => ({
   useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
@@ -114,6 +114,62 @@ describe('WeekView', () => {
     );
     await userEvent.click(screen.getByText('Team Meeting'));
     expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  const weekWeather: DailyWeather = {
+    date: '2026-04-06',
+    condition: { code: 800, description: 'clear sky', iconCode: '01d' },
+    tempCurrent: 72,
+    tempHigh: 78,
+    tempLow: 61,
+    precipProbability: 0.2,
+  };
+
+  it('renders weather strip with icon when DailyWeather is present', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-06', weekWeather]]);
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    const img = document.querySelector('.m365-weather-icon') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.src).toContain('01d');
+    // Temperature values should appear
+    expect(screen.getByText(/78/)).toBeInTheDocument();
+    expect(screen.getByText(/61/)).toBeInTheDocument();
+    expect(screen.getByText(/20%/)).toBeInTheDocument();
+  });
+
+  it('renders ? placeholder in header when weather is null for a day', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-06', null]]);
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
+  });
+
+  it('renders no weather strip when weather prop is absent', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-weather-icon')).toBeNull();
+    expect(document.querySelector('.m365-weather-unknown')).toBeNull();
   });
 });
 

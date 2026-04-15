@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { M365Event, M365Calendar } from '../types';
+import { M365Event, M365Calendar, DailyWeather } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly } from '../lib/datetime';
@@ -12,6 +12,7 @@ interface WeekViewProps {
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
+  weather?: Map<string, DailyWeather | null>;
 }
 
 function getWeekDays(date: Date): Date[] {
@@ -30,6 +31,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   calendars,
   onDayClick,
   onEventClick,
+  weather,
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
@@ -94,6 +96,33 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 >
                   {day.getDate()}
                 </span>
+                {weather !== undefined && (() => {
+                  const dateStr = toDateOnly(day);
+                  const w = weather.get(dateStr);
+                  if (w === undefined) return null;
+                  if (w === null) return (
+                    <div className="m365-weather-strip m365-weather-week">
+                      <span className="m365-weather-unknown">?</span>
+                    </div>
+                  );
+                  return (
+                    <div className="m365-weather-strip m365-weather-week">
+                      <img
+                        className="m365-weather-icon"
+                        src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
+                        alt={w.condition.description}
+                        width={24}
+                        height={24}
+                      />
+                      <div className="m365-weather-temps">
+                        <span className="m365-weather-current">{w.tempCurrent !== null ? `${Math.round(w.tempCurrent)}°` : '—'}</span>
+                        <span className="m365-weather-high">H: {w.tempHigh !== null ? `${Math.round(w.tempHigh)}°` : '—'}</span>
+                        <span className="m365-weather-low">L: {w.tempLow !== null ? `${Math.round(w.tempLow)}°` : '—'}</span>
+                        <span className="m365-weather-precip">☂ {w.precipProbability !== null ? `${Math.round(w.precipProbability * 100)}%` : '—'}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
