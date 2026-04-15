@@ -134,7 +134,9 @@ export class WeatherService {
     const todayStr = toDateOnly(new Date());
     const result = new Map<string, DailyWeather>();
     for (const day of data.daily) {
-      const date = toDateOnly(new Date(day.dt * 1000));
+      // day.dt is midnight UTC from the OpenWeather API; adding 43200s (12h) puts us at
+      // noon UTC, which is safely within the correct local date in any UTC offset timezone.
+      const date = toDateOnly(new Date((day.dt + 43200) * 1000));
       const isToday = date === todayStr;
       const weather: DailyWeather = {
         date,

@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WeatherService } from '../../src/services/WeatherService';
 import { WeatherCacheService } from '../../src/services/WeatherCacheService';
 import { DailyWeather } from '../../src/types';
+import { toDateOnly } from '../../src/lib/datetime';
 
 const LOCATION = 'New York, US';
-const TODAY = '2026-04-15';
-const TOMORROW = '2026-04-16';
-const HISTORICAL = '2026-04-01';
+// Computed dynamically so tests remain correct regardless of when they run
+const TODAY      = toDateOnly(new Date());
+const TOMORROW   = toDateOnly(new Date(Date.now() + 86_400_000));
+const HISTORICAL = toDateOnly(new Date(Date.now() - 14 * 86_400_000));
 
 const GEO_RESPONSE = [{ lat: 40.7128, lon: -74.006, name: 'New York', country: 'US' }];
 
@@ -28,17 +30,19 @@ const HISTORICAL_WEATHER: DailyWeather = {
   precipProbability: null,
 };
 
-// Build Unix timestamp for a date at noon local time
-function noonUnix(dateStr: string): number {
-  return Math.floor(new Date(`${dateStr}T12:00:00`).getTime() / 1000);
+// Build Unix timestamp for a date at midnight UTC — simulates real OpenWeather API dt values
+// (OpenWeather returns midnight UTC for daily entries; the service adds 43200s to land at noon UTC,
+//  which maps to the correct local date in any timezone.)
+function midnightUtcUnix(dateStr: string): number {
+  return Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 1000);
 }
 
 // Build the forecast API response object where daily[0] corresponds to TODAY
 function makeForecastResponse(dates: string[]): object {
   return {
-    current: { dt: noonUnix(dates[0]), temp: 72, weather: [{ id: 800, description: 'clear sky', icon: '01d' }] },
+    current: { dt: midnightUtcUnix(dates[0]), temp: 72, weather: [{ id: 800, description: 'clear sky', icon: '01d' }] },
     daily: dates.map((date, i) => ({
-      dt: noonUnix(date),
+      dt: midnightUtcUnix(date),
       temp: { day: 72 - i, min: 61, max: 78 },
       pop: 0.1,
       weather: [{ id: 800, description: 'clear sky', icon: '01d' }],
@@ -49,7 +53,7 @@ function makeForecastResponse(dates: string[]): object {
 function makeTimemachineResponse(): object {
   return {
     data: [{
-      dt: noonUnix(HISTORICAL),
+      dt: midnightUtcUnix(HISTORICAL),
       temp: 65,
       weather: [{ id: 500, description: 'light rain', icon: '10d' }],
     }],
