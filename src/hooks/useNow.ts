@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 
-export function useNow(): Date {
+export function useNow(enabled = true): Date {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
+    if (!enabled) return;
     const msUntilNextMinute = 60000 - (Date.now() % 60000);
     let intervalId: ReturnType<typeof setInterval> | undefined;
 
@@ -16,7 +17,7 @@ export function useNow(): Date {
       clearTimeout(timeoutId);
       if (intervalId !== undefined) clearInterval(intervalId);
     };
-  }, []);
+  }, [enabled]);
 
   return now;
 }

@@ -88,7 +88,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const laid = useMemo(() => layoutEvents(events), [events]);
 
-  const now = useNow();
+  const now = useNow(showNowLine);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {

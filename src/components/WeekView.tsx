@@ -60,7 +60,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   useEffect(() => {
     if (!isCurrentWeek || !scrollRef.current) return;
     const container = scrollRef.current;
-    const target = nowMinutes - container.clientHeight / 2;
+    const target = nowMinutes * PX_PER_MIN - container.clientHeight / 2;
     container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
   }, []); // intentionally empty: fires once on mount. isCurrentWeek and nowMinutes are
   // read from the initial render closure — scroll targets the current time when

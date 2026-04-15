@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { EventCard } from './EventCard';
-import { TimelineColumn } from './TimelineColumn';
+import { TimelineColumn, PX_PER_MIN } from './TimelineColumn';
 import { useNow } from '../hooks/useNow';
 
 // Re-export layout utilities so existing importers (tests, etc.) are unaffected
@@ -52,7 +52,7 @@ export const DayView: React.FC<DayViewProps> = ({
     if (!isToday || !scrollRef.current || !timelineRef.current) return;
     const container = scrollRef.current;
     const timelineTop = timelineRef.current.offsetTop;
-    const target = timelineTop + nowMinutes - container.clientHeight / 2;
+    const target = timelineTop + nowMinutes * PX_PER_MIN - container.clientHeight / 2;
     container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
   }, []); // intentionally empty: fires once on mount. isToday and nowMinutes are
   // read from the initial render closure — that is the desired behaviour: scroll
