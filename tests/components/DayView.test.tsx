@@ -1,10 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { layoutEvents, DayView } from '../../src/components/DayView';
 import { M365Event } from '../../src/types';
 import { M365Calendar } from '../../src/types';
+
+vi.mock('../../src/hooks/useNow', () => ({
+  useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
+}));
 
 function makeEvent(id: string, startISO: string, endISO: string): M365Event {
   return {
@@ -244,5 +248,94 @@ describe('DayView', () => {
     );
     await userEvent.click(screen.getByText('Standup'));
     expect(onTimeClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('DayView now-line', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-14T14:30:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders the now-line when currentDate is today', () => {
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 14)}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-now-line')).toBeInTheDocument();
+  });
+
+  it('does not render the now-line when currentDate is not today', () => {
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 13)}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-now-line')).not.toBeInTheDocument();
+  });
+});
+
+describe('DayView scroll-to-center', () => {
+  let originalClientHeight: PropertyDescriptor | undefined;
+  let originalScrollHeight: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-14T14:30:00'));
+    originalClientHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight');
+    originalScrollHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight');
+    Object.defineProperty(Element.prototype, 'clientHeight', { configurable: true, get: () => 400 });
+    Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 1440 });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalClientHeight) {
+      Object.defineProperty(Element.prototype, 'clientHeight', originalClientHeight);
+    }
+    if (originalScrollHeight) {
+      Object.defineProperty(Element.prototype, 'scrollHeight', originalScrollHeight);
+    }
+  });
+
+  it('scrolls to center the now-line when viewing today', () => {
+    // useNow → 14:30 → nowMinutes = 870
+    // timelineRef.offsetTop = 0 (no all-day events, jsdom default)
+    // target = 0 + 870 - 400/2 = 670
+    // clamped: max(0, min(670, 1440-400=1040)) = 670
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 14)}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    const container = document.querySelector('.m365-day-view') as HTMLElement;
+    expect(container.scrollTop).toBe(670);
+  });
+
+  it('does not scroll when currentDate is not today', () => {
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 13)}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    const container = document.querySelector('.m365-day-view') as HTMLElement;
+    expect(container.scrollTop).toBe(0);
   });
 });

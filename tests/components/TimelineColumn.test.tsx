@@ -5,6 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { TimelineColumn } from '../../src/components/TimelineColumn';
 import { M365Event, M365Calendar } from '../../src/types';
 
+vi.mock('../../src/hooks/useNow', () => ({
+  useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
+}));
+
 const calendar: M365Calendar = {
   id: 'cal1',
   name: 'Work',
@@ -164,5 +168,51 @@ describe('TimelineColumn', () => {
       />,
     );
     expect(screen.queryByText('00:00')).not.toBeInTheDocument();
+  });
+});
+
+describe('TimelineColumn now-line', () => {
+  it('renders the now-line when showNowLine is true', () => {
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        showNowLine={true}
+        data-testid="col"
+      />,
+    );
+    const line = document.querySelector('.m365-now-line') as HTMLElement;
+    expect(line).toBeInTheDocument();
+    // 14:30 → 14*60+30 = 870 minutes * PX_PER_MIN(1) = 870px
+    expect(line.style.top).toBe('870px');
+  });
+
+  it('does not render the now-line when showNowLine is false', () => {
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        showNowLine={false}
+        data-testid="col"
+      />,
+    );
+    expect(document.querySelector('.m365-now-line')).not.toBeInTheDocument();
+  });
+
+  it('does not render the now-line when showNowLine is omitted', () => {
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        data-testid="col"
+      />,
+    );
+    expect(document.querySelector('.m365-now-line')).not.toBeInTheDocument();
   });
 });
