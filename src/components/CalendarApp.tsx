@@ -113,7 +113,7 @@ export const CalendarApp: React.FC = () => {
     } catch {
       setWeather(new Map(dates.map((d) => [d, null])));
     }
-  }, [weatherService, settings.weatherEnabled, currentDate, view]);
+  }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
 
   useEffect(() => {
     void fetchAll({ userInitiated: true });

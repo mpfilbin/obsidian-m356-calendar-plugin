@@ -37,9 +37,9 @@ export interface DailyWeather {
   date: string;                // "YYYY-MM-DD" in local time
   condition: WeatherCondition;
   tempCurrent: number | null;  // null for past/future days without a current reading
-  tempHigh: number;
-  tempLow: number;
-  precipProbability: number;   // 0–1
+  tempHigh: number | null;        // null for historical dates (timemachine doesn't return daily min/max)
+  tempLow: number | null;         // null for historical dates
+  precipProbability: number | null; // 0–1; null for historical dates
 }
 
 export interface WeatherCacheEntry {
@@ -79,7 +79,7 @@ Fetches daily weather for a set of dates using One Call API 3.0.
 
 **Endpoint selection:**
 - Dates within today + 8 days: `/data/3.0/onecall` with `exclude=current,minutely,hourly,alerts`, reads `daily[]`
-- Historical dates: `/data/3.0/onecall/day_summary` (One Call 3.0 daily aggregation endpoint)
+- Historical dates: `/data/3.0/onecall/timemachine` (returns hourly data for a past timestamp; temperature pulled from the closest hourly reading)
 
 **Request handling:**
 - Checks `WeatherCacheService` before fetching; writes to cache on miss

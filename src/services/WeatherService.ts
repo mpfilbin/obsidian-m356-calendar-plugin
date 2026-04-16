@@ -28,6 +28,7 @@ export class WeatherService {
     const result = new Map<string, DailyWeather | null>();
     const apiKey = this.getApiKey();
     const location = this.getLocation();
+    const units = this.getUnits();
 
     if (!apiKey || !location || dates.length === 0) {
       for (const date of dates) result.set(date, null);
@@ -37,7 +38,7 @@ export class WeatherService {
     // Serve from cache where possible
     const uncached: string[] = [];
     for (const date of dates) {
-      const cached = this.cache.get(date, location);
+      const cached = this.cache.get(date, location, units);
       if (cached !== null) {
         result.set(date, cached);
       } else {
@@ -147,7 +148,7 @@ export class WeatherService {
         precipProbability: day.pop,
       };
       result.set(date, weather);
-      await this.cache.set(date, location, weather);
+      await this.cache.set(date, location, weather, units);
     }
     return result;
   }
@@ -181,7 +182,7 @@ export class WeatherService {
       tempLow: null,
       precipProbability: null,
     };
-    await this.cache.set(dateStr, location, weather);
+    await this.cache.set(dateStr, location, weather, units);
     return weather;
   }
 

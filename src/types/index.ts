@@ -70,7 +70,7 @@ export interface WeatherCondition {
 export interface DailyWeather {
   date: string;                   // "YYYY-MM-DD" in local time
   condition: WeatherCondition;
-  tempCurrent: number | null;     // null for historical dates (timemachine doesn't guarantee current)
+  tempCurrent: number | null;     // representative temp at the requested time; null if the API omits it
   tempHigh: number | null;        // null for historical dates (timemachine doesn't return daily min/max)
   tempLow: number | null;         // null for historical dates
   precipProbability: number | null; // 0–1; null for historical dates

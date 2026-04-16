@@ -133,7 +133,7 @@ describe('WeatherService', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeForecastResponse([TODAY])) }),
     );
     await service.getWeatherForDates([TODAY]);
-    expect(cache.set).toHaveBeenCalledWith(TODAY, LOCATION, expect.objectContaining({ date: TODAY }));
+    expect(cache.set).toHaveBeenCalledWith(TODAY, LOCATION, expect.objectContaining({ date: TODAY }), 'imperial');
   });
 
   it('reuses geocoded coordinates on second call (no second geo request)', async () => {
@@ -173,7 +173,7 @@ describe('WeatherService', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeTimemachineResponse()) }),
     );
     await service.getWeatherForDates([HISTORICAL]);
-    expect(cache.set).toHaveBeenCalledWith(HISTORICAL, LOCATION, expect.objectContaining({ date: HISTORICAL }));
+    expect(cache.set).toHaveBeenCalledWith(HISTORICAL, LOCATION, expect.objectContaining({ date: HISTORICAL }), 'imperial');
   });
 
   it('returns null for a date when geo API returns empty array', async () => {

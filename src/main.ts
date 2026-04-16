@@ -15,6 +15,18 @@ export default class M365CalendarPlugin extends Plugin {
   private cacheService!: CacheService;
   private weatherCacheService!: WeatherCacheService;
   private weatherService!: WeatherService;
+  private saveDataQueue: Promise<void> = Promise.resolve();
+
+  // Serialize all saveData calls so concurrent writes (cache, weatherCache, settings)
+  // never clobber each other with a stale read-modify-write.
+  private queueSave(patch: Record<string, unknown>): Promise<void> {
+    const next = this.saveDataQueue.then(async () => {
+      const data = (await this.loadData()) ?? {};
+      await this.saveData({ ...data, ...patch });
+    });
+    this.saveDataQueue = next.catch(() => {});
+    return next;
+  }
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -24,10 +36,7 @@ export default class M365CalendarPlugin extends Plugin {
         const data = await this.loadData();
         return (data?.cache as CacheStore) ?? {};
       },
-      async (cache) => {
-        const data = (await this.loadData()) ?? {};
-        await this.saveData({ ...data, cache });
-      },
+      async (cache) => this.queueSave({ cache }),
     );
     await this.cacheService.init();
 
@@ -36,10 +45,7 @@ export default class M365CalendarPlugin extends Plugin {
         const data = await this.loadData();
         return (data?.[WEATHER_CACHE_KEY] as WeatherCacheStore) ?? {};
       },
-      async (weatherCache) => {
-        const data = (await this.loadData()) ?? {};
-        await this.saveData({ ...data, [WEATHER_CACHE_KEY]: weatherCache });
-      },
+      async (weatherCache) => this.queueSave({ [WEATHER_CACHE_KEY]: weatherCache }),
     );
     await this.weatherCacheService.init();
 
@@ -95,8 +101,7 @@ export default class M365CalendarPlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
-    const data = (await this.loadData()) ?? {};
-    await this.saveData({ ...data, settings: this.settings });
+    await this.queueSave({ settings: this.settings });
   }
 
   private async activateView(): Promise<void> {

@@ -13,8 +13,8 @@ function isForecastDate(dateStr: string): boolean {
   return date >= today;
 }
 
-function cacheKey(date: string, location: string): string {
-  return `${date}:${location}`;
+function cacheKey(date: string, location: string, units: 'imperial' | 'metric'): string {
+  return `${date}:${location}:${units}`;
 }
 
 export class WeatherCacheService {
@@ -28,19 +28,23 @@ export class WeatherCacheService {
   async init(): Promise<void> {
     const data = await this.load();
     this.store = data ?? {};
+    const sizeBefore = Object.keys(this.store).length;
     this.purgeExpired();
+    if (Object.keys(this.store).length !== sizeBefore) {
+      await this.save(this.store);
+    }
   }
 
-  get(date: string, location: string): DailyWeather | null {
-    const entry = this.store[cacheKey(date, location)];
+  get(date: string, location: string, units: 'imperial' | 'metric'): DailyWeather | null {
+    const entry = this.store[cacheKey(date, location, units)];
     if (!entry) return null;
     const ttl = isForecastDate(date) ? FORECAST_TTL_MS : HISTORICAL_TTL_MS;
     if (Date.now() - entry.fetchedAt > ttl) return null;
     return entry.data;
   }
 
-  async set(date: string, location: string, data: DailyWeather): Promise<void> {
-    this.store[cacheKey(date, location)] = { data, fetchedAt: Date.now() };
+  async set(date: string, location: string, data: DailyWeather, units: 'imperial' | 'metric'): Promise<void> {
+    this.store[cacheKey(date, location, units)] = { data, fetchedAt: Date.now() };
     await this.save(this.store);
   }
 
