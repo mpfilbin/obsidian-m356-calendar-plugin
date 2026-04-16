@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MonthView } from '../../src/components/MonthView';
-import { M365Event, M365Calendar } from '../../src/types';
+import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
 
 const calendar: M365Calendar = {
   id: 'cal1',
@@ -211,5 +211,58 @@ describe('MonthView', () => {
       />,
     );
     expect(screen.getByText('+ 1 more')).toBeInTheDocument();
+  });
+
+  const forecastWeather: DailyWeather = {
+    date: '2026-04-04',
+    condition: { code: 800, description: 'clear sky', iconCode: '01d' },
+    tempCurrent: 72,
+    tempHigh: 78,
+    tempLow: 61,
+    precipProbability: 0.1,
+  };
+
+  it('renders weather icon img when DailyWeather is present for a date', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    const img = document.querySelector('.m365-weather-icon') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.src).toContain('01d');
+    expect(img.alt).toBe('clear sky');
+  });
+
+  it('renders ? placeholder when weather is null for a date', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', null]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
+  });
+
+  it('renders no weather element when weather prop is absent', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-weather-icon')).toBeNull();
+    expect(document.querySelector('.m365-weather-unknown')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Notice } from 'obsidian';
-import { M365Calendar, M365Event } from '../types';
+import { M365Calendar, M365Event, DailyWeather } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
@@ -9,6 +9,7 @@ import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
 import { EventDetailModal } from './EventDetailModal';
 import { useAppContext } from '../context';
+import { toDateOnly } from '../lib/datetime';
 
 type ViewType = 'month' | 'week' | 'day';
 
@@ -16,6 +17,16 @@ function notifyError(e: unknown): void {
   const message = e instanceof Error ? e.message : 'An error occurred';
   console.error('M365 Calendar:', e);
   new Notice(`M365 Calendar: ${message}`);
+}
+
+function getDatesInRange(start: Date, end: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(start);
+  while (current < end) {
+    dates.push(toDateOnly(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
 }
 
 function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
@@ -41,7 +52,7 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
 }
 
 export const CalendarApp: React.FC = () => {
-  const { app, calendarService, settings, saveSettings } = useAppContext();
+  const { app, calendarService, weatherService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
@@ -50,6 +61,7 @@ export const CalendarApp: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const [weather, setWeather] = useState<Map<string, DailyWeather | null>>(new Map());
 
   const calendarsLoadedRef = useRef(false);
 
@@ -88,15 +100,44 @@ export const CalendarApp: React.FC = () => {
     }
   }, [calendarService, enabledIds, currentDate, view]);
 
+  const fetchWeather = useCallback(async () => {
+    if (!settings.weatherEnabled) {
+      setWeather(new Map());
+      return;
+    }
+    const { start, end } = getDateRange(currentDate, view);
+    const dates = getDatesInRange(start, end);
+    try {
+      const result = await weatherService.getWeatherForDates(dates);
+      setWeather(result);
+    } catch {
+      setWeather(new Map(dates.map((d) => [d, null])));
+    }
+  }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
+
+  // Keep a ref to the latest fetchWeather so the registered callback never goes stale.
+  const fetchWeatherRef = useRef(fetchWeather);
+  useEffect(() => { fetchWeatherRef.current = fetchWeather; }, [fetchWeather]);
+  useEffect(() => {
+    registerWeatherRefresh(() => void fetchWeatherRef.current());
+  }, [registerWeatherRefresh]);
+
   useEffect(() => {
     void fetchAll({ userInitiated: true });
   }, [fetchAll]);
 
   useEffect(() => {
+    void fetchWeather();
+  }, [fetchWeather]);
+
+  useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
-    const interval = setInterval(() => void fetchAll({ reloadCalendars: true }), ms);
+    const interval = setInterval(() => {
+      void fetchAll({ reloadCalendars: true });
+      void fetchWeather();
+    }, ms);
     return () => clearInterval(interval);
-  }, [fetchAll, settings.refreshIntervalMinutes]);
+  }, [fetchAll, fetchWeather, settings.refreshIntervalMinutes]);
 
   const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
     if (direction === 'today') {
@@ -211,6 +252,7 @@ export const CalendarApp: React.FC = () => {
               calendars={calendars}
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
+              weather={weather}
             />
           )}
           {view === 'week' && (
@@ -220,6 +262,8 @@ export const CalendarApp: React.FC = () => {
               calendars={calendars}
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
+              weather={weather}
+              weatherUnits={settings.weatherUnits}
             />
           )}
           {view === 'day' && (
@@ -229,6 +273,8 @@ export const CalendarApp: React.FC = () => {
               calendars={calendars}
               onTimeClick={openCreateEventModal}
               onEventClick={handleEventClick}
+              weather={weather}
+              weatherUnits={settings.weatherUnits}
             />
           )}
         </div>

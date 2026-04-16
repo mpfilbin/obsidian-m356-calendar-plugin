@@ -3,8 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { layoutEvents, DayView } from '../../src/components/DayView';
-import { M365Event } from '../../src/types';
-import { M365Calendar } from '../../src/types';
+import { DailyWeather, M365Event, M365Calendar } from '../../src/types';
 
 vi.mock('../../src/hooks/useNow', () => ({
   useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
@@ -248,6 +247,109 @@ describe('DayView', () => {
     );
     await userEvent.click(screen.getByText('Standup'));
     expect(onTimeClick).not.toHaveBeenCalled();
+  });
+
+  describe('weather banner', () => {
+    const currentDate = new Date(2026, 3, 14);
+
+    const forecastWeather: DailyWeather = {
+      date: '2026-04-14',
+      condition: { code: 800, description: 'clear sky', iconCode: '01d' },
+      tempCurrent: 72,
+      tempHigh: 78,
+      tempLow: 61,
+      precipProbability: 0.2,
+    };
+
+    const historicalWeather: DailyWeather = {
+      date: '2026-04-14',
+      condition: { code: 500, description: 'light rain', iconCode: '10d' },
+      tempCurrent: 65,
+      tempHigh: null,
+      tempLow: null,
+      precipProbability: null,
+    };
+
+    it('renders weather banner with icon, temps, and precip for forecast data', () => {
+      const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', forecastWeather]]);
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+          weather={weatherMap}
+        />,
+      );
+      const img = document.querySelector('.m365-weather-icon') as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.src).toContain('01d');
+      expect(screen.getByText('72°F')).toBeInTheDocument();
+      expect(screen.getByText(/H: 78°F/)).toBeInTheDocument();
+      expect(screen.getByText(/L: 61°F/)).toBeInTheDocument();
+      expect(screen.getByText(/20%/)).toBeInTheDocument();
+    });
+
+    it('renders dashes for null tempHigh/tempLow/precip on historical data', () => {
+      const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', historicalWeather]]);
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+          weather={weatherMap}
+        />,
+      );
+      expect(screen.getByText('65°F')).toBeInTheDocument();
+      // null fields rendered as —
+      const dashes = screen.getAllByText('—');
+      expect(dashes.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('renders ? and unavailable label when weather is null', () => {
+      const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', null]]);
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+          weather={weatherMap}
+        />,
+      );
+      expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
+      expect(screen.getByText('Weather data unavailable')).toBeInTheDocument();
+    });
+
+    it('renders no weather banner when weather prop is absent', () => {
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+        />,
+      );
+      expect(document.querySelector('.m365-weather-banner')).toBeNull();
+    });
+
+    it('renders temperatures with °C suffix when weatherUnits is metric', () => {
+      const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', forecastWeather]]);
+      render(
+        <DayView
+          currentDate={currentDate}
+          events={[]}
+          calendars={[]}
+          onTimeClick={vi.fn()}
+          weather={weatherMap}
+          weatherUnits="metric"
+        />,
+      );
+      expect(screen.getByText('72°C')).toBeInTheDocument();
+      expect(screen.getByText(/H: 78°C/)).toBeInTheDocument();
+      expect(screen.getByText(/L: 61°C/)).toBeInTheDocument();
+    });
   });
 });
 

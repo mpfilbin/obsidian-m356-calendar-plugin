@@ -9,6 +9,10 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   defaultCalendarId: '',
   refreshIntervalMinutes: 10,
   defaultView: 'month',
+  weatherEnabled: false,
+  openWeatherApiKey: '',
+  weatherLocation: '',
+  weatherUnits: 'imperial',
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {
@@ -113,6 +117,72 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.refreshIntervalMinutes = value;
             await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl).setName('Weather').setHeading();
+
+    new Setting(containerEl)
+      .setName('Show weather')
+      .setDesc('Display weather conditions in calendar views. Requires an OpenWeather API key.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.weatherEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.weatherEnabled = value;
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('OpenWeather API key') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('One Call API 3.0 key from openweathermap.org.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        return text
+          .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setValue(this.plugin.settings.openWeatherApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.openWeatherApiKey = value.trim();
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Location')
+      .setDesc('City and country code, e.g. "New York, US" or "London, GB".') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addText((text) =>
+        text
+          .setPlaceholder('New York, US') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setValue(this.plugin.settings.weatherLocation)
+          .onChange(async (value) => {
+            this.plugin.settings.weatherLocation = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('Temperature units')
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('imperial', 'Fahrenheit (°F)') // eslint-disable-line obsidianmd/ui/sentence-case
+          .addOption('metric', 'Celsius (°C)') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setValue(this.plugin.settings.weatherUnits)
+          .onChange(async (value) => {
+            this.plugin.settings.weatherUnits = value as 'imperial' | 'metric';
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('Clear weather cache')
+      .setDesc('Purge all cached weather data and fetch fresh data from OpenWeather.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addButton((button) =>
+        button
+          .setButtonText('Clear cache') // eslint-disable-line obsidianmd/ui/sentence-case
+          .onClick(async () => {
+            await this.plugin.clearWeatherCache();
+            new Notice('Weather cache cleared');
           }),
       );
   }

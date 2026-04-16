@@ -2,15 +2,32 @@ import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
+import { WeatherService } from './services/WeatherService';
+import { WeatherCacheService, WEATHER_CACHE_KEY } from './services/WeatherCacheService';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from './settings';
 import { M365CalendarView, VIEW_TYPE_M365_CALENDAR } from './view';
-import { M365CalendarSettings, CacheStore } from './types';
+import { M365CalendarSettings, CacheStore, WeatherCacheStore } from './types';
 
 export default class M365CalendarPlugin extends Plugin {
   settings!: M365CalendarSettings;
   authService!: AuthService;
   private calendarService!: CalendarService;
   private cacheService!: CacheService;
+  private weatherCacheService!: WeatherCacheService;
+  private weatherService!: WeatherService;
+  private saveDataQueue: Promise<void> = Promise.resolve();
+  private weatherRefreshHandler: (() => void) | null = null;
+
+  // Serialize all saveData calls so concurrent writes (cache, weatherCache, settings)
+  // never clobber each other with a stale read-modify-write.
+  private queueSave(patch: Record<string, unknown>): Promise<void> {
+    const next = this.saveDataQueue.then(async () => {
+      const data = (await this.loadData()) ?? {};
+      await this.saveData({ ...data, ...patch });
+    });
+    this.saveDataQueue = next.catch(() => {});
+    return next;
+  }
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -20,12 +37,25 @@ export default class M365CalendarPlugin extends Plugin {
         const data = await this.loadData();
         return (data?.cache as CacheStore) ?? {};
       },
-      async (cache) => {
-        const data = (await this.loadData()) ?? {};
-        await this.saveData({ ...data, cache });
-      },
+      async (cache) => this.queueSave({ cache }),
     );
     await this.cacheService.init();
+
+    this.weatherCacheService = new WeatherCacheService(
+      async () => {
+        const data = await this.loadData();
+        return (data?.[WEATHER_CACHE_KEY] as WeatherCacheStore) ?? {};
+      },
+      async (weatherCache) => this.queueSave({ [WEATHER_CACHE_KEY]: weatherCache }),
+    );
+    await this.weatherCacheService.init();
+
+    this.weatherService = new WeatherService(
+      () => this.settings.openWeatherApiKey,
+      () => this.settings.weatherLocation,
+      () => this.settings.weatherUnits,
+      this.weatherCacheService,
+    );
 
     this.authService = new AuthService(
       () => this.settings.clientId,
@@ -40,11 +70,13 @@ export default class M365CalendarPlugin extends Plugin {
       return new M365CalendarView(leaf, {
         app: this.app,
         calendarService: this.calendarService,
+        weatherService: this.weatherService,
         settings: this.settings,
         saveSettings: async (s) => {
           this.settings = s;
           await this.saveSettings();
         },
+        registerWeatherRefresh: (cb) => { this.weatherRefreshHandler = cb; },
       });
     });
 
@@ -65,14 +97,18 @@ export default class M365CalendarPlugin extends Plugin {
     
   }
 
+  async clearWeatherCache(): Promise<void> {
+    await this.weatherCacheService.clearAll();
+    this.weatherRefreshHandler?.();
+  }
+
   async loadSettings(): Promise<void> {
     const data = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data?.settings as Partial<M365CalendarSettings>);
   }
 
   async saveSettings(): Promise<void> {
-    const data = (await this.loadData()) ?? {};
-    await this.saveData({ ...data, settings: this.settings });
+    await this.queueSave({ settings: this.settings });
   }
 
   private async activateView(): Promise<void> {
