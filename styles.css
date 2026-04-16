@@ -589,3 +589,26 @@
   font-size: var(--font-ui-small);
   color: var(--text-accent);
 }
+
+/* ─── Weather ─────────────────────────────────────────────────────────────── */
+
+/* Day view banner: space out each weather detail */
+.m365-weather-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Week view strip: smaller font + single row with spacing */
+.m365-weather-strip.m365-weather-week {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.m365-weather-strip.m365-weather-week .m365-weather-temps {
+  display: contents;
+}
