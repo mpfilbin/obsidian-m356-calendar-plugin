@@ -21,15 +21,6 @@ const FORECAST_WEATHER: DailyWeather = {
   precipProbability: 0.1,
 };
 
-const HISTORICAL_WEATHER: DailyWeather = {
-  date: HISTORICAL,
-  condition: { code: 500, description: 'light rain', iconCode: '10d' },
-  tempCurrent: 65,
-  tempHigh: null,
-  tempLow: null,
-  precipProbability: null,
-};
-
 // Build Unix timestamp for a date at noon UTC — matches real OpenWeather One Call 3.0 behavior
 // where daily[].dt is approximately noon in the location's local timezone (not midnight UTC).
 // Tests run in jsdom (UTC), so noon UTC = noon local → toDateOnly correctly returns dateStr.
@@ -50,15 +41,6 @@ function makeForecastResponse(dates: string[]): object {
   };
 }
 
-function makeTimemachineResponse(): object {
-  return {
-    data: [{
-      dt: noonUtcUnix(HISTORICAL),
-      temp: 65,
-      weather: [{ id: 500, description: 'light rain', icon: '10d' }],
-    }],
-  };
-}
 
 describe('WeatherService', () => {
   let cache: Pick<WeatherCacheService, 'get' | 'set'>;
@@ -152,28 +134,17 @@ describe('WeatherService', () => {
     expect(geoCalls).toHaveLength(1);
   });
 
-  it('calls timemachine for historical dates', async () => {
+  it('omits historical dates from result without making any API call', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeTimemachineResponse()) });
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await service.getWeatherForDates([HISTORICAL]);
 
-    const timemachineUrl: string = fetchMock.mock.calls[1][0];
-    expect(timemachineUrl).toContain('onecall/timemachine');
-    expect(result.get(HISTORICAL)).not.toBeNull();
-    expect(result.get(HISTORICAL)!.tempHigh).toBeNull();
-    expect(result.get(HISTORICAL)!.tempLow).toBeNull();
-  });
-
-  it('caches historical results via cache.set', async () => {
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeTimemachineResponse()) }),
-    );
-    await service.getWeatherForDates([HISTORICAL]);
-    expect(cache.set).toHaveBeenCalledWith(HISTORICAL, LOCATION, expect.objectContaining({ date: HISTORICAL }), 'imperial');
+    // No timemachine call — historical dates are simply not included in the result map
+    const urls: string[] = fetchMock.mock.calls.map((c: unknown[]) => c[0] as string);
+    expect(urls.every((u) => !u.includes('timemachine'))).toBe(true);
+    expect(result.has(HISTORICAL)).toBe(false);
   });
 
   it('returns null for a date when geo API returns empty array', async () => {
@@ -191,15 +162,6 @@ describe('WeatherService', () => {
     );
     const result = await service.getWeatherForDates([TODAY]);
     expect(result.get(TODAY)).toBeNull();
-  });
-
-  it('returns null for a date when timemachine API returns error', async () => {
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
-      .mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' }),
-    );
-    const result = await service.getWeatherForDates([HISTORICAL]);
-    expect(result.get(HISTORICAL)).toBeNull();
   });
 
   it('retries on 429 and succeeds after Retry-After delay', async () => {

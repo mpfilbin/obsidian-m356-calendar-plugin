@@ -63,10 +63,10 @@ export class WeatherService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Only fetch forecast dates (today + up to 8 days ahead); historical dates are omitted
+    // from the result map so no weather indicator is shown for past dates.
     const forecastDates = uncached.filter((d) => parseLocalDate(d) >= today);
-    const historicalDates = uncached.filter((d) => parseLocalDate(d) < today);
 
-    // Fetch forecast (one call covers today + 7 days)
     if (forecastDates.length > 0) {
       try {
         const fetched = await this.fetchForecast(apiKey, coords, location);
@@ -80,18 +80,6 @@ export class WeatherService {
         if (!result.has(date)) result.set(date, null);
       }
     }
-
-    // Fetch historical (one request per date, rate-limited by semaphore)
-    await Promise.all(
-      historicalDates.map(async (date) => {
-        try {
-          const weather = await this.fetchHistorical(apiKey, coords!, date, location);
-          result.set(date, weather);
-        } catch {
-          result.set(date, null);
-        }
-      }),
-    );
 
     return result;
   }
@@ -151,39 +139,6 @@ export class WeatherService {
       await this.cache.set(date, location, weather, units);
     }
     return result;
-  }
-
-  private async fetchHistorical(apiKey: string, coords: Coords, dateStr: string, location: string): Promise<DailyWeather | null> {
-    const units = this.getUnits();
-    // Use noon local time for a representative midday reading
-    const dt = Math.floor(new Date(`${dateStr}T12:00:00`).getTime() / 1000);
-    const url = `${OWM_BASE}/timemachine?lat=${coords.lat}&lon=${coords.lon}&dt=${dt}&appid=${apiKey}&units=${units}`;
-
-    await this.semaphore.acquire();
-    let response: Response;
-    try {
-      response = await this.fetchWithRetry(url, {});
-    } finally {
-      this.semaphore.release();
-    }
-    if (!response.ok) return null;
-
-    const data = await response.json() as {
-      data: Array<{ temp: number; weather: Array<{ id: number; description: string; icon: string }> }>;
-    };
-    if (!data.data?.length) return null;
-
-    const point = data.data[0];
-    const weather: DailyWeather = {
-      date: dateStr,
-      condition: { code: point.weather[0].id, description: point.weather[0].description, iconCode: point.weather[0].icon },
-      tempCurrent: point.temp,
-      tempHigh: null,
-      tempLow: null,
-      precipProbability: null,
-    };
-    await this.cache.set(dateStr, location, weather, units);
-    return weather;
   }
 
   private async fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
