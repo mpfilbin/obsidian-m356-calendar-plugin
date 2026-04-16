@@ -71,9 +71,9 @@ export interface DailyWeather {
   date: string;                   // "YYYY-MM-DD" in local time
   condition: WeatherCondition;
   tempCurrent: number | null;     // representative temp at the requested time; null if the API omits it
-  tempHigh: number | null;        // null for historical dates (timemachine doesn't return daily min/max)
-  tempLow: number | null;         // null for historical dates
-  precipProbability: number | null; // 0–1; null for historical dates
+  tempHigh: number | null;        // daily high; null when unavailable
+  tempLow: number | null;         // daily low; null when unavailable
+  precipProbability: number | null; // 0–1; null when unavailable
 }
 
 export interface WeatherCacheEntry {
@@ -81,4 +81,4 @@ export interface WeatherCacheEntry {
   fetchedAt: number;
 }
 
-export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location"
+export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location:units"

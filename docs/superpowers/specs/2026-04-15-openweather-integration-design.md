@@ -37,9 +37,9 @@ export interface DailyWeather {
   date: string;                // "YYYY-MM-DD" in local time
   condition: WeatherCondition;
   tempCurrent: number | null;  // null for past/future days without a current reading
-  tempHigh: number | null;        // null for historical dates (timemachine doesn't return daily min/max)
-  tempLow: number | null;         // null for historical dates
-  precipProbability: number | null; // 0–1; null for historical dates
+  tempHigh: number | null;     // null when unavailable
+  tempLow: number | null;      // null when unavailable
+  precipProbability: number | null; // 0–1, or null when unavailable
 }
 
 export interface WeatherCacheEntry {
@@ -47,7 +47,7 @@ export interface WeatherCacheEntry {
   fetchedAt: number;
 }
 
-export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location"
+export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location:units"
 ```
 
 ### Settings additions (`M365CalendarSettings`)
@@ -61,16 +61,16 @@ weatherUnits: 'imperial' | 'metric'; // default: 'imperial'
 
 ### `WeatherCacheService` (`src/services/WeatherCacheService.ts`)
 
-Cache keyed by `"YYYY-MM-DD:location"`. Stored under `weatherCache` in Obsidian's `saveData` — fully isolated from the calendar `cache` key, so `CacheService.clearAll()` does not affect weather data.
+Cache keyed by `"YYYY-MM-DD:location:units"`. Stored under `weatherCache` in Obsidian's `saveData` — fully isolated from the calendar `cache` key, so `CacheService.clearAll()` does not affect weather data.
 
 **TTL rules:**
 - Dates within the 8-day forecast window: **1 hour** (conditions may change)
 - Historical dates: **24 hours** (data is stable)
 
 **Interface:**
-- `get(date: string, location: string): DailyWeather | null` — returns the cached `DailyWeather` if the entry exists and is within TTL; returns `null` on cache miss (not present or expired). A `null` return means "go fetch" — it does not mean data is unavailable.
-- `set(date: string, location: string, data: DailyWeather): Promise<void>` — writes entry with `fetchedAt: Date.now()`
-- `init(): Promise<void>` — loads persisted store, purges expired entries
+- `get(date: string, location: string, units: 'imperial' | 'metric'): DailyWeather | null` — returns the cached `DailyWeather` if the entry exists and is within TTL; returns `null` on cache miss (not present or expired). A `null` return means "go fetch" — it does not mean data is unavailable.
+- `set(date: string, location: string, data: DailyWeather, units: 'imperial' | 'metric'): Promise<void>` — writes entry with `fetchedAt: Date.now()`
+- `init(): Promise<void>` — loads persisted store, purges expired entries and persists if expired entries were removed
 - `purgeExpired(): void` — removes stale entries per TTL rules above
 
 ### `WeatherService` (`src/services/WeatherService.ts`)
@@ -126,7 +126,7 @@ weatherUnits: 'imperial',
 ```typescript
 this.weatherCacheService = new WeatherCacheService(
   async () => { const d = await this.loadData(); return (d?.weatherCache as WeatherCacheStore) ?? {}; },
-  async (cache) => { const d = (await this.loadData()) ?? {}; await this.saveData({ ...d, weatherCache: cache }); },
+  async (cache) => this.queueSave({ weatherCache: cache }),
 );
 await this.weatherCacheService.init();
 
@@ -161,7 +161,7 @@ Key: `"YYYY-MM-DD"`. Value: `DailyWeather` on success, `null` on attempted-but-u
 
 ### `fetchWeather` callback
 
-- Runs when `currentDate`, `view`, or `settings.weatherEnabled` changes (via `useEffect`)
+- Runs when `currentDate`, `view`, `settings.weatherEnabled`, `settings.weatherLocation`, `settings.openWeatherApiKey`, or `settings.weatherUnits` changes (via `useEffect`)
 - Computes the set of visible dates for the current view
 - If `weatherEnabled` is false, clears `weather` and returns
 - Calls `weatherService.getWeatherForDates(dates)`
