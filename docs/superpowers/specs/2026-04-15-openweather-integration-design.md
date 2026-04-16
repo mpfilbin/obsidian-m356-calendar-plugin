@@ -70,7 +70,7 @@ Cache keyed by `"YYYY-MM-DD:location:units"`. Stored under `weatherCache` in Obs
 **Interface:**
 - `get(date: string, location: string, units: 'imperial' | 'metric'): DailyWeather | null` — returns the cached `DailyWeather` if the entry exists and is within TTL; returns `null` on cache miss (not present or expired). A `null` return means "go fetch" — it does not mean data is unavailable.
 - `set(date: string, location: string, data: DailyWeather, units: 'imperial' | 'metric'): Promise<void>` — writes entry with `fetchedAt: Date.now()`
-- `init(): Promise<void>` — loads persisted store, purges expired entries and persists if expired entries were removed
+- `init(): Promise<void>` — loads persisted store, purges expired entries, and persists if expired entries were removed
 - `purgeExpired(): void` — removes stale entries per TTL rules above
 
 ### `WeatherService` (`src/services/WeatherService.ts`)
