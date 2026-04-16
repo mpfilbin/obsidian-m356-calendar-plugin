@@ -16,6 +16,7 @@ export default class M365CalendarPlugin extends Plugin {
   private weatherCacheService!: WeatherCacheService;
   private weatherService!: WeatherService;
   private saveDataQueue: Promise<void> = Promise.resolve();
+  private weatherRefreshHandler: (() => void) | null = null;
 
   // Serialize all saveData calls so concurrent writes (cache, weatherCache, settings)
   // never clobber each other with a stale read-modify-write.
@@ -75,6 +76,7 @@ export default class M365CalendarPlugin extends Plugin {
           this.settings = s;
           await this.saveSettings();
         },
+        registerWeatherRefresh: (cb) => { this.weatherRefreshHandler = cb; },
       });
     });
 
@@ -93,6 +95,11 @@ export default class M365CalendarPlugin extends Plugin {
 
   async onunload(): Promise<void> {
     
+  }
+
+  async clearWeatherCache(): Promise<void> {
+    await this.weatherCacheService.clearAll();
+    this.weatherRefreshHandler?.();
   }
 
   async loadSettings(): Promise<void> {

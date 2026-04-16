@@ -173,5 +173,17 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+
+    new Setting(containerEl)
+      .setName('Clear weather cache')
+      .setDesc('Purge all cached weather data and fetch fresh data from OpenWeather.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addButton((button) =>
+        button
+          .setButtonText('Clear cache') // eslint-disable-line obsidianmd/ui/sentence-case
+          .onClick(async () => {
+            await this.plugin.clearWeatherCache();
+            new Notice('Weather cache cleared');
+          }),
+      );
   }
 }

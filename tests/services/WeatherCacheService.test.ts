@@ -110,6 +110,15 @@ describe('WeatherCacheService', () => {
     expect(cache.get(FORECAST_DATE, LOCATION, UNITS)!.condition.code).toBe(500);
   });
 
+  // --- clearAll ---
+
+  it('clearAll empties the store and persists via save', async () => {
+    await cache.set(FORECAST_DATE, LOCATION, makeWeather(FORECAST_DATE), UNITS);
+    await cache.clearAll();
+    expect(cache.get(FORECAST_DATE, LOCATION, UNITS)).toBeNull();
+    expect(save).toHaveBeenLastCalledWith({});
+  });
+
   // --- init / purgeExpired ---
 
   it('init purges stale forecast entries (> 1 hour old)', async () => {

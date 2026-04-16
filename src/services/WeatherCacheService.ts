@@ -48,6 +48,11 @@ export class WeatherCacheService {
     await this.save(this.store);
   }
 
+  async clearAll(): Promise<void> {
+    this.store = {};
+    await this.save(this.store);
+  }
+
   purgeExpired(): void {
     const now = Date.now();
     for (const key of Object.keys(this.store)) {

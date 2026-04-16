@@ -52,7 +52,7 @@ function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
 }
 
 export const CalendarApp: React.FC = () => {
-  const { app, calendarService, weatherService, settings, saveSettings } = useAppContext();
+  const { app, calendarService, weatherService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
@@ -114,6 +114,13 @@ export const CalendarApp: React.FC = () => {
       setWeather(new Map(dates.map((d) => [d, null])));
     }
   }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
+
+  // Keep a ref to the latest fetchWeather so the registered callback never goes stale.
+  const fetchWeatherRef = useRef(fetchWeather);
+  useEffect(() => { fetchWeatherRef.current = fetchWeather; }, [fetchWeather]);
+  useEffect(() => {
+    registerWeatherRefresh(() => void fetchWeatherRef.current());
+  }, [registerWeatherRefresh]);
 
   useEffect(() => {
     void fetchAll({ userInitiated: true });

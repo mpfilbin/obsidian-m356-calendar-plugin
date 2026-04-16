@@ -70,6 +70,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
     } as unknown as AppContextValue['weatherService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
+    registerWeatherRefresh: vi.fn(),
     ...overrides,
   };
 }

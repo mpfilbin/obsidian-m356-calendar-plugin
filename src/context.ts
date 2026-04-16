@@ -10,6 +10,7 @@ export interface AppContextValue {
   weatherService: WeatherService;
   settings: M365CalendarSettings;
   saveSettings: (s: M365CalendarSettings) => Promise<void>;
+  registerWeatherRefresh: (cb: () => void) => void;
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);
