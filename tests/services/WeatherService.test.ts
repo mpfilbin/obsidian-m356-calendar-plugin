@@ -30,19 +30,19 @@ const HISTORICAL_WEATHER: DailyWeather = {
   precipProbability: null,
 };
 
-// Build Unix timestamp for a date at midnight UTC — simulates real OpenWeather API dt values
-// (OpenWeather returns midnight UTC for daily entries; the service adds 43200s to land at noon UTC,
-//  which maps to the correct local date in any timezone.)
-function midnightUtcUnix(dateStr: string): number {
-  return Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 1000);
+// Build Unix timestamp for a date at noon UTC — matches real OpenWeather One Call 3.0 behavior
+// where daily[].dt is approximately noon in the location's local timezone (not midnight UTC).
+// Tests run in jsdom (UTC), so noon UTC = noon local → toDateOnly correctly returns dateStr.
+function noonUtcUnix(dateStr: string): number {
+  return Math.floor(new Date(`${dateStr}T12:00:00Z`).getTime() / 1000);
 }
 
 // Build the forecast API response object where daily[0] corresponds to TODAY
 function makeForecastResponse(dates: string[]): object {
   return {
-    current: { dt: midnightUtcUnix(dates[0]), temp: 72, weather: [{ id: 800, description: 'clear sky', icon: '01d' }] },
+    current: { dt: noonUtcUnix(dates[0]), temp: 72, weather: [{ id: 800, description: 'clear sky', icon: '01d' }] },
     daily: dates.map((date, i) => ({
-      dt: midnightUtcUnix(date),
+      dt: noonUtcUnix(date),
       temp: { day: 72 - i, min: 61, max: 78 },
       pop: 0.1,
       weather: [{ id: 800, description: 'clear sky', icon: '01d' }],
@@ -53,7 +53,7 @@ function makeForecastResponse(dates: string[]): object {
 function makeTimemachineResponse(): object {
   return {
     data: [{
-      dt: midnightUtcUnix(HISTORICAL),
+      dt: noonUtcUnix(HISTORICAL),
       temp: 65,
       weather: [{ id: 500, description: 'light rain', icon: '10d' }],
     }],
