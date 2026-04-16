@@ -39,7 +39,7 @@ export interface DailyWeather {
   tempCurrent: number | null;  // null for past/future days without a current reading
   tempHigh: number | null;     // null when unavailable
   tempLow: number | null;      // null when unavailable
-  precipProbability: number | null; // 0–1, or null when unavailable
+  precipProbability: number | null; // 0–1; null when unavailable
 }
 
 export interface WeatherCacheEntry {
@@ -137,6 +137,8 @@ this.weatherService = new WeatherService(
   this.weatherCacheService,
 );
 ```
+
+`queueSave` serializes `saveData` read/merge/write operations so concurrent writes from settings, calendar cache, and weather cache cannot clobber each other.
 
 `weatherService` is passed into the view context alongside `calendarService`.
 
