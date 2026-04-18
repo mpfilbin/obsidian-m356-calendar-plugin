@@ -125,7 +125,9 @@
   flex-shrink: 0;
   border-right: 1px solid var(--background-modifier-border);
   padding: var(--size-4-3);
+  overflow-x: hidden;
   overflow-y: auto;
+  transition: width 200ms ease, padding 200ms ease;
 }
 
 .m365-calendar-selector-item {
@@ -141,6 +143,51 @@
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.m365-calendar-selector--collapsed {
+  width: 18px;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.m365-calendar-selector--collapsed .m365-calendar-selector-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.m365-calendar-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--size-4-2);
+}
+
+.m365-calendar-selector-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.m365-calendar-selector-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--interactive-accent);
+  padding: 0;
+  font-size: var(--font-ui-medium);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.m365-calendar-selector-toggle:hover {
+  opacity: 0.7;
 }
 
 /* ─── Main calendar area ──────────────────────────────────────────────────── */

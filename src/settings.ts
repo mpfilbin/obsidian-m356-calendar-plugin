@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   openWeatherApiKey: '',
   weatherLocation: '',
   weatherUnits: 'imperial',
+  sidebarCollapsed: false,
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {

@@ -53,6 +53,7 @@ export interface M365CalendarSettings {
   openWeatherApiKey: string;
   weatherLocation: string;
   weatherUnits: 'imperial' | 'metric';
+  sidebarCollapsed: boolean;
 }
 
 export interface StoredTokens {

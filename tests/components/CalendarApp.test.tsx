@@ -355,6 +355,23 @@ describe('CalendarApp', () => {
     expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
   });
 
+  it('sidebar starts collapsed when settings.sidebarCollapsed is true', async () => {
+    const ctx = makeContext({ settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], sidebarCollapsed: true } });
+    renderCalendarApp(ctx);
+    expect(await screen.findByRole('button', { name: 'Expand calendar list' })).toBeInTheDocument();
+  });
+
+  it('toggles sidebar and saves to settings when collapse button is clicked', async () => {
+    const ctx = makeContext({ settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], sidebarCollapsed: false } });
+    renderCalendarApp(ctx);
+    const collapseBtn = await screen.findByRole('button', { name: 'Collapse calendar list' });
+    await userEvent.click(collapseBtn);
+    expect(ctx.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ sidebarCollapsed: true }),
+    );
+    expect(await screen.findByRole('button', { name: 'Expand calendar list' })).toBeInTheDocument();
+  });
+
   it('calls weatherService.getWeatherForDates when weatherEnabled is true', async () => {
     const ctx = makeContext({
       settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], weatherEnabled: true, weatherLocation: 'New York, US', openWeatherApiKey: 'key' },
