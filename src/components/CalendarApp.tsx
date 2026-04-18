@@ -172,7 +172,12 @@ export const CalendarApp: React.FC = () => {
   const handleToggleSidebar = async () => {
     const next = !sidebarCollapsed;
     setSidebarCollapsed(next);
-    await saveSettings({ ...settings, sidebarCollapsed: next });
+    try {
+      await saveSettings({ ...settings, sidebarCollapsed: next });
+    } catch (e) {
+      setSidebarCollapsed(sidebarCollapsed);
+      setError(e instanceof Error ? e.message : 'Failed to save settings');
+    }
   };
 
   const openCreateEventModal = (date: Date) => {

@@ -125,7 +125,8 @@
   flex-shrink: 0;
   border-right: 1px solid var(--background-modifier-border);
   padding: var(--size-4-3);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   transition: width 200ms ease, padding 200ms ease;
 }
 
