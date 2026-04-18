@@ -162,7 +162,7 @@ export const CalendarApp: React.FC = () => {
       : [...enabledIds, calendarId];
     setEnabledIds(next);
     try {
-      await saveSettings({ ...settings, enabledCalendarIds: next });
+      await saveSettings({ ...settings, enabledCalendarIds: next, sidebarCollapsed });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
       setEnabledIds(enabledIds);
@@ -173,7 +173,7 @@ export const CalendarApp: React.FC = () => {
     const next = !sidebarCollapsed;
     setSidebarCollapsed(next);
     try {
-      await saveSettings({ ...settings, sidebarCollapsed: next });
+      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed: next });
     } catch (e) {
       setSidebarCollapsed(sidebarCollapsed);
       setError(e instanceof Error ? e.message : 'Failed to save settings');
