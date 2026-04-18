@@ -58,6 +58,7 @@ export const CalendarApp: React.FC = () => {
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
   const [events, setEvents] = useState<M365Event[]>([]);
   const [enabledIds, setEnabledIds] = useState<string[]>(settings.enabledCalendarIds);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(settings.sidebarCollapsed ?? false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
@@ -168,6 +169,12 @@ export const CalendarApp: React.FC = () => {
     }
   };
 
+  const handleToggleSidebar = async () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    await saveSettings({ ...settings, sidebarCollapsed: next });
+  };
+
   const openCreateEventModal = (date: Date) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
     if (enabledCalendars.length === 0) {
@@ -243,6 +250,8 @@ export const CalendarApp: React.FC = () => {
           calendars={calendars}
           enabledCalendarIds={enabledIds}
           onToggle={(id) => void handleToggleCalendar(id)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => void handleToggleSidebar()}
         />
         <div className="m365-calendar-main">
           {view === 'month' && (
