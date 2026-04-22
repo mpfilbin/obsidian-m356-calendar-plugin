@@ -2,7 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Calendar, NewEventInput } from '../types';
-import { toDateOnly, toDateTimeLocal } from '../lib/datetime';
+import { toDateOnly, toDateTimeLocal, parseDateInput } from '../lib/datetime';
 
 interface CreateEventFormProps {
   calendars: M365Calendar[];
@@ -36,12 +36,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
-    // Date-only strings ("YYYY-MM-DD") are parsed as UTC midnight by spec; append
-    // T00:00 to force local-midnight parsing so toggling back to timed preserves the
-    // correct local date rather than shifting to the previous day in negative-offset zones.
-    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
-    const s = parseStr(startStr);
-    const e = parseStr(endStr);
+    const s = parseDateInput(startStr);
+    const e = parseDateInput(endStr);
     const safeStart = isNaN(s.getTime()) ? defaultStart : s;
     const safeEnd = isNaN(e.getTime()) ? defaultEnd : e;
     if (checked) {

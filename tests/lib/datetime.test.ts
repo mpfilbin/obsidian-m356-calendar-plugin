@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateOnly, toDateTimeLocal, toLocalISOString } from '../../src/lib/datetime';
+import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput } from '../../src/lib/datetime';
 
 // All Date objects are constructed with the local-time constructor (year, month, day, ...)
 // so these tests are timezone-independent.
@@ -47,5 +47,25 @@ describe('toLocalISOString', () => {
     const d = new Date(2026, 3, 8, 14, 30, 0);
     expect(toLocalISOString(d)).toBe('2026-04-08T14:30:00');
     expect(toDateTimeLocal(d)).toBe('2026-04-08T14:30');
+  });
+});
+
+describe('parseDateInput', () => {
+  it('parses a date-only string as local midnight', () => {
+    const d = parseDateInput('2026-04-08');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(3); // April
+    expect(d.getDate()).toBe(8);
+    expect(d.getHours()).toBe(0);
+    expect(d.getMinutes()).toBe(0);
+  });
+
+  it('parses a datetime-local string preserving the time', () => {
+    const d = parseDateInput('2026-04-08T14:30');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(3);
+    expect(d.getDate()).toBe(8);
+    expect(d.getHours()).toBe(14);
+    expect(d.getMinutes()).toBe(30);
   });
 });

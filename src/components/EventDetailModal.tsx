@@ -2,7 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Event, M365Calendar, EventPatch } from '../types';
-import { toDateOnly, toDateTimeLocal } from '../lib/datetime';
+import { toDateOnly, toDateTimeLocal, parseDateInput } from '../lib/datetime';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -46,9 +46,8 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
-    const parseStr = (s: string): Date => new Date(s.length === 10 ? `${s}T00:00` : s);
-    const s = parseStr(startStr);
-    const e = parseStr(endStr);
+    const s = parseDateInput(startStr);
+    const e = parseDateInput(endStr);
     const safeStart = isNaN(s.getTime()) ? startDate : s;
     const safeEnd = isNaN(e.getTime()) ? endDate : e;
     if (checked) {
