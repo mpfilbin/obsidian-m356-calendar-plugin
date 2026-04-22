@@ -77,7 +77,7 @@ describe('WeekView', () => {
   it('marks today column with "today" class', () => {
     render(
       <WeekView
-        currentDate={new Date()}
+        currentDate={new Date('2026-04-14')}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
