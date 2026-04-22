@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime } from '../../src/lib/datetime';
+import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime, getWeekDays, getDaysInMonthView } from '../../src/lib/datetime';
 
 // All Date objects are constructed with the local-time constructor (year, month, day, ...)
 // so these tests are timezone-independent.
@@ -79,5 +79,74 @@ describe('formatTime', () => {
     // toLocaleTimeString output is locale-dependent (12h vs 24h), but the
     // minute value 45 must appear regardless of locale.
     expect(formatTime(new Date(2026, 3, 8, 9, 45))).toContain('45');
+  });
+});
+
+describe('getWeekDays', () => {
+  it('returns exactly 7 dates', () => {
+    expect(getWeekDays(new Date(2026, 3, 14))).toHaveLength(7);
+  });
+
+  it('first date is always Sunday', () => {
+    // April 14, 2026 is Tuesday — week should start Sunday April 12
+    const days = getWeekDays(new Date(2026, 3, 14));
+    expect(days[0].getDay()).toBe(0);
+  });
+
+  it('dates are consecutive', () => {
+    const days = getWeekDays(new Date(2026, 3, 14)); // all within April, safe for +1 checks
+    for (let i = 1; i < 7; i++) {
+      expect(days[i].getDate()).toBe(days[i - 1].getDate() + 1);
+    }
+  });
+
+  it('returns the same week when input is already Sunday', () => {
+    // April 12, 2026 is Sunday
+    const days = getWeekDays(new Date(2026, 3, 12));
+    expect(days[0]).toEqual(new Date(2026, 3, 12));
+  });
+
+  it('returns correct week when input is Saturday', () => {
+    // April 18, 2026 is Saturday — week still starts April 12
+    const days = getWeekDays(new Date(2026, 3, 18));
+    expect(days[0]).toEqual(new Date(2026, 3, 12));
+  });
+});
+
+describe('getDaysInMonthView', () => {
+  it('total count is always a multiple of 7', () => {
+    expect(getDaysInMonthView(new Date(2026, 3, 1)).length % 7).toBe(0);
+    expect(getDaysInMonthView(new Date(2026, 0, 1)).length % 7).toBe(0);
+  });
+
+  it('first date in the grid is always Sunday', () => {
+    expect(getDaysInMonthView(new Date(2026, 3, 1))[0].getDay()).toBe(0);
+  });
+
+  it('contains all days of the requested month', () => {
+    // April 2026 has 30 days
+    const days = getDaysInMonthView(new Date(2026, 3, 1));
+    const aprilDays = days.filter((d) => d.getMonth() === 3 && d.getFullYear() === 2026);
+    expect(aprilDays).toHaveLength(30);
+  });
+
+  it('includes leading days from previous month when 1st is not Sunday', () => {
+    // April 1, 2026 is Wednesday (getDay() = 3) → 3 leading days: March 29, 30, 31
+    const days = getDaysInMonthView(new Date(2026, 3, 1));
+    expect(days[0].getMonth()).toBe(2); // March
+    expect(days[0].getDate()).toBe(29);
+  });
+
+  it('starts directly on the 1st when the month begins on Sunday', () => {
+    // March 1, 2026 is Sunday — no leading days
+    const days = getDaysInMonthView(new Date(2026, 2, 1));
+    expect(days[0]).toEqual(new Date(2026, 2, 1));
+  });
+
+  it('trailing days belong to the next month', () => {
+    // April 2026: 3 leading + 30 days = 33 → pad to 35 → May 1, May 2 are trailing
+    const days = getDaysInMonthView(new Date(2026, 3, 1));
+    const last = days[days.length - 1];
+    expect(last.getMonth()).toBe(4); // May
   });
 });

@@ -31,3 +31,43 @@ export function parseDateInput(s: string): Date {
 export function formatTime(d: Date): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+/** Returns the 7 Date objects for the week containing `date`, starting from Sunday. */
+export function getWeekDays(date: Date): Date[] {
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - date.getDay());
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    return d;
+  });
+}
+
+/**
+ * Returns the Date objects for a full month calendar grid:
+ * all days of the month plus leading days from the previous month (to start on
+ * Sunday) and trailing days from the next month (to complete the last row).
+ * Total length is always a multiple of 7.
+ */
+export function getDaysInMonthView(date: Date): Date[] {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const days: Date[] = [];
+
+  // Leading days from previous month
+  for (let i = firstDay.getDay(); i > 0; i--) {
+    days.push(new Date(year, month, 1 - i));
+  }
+  // Days in current month
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    days.push(new Date(year, month, d));
+  }
+  // Trailing days to complete the last week
+  let trailingDay = 1;
+  while (days.length % 7 !== 0) {
+    days.push(new Date(year, month + 1, trailingDay++));
+  }
+  return days;
+}
