@@ -231,7 +231,10 @@
 .m365-calendar-month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .m365-calendar-day-cell {
@@ -239,7 +242,6 @@
   border-bottom: 1px solid var(--background-modifier-border);
   padding: var(--size-4-1);
   cursor: pointer;
-  min-height: 80px;
   overflow: hidden;
 }
 
