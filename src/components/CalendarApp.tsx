@@ -224,15 +224,22 @@ export const CalendarApp: React.FC = () => {
     new EventDetailModal(
       app,
       event,
-      async (patch) => {
+      async (patch, targetCalendarId) => {
         try {
-          await calendarService.updateEvent(event.id, patch);
+          if (targetCalendarId !== event.calendarId) {
+            // moveEvent creates in the new calendar (with patch applied) then
+            // deletes the original, so updateEvent on the old ID would 404.
+            await calendarService.moveEvent(event, targetCalendarId, patch);
+          } else {
+            await calendarService.updateEvent(event.id, patch);
+          }
         } catch (e) {
           notifyError(e);
           throw e;
         }
       },
       () => void fetchAll({ reloadCalendars: false }),
+      calendars,
       onDelete,
     ).open();
   };

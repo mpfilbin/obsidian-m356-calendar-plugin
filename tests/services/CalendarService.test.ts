@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CalendarService } from '../../src/services/CalendarService';
 import { AuthService } from '../../src/services/AuthService';
 import { CacheService } from '../../src/services/CacheService';
-import { M365Event } from '../../src/types';
+import { M365Event, EventPatch } from '../../src/types';
 
 const FAKE_EVENT_RESPONSE = {
   id: 'evt1',
@@ -385,5 +385,60 @@ describe('CalendarService', () => {
   it('deleteEvent throws when Graph returns error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
     await expect(service.deleteEvent('evt1')).rejects.toThrow('Failed to delete event: Not Found');
+  });
+
+  // --- moveEvent ---
+
+  const MOVE_EVENT: M365Event = { ...EXPECTED_EVENT };
+  const MOVE_PATCH: EventPatch = {
+    subject: 'Moved Meeting',
+    start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+    end: { dateTime: '2026-04-04T09:30:00', timeZone: 'UTC' },
+    isAllDay: false,
+  };
+  const MOVE_CREATE_RESPONSE = {
+    id: 'evt-new',
+    subject: 'Moved Meeting',
+    start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+    end: { dateTime: '2026-04-04T09:30:00', timeZone: 'UTC' },
+    isAllDay: false,
+  };
+
+  it('moveEvent creates in the destination calendar then deletes the original', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(MOVE_CREATE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.moveEvent(MOVE_EVENT, 'cal2', MOVE_PATCH);
+    // First call: createEvent POST to destination calendar
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://graph.microsoft.com/v1.0/me/calendars/cal2/events',
+    );
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST');
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.subject).toBe('Moved Meeting');
+    // Second call: deleteEvent on original
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://graph.microsoft.com/v1.0/me/events/evt1',
+    );
+    expect(fetchMock.mock.calls[1][1].method).toBe('DELETE');
+  });
+
+  it('moveEvent clears the cache on success', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(MOVE_CREATE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true }),
+    );
+    await service.moveEvent(MOVE_EVENT, 'cal2', MOVE_PATCH);
+    expect(cache.clearAll).toHaveBeenCalled();
+  });
+
+  it('moveEvent does not delete original when create fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, statusText: 'Forbidden' });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(service.moveEvent(MOVE_EVENT, 'cal2', MOVE_PATCH)).rejects.toThrow(
+      'Failed to create event: Forbidden',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

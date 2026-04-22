@@ -95,6 +95,25 @@ export class CalendarService {
     await this.cache.clearAll();
   }
 
+  async moveEvent(event: M365Event, destinationCalendarId: string, patch: EventPatch): Promise<void> {
+    // The Graph API has no move endpoint for calendar events (only for mail).
+    // Create in the destination calendar first (so the original is preserved if
+    // creation fails), then delete the original.
+    const isAllDay = patch.isAllDay ?? event.isAllDay;
+    // patch datetime strings are local-format ("YYYY-MM-DDTHH:MM:SS"); new Date()
+    // without a timezone offset treats them as local time, which is correct here.
+    const startDate = new Date(patch.start?.dateTime ?? event.start.dateTime);
+    const endDate = new Date(patch.end?.dateTime ?? event.end.dateTime);
+    await this.createEvent(destinationCalendarId, {
+      subject: patch.subject ?? event.subject,
+      start: startDate,
+      end: endDate,
+      isAllDay,
+      description: patch.bodyContent ?? event.bodyPreview,
+    });
+    await this.deleteEvent(event.id);
+  }
+
   private async getEventsForCalendar(
     calendarId: string,
     start: Date,
