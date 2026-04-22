@@ -95,6 +95,20 @@ export class CalendarService {
     await this.cache.clearAll();
   }
 
+  async moveEvent(eventId: string, destinationCalendarId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}/move`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ destinationId: destinationCalendarId }),
+    });
+    if (!response.ok) throw new Error(`Failed to move event: ${response.statusText}`);
+    await this.cache.clearAll();
+  }
+
   private async getEventsForCalendar(
     calendarId: string,
     start: Date,

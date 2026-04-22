@@ -386,4 +386,35 @@ describe('CalendarService', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
     await expect(service.deleteEvent('evt1')).rejects.toThrow('Failed to delete event: Not Found');
   });
+
+  // --- moveEvent ---
+
+  it('moveEvent posts to /me/events/{id}/move with destinationId', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.moveEvent('evt1', 'cal2');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events/evt1/move',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+        }),
+      }),
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body).toEqual({ destinationId: 'cal2' });
+  });
+
+  it('moveEvent clears the cache on success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    await service.moveEvent('evt1', 'cal2');
+    expect(cache.clearAll).toHaveBeenCalled();
+  });
+
+  it('moveEvent throws when Graph returns error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Forbidden' }));
+    await expect(service.moveEvent('evt1', 'cal2')).rejects.toThrow('Failed to move event: Forbidden');
+  });
 });
