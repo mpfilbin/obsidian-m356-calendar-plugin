@@ -337,7 +337,7 @@ describe('CalendarApp', () => {
     expect(eventDetailModalCallbacks.calendars).toEqual([mockCalendar]);
   });
 
-  it('calls moveEvent then updateEvent when onSave is invoked with a different calendar', async () => {
+  it('calls moveEvent (not updateEvent) when onSave is invoked with a different calendar', async () => {
     const moveEvent = vi.fn().mockResolvedValue(undefined);
     const updateEvent = vi.fn().mockResolvedValue(undefined);
     const ctx = makeContext({
@@ -353,9 +353,10 @@ describe('CalendarApp', () => {
     renderCalendarApp(ctx);
     await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
     await userEvent.click(screen.getByText('Standup'));
-    await eventDetailModalCallbacks.onSave!({ subject: 'Standup' }, 'cal-2');
-    expect(moveEvent).toHaveBeenCalledWith('evt-1', 'cal-2');
-    expect(updateEvent).toHaveBeenCalledWith('evt-1', { subject: 'Standup' });
+    const patch = { subject: 'Standup' };
+    await eventDetailModalCallbacks.onSave!(patch, 'cal-2');
+    expect(moveEvent).toHaveBeenCalledWith(mockEvent, 'cal-2', patch);
+    expect(updateEvent).not.toHaveBeenCalled();
   });
 
   it('skips moveEvent when onSave is invoked with the same calendar', async () => {

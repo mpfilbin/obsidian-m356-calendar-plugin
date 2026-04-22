@@ -95,18 +95,23 @@ export class CalendarService {
     await this.cache.clearAll();
   }
 
-  async moveEvent(eventId: string, destinationCalendarId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}/move`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ destinationId: destinationCalendarId }),
+  async moveEvent(event: M365Event, destinationCalendarId: string, patch: EventPatch): Promise<void> {
+    // The Graph API has no move endpoint for calendar events (only for mail).
+    // Create in the destination calendar first (so the original is preserved if
+    // creation fails), then delete the original.
+    const isAllDay = patch.isAllDay ?? event.isAllDay;
+    // patch datetime strings are local-format ("YYYY-MM-DDTHH:MM:SS"); new Date()
+    // without a timezone offset treats them as local time, which is correct here.
+    const startDate = new Date(patch.start?.dateTime ?? event.start.dateTime);
+    const endDate = new Date(patch.end?.dateTime ?? event.end.dateTime);
+    await this.createEvent(destinationCalendarId, {
+      subject: patch.subject ?? event.subject,
+      start: startDate,
+      end: endDate,
+      isAllDay,
+      description: patch.bodyContent ?? event.bodyPreview,
     });
-    if (!response.ok) throw new Error(`Failed to move event: ${response.statusText}`);
-    await this.cache.clearAll();
+    await this.deleteEvent(event.id);
   }
 
   private async getEventsForCalendar(
