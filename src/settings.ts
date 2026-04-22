@@ -69,6 +69,8 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             signInBtn.setDisabled(true);
             try {
               await this.plugin.authService.signIn();
+              new Notice('M365 Calendar: Signed in.'); // eslint-disable-line obsidianmd/ui/sentence-case
+              this.display();
             } catch (e) {
               signInBtn.setDisabled(false);
               console.error('M365 Calendar: Sign in failed', e);
