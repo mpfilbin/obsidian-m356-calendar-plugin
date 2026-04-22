@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime, getWeekDays, getDaysInMonthView } from '../../src/lib/datetime';
+import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime, getWeekDays, getDaysInMonthView, getDateRange, getDatesInRange } from '../../src/lib/datetime';
 
 // All Date objects are constructed with the local-time constructor (year, month, day, ...)
 // so these tests are timezone-independent.
@@ -148,5 +148,54 @@ describe('getDaysInMonthView', () => {
     const days = getDaysInMonthView(new Date(2026, 3, 1));
     const last = days[days.length - 1];
     expect(last.getMonth()).toBe(4); // May
+  });
+});
+
+describe('getDateRange', () => {
+  it('month view: start is first of month, end is first of next month', () => {
+    const { start, end } = getDateRange(new Date(2026, 3, 14), 'month');
+    expect(start).toEqual(new Date(2026, 3, 1));
+    expect(end).toEqual(new Date(2026, 4, 1));
+  });
+
+  it('day view: start is start of day, end is start of next day', () => {
+    const { start, end } = getDateRange(new Date(2026, 3, 14, 15, 30), 'day');
+    expect(start).toEqual(new Date(2026, 3, 14));
+    expect(end).toEqual(new Date(2026, 3, 15));
+  });
+
+  it('week view: start is Sunday at local midnight, end is next Sunday', () => {
+    // April 14, 2026 is Tuesday — week starts Sunday April 12
+    const { start, end } = getDateRange(new Date(2026, 3, 14), 'week');
+    expect(start).toEqual(new Date(2026, 3, 12, 0, 0, 0, 0));
+    expect(end).toEqual(new Date(2026, 3, 19, 0, 0, 0, 0));
+  });
+
+  it('week view: start is the same day when input is already Sunday', () => {
+    const { start } = getDateRange(new Date(2026, 3, 12), 'week'); // Sunday April 12
+    expect(start).toEqual(new Date(2026, 3, 12, 0, 0, 0, 0));
+  });
+});
+
+describe('getDatesInRange', () => {
+  it('returns the correct number of date strings', () => {
+    expect(getDatesInRange(new Date(2026, 3, 1), new Date(2026, 3, 4))).toHaveLength(3);
+  });
+
+  it('strings are in YYYY-MM-DD format', () => {
+    const dates = getDatesInRange(new Date(2026, 3, 1), new Date(2026, 3, 3));
+    expect(dates[0]).toBe('2026-04-01');
+    expect(dates[1]).toBe('2026-04-02');
+  });
+
+  it('range is half-open: includes start, excludes end', () => {
+    const dates = getDatesInRange(new Date(2026, 3, 1), new Date(2026, 3, 4));
+    expect(dates).toEqual(['2026-04-01', '2026-04-02', '2026-04-03']);
+    expect(dates).not.toContain('2026-04-04');
+  });
+
+  it('returns an empty array when start equals end', () => {
+    const d = new Date(2026, 3, 1);
+    expect(getDatesInRange(d, d)).toHaveLength(0);
   });
 });

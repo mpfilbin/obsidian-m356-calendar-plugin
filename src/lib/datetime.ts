@@ -1,3 +1,5 @@
+import type { ViewType } from '../types';
+
 function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -70,4 +72,43 @@ export function getDaysInMonthView(date: Date): Date[] {
     days.push(new Date(year, month + 1, trailingDay++));
   }
   return days;
+}
+
+/**
+ * Returns the event-fetch window for a given view:
+ * - month: first of the month → first of the next month
+ * - week:  Sunday of the week (local midnight) → next Sunday
+ * - day:   start of the day → start of the next day
+ */
+export function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
+  if (view === 'month') {
+    return {
+      start: new Date(date.getFullYear(), date.getMonth(), 1),
+      end: new Date(date.getFullYear(), date.getMonth() + 1, 1),
+    };
+  }
+  if (view === 'day') {
+    return {
+      start: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+      end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
+    };
+  }
+  // week — normalize to local midnight so cache keys are stable
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - date.getDay());
+  sunday.setHours(0, 0, 0, 0);
+  const nextSunday = new Date(sunday);
+  nextSunday.setDate(sunday.getDate() + 7);
+  return { start: sunday, end: nextSunday };
+}
+
+/** Returns `YYYY-MM-DD` strings for every day in `[start, end)` (end is exclusive). */
+export function getDatesInRange(start: Date, end: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(start);
+  while (current < end) {
+    dates.push(toDateOnly(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
 }

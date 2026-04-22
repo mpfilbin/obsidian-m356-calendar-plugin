@@ -1,3 +1,5 @@
+export type ViewType = 'month' | 'week' | 'day';
+
 export interface M365Calendar {
   id: string;
   name: string;
@@ -48,7 +50,7 @@ export interface M365CalendarSettings {
   enabledCalendarIds: string[];
   defaultCalendarId: string;
   refreshIntervalMinutes: number;
-  defaultView: 'month' | 'week' | 'day';
+  defaultView: ViewType;
   weatherEnabled: boolean;
   openWeatherApiKey: string;
   weatherLocation: string;
