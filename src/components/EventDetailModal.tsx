@@ -1,20 +1,22 @@
 import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { M365Event, EventPatch } from '../types';
+import { M365Event, M365Calendar, EventPatch } from '../types';
 import { toDateOnly, toDateTimeLocal } from '../lib/datetime';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
 interface EventDetailFormProps {
   event: M365Event;
-  onSave: (patch: EventPatch) => Promise<void>;
+  calendars: M365Calendar[];
+  onSave: (patch: EventPatch, targetCalendarId: string) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
 }
 
 export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   event,
+  calendars,
   onSave,
   onCancel,
   onDelete,
@@ -32,10 +34,15 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     event.isAllDay ? toDateOnly(endDate) : toDateTimeLocal(endDate),
   );
   const [description, setDescription] = useState(event.bodyPreview ?? '');
+  const [selectedCalendarId, setSelectedCalendarId] = useState(event.calendarId);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const eventCalendar = calendars.find((c) => c.id === event.calendarId);
+  const calendarDropdownDisabled = confirmingDelete || saving || !(eventCalendar?.canEdit ?? true);
+  const selectedCalendar = calendars.find((c) => c.id === selectedCalendarId);
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
@@ -82,10 +89,6 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     setSaving(true);
     setError('');
     try {
-      // Send the raw datetime string (without UTC conversion) paired with the
-      // event's original timezone so Graph interprets the wall-clock time correctly.
-      // datetime-local values are "YYYY-MM-DDTHH:MM" — append seconds for Graph.
-      // date-only values (all-day) are "YYYY-MM-DD" — append midnight time.
       const toGraphDateTime = (s: string) =>
         s.length === 10 ? `${s}T00:00:00` : s.length === 16 ? `${s}:00` : s;
       const patch: EventPatch = {
@@ -96,7 +99,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
         end: { dateTime: toGraphDateTime(endStr), timeZone: event.end.timeZone },
         bodyContent: description.trim(),
       };
-      await onSave(patch);
+      await onSave(patch, selectedCalendarId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save event');
     } finally {
@@ -118,6 +121,29 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           disabled={confirmingDelete || saving}
         />
       </div>
+      {calendars.length > 0 && (
+        <div className="m365-form-field">
+          <label htmlFor="m365-event-calendar">Calendar</label>
+          <div className="m365-form-calendar-select-row">
+            <span
+              className="m365-calendar-color-swatch"
+              style={{ backgroundColor: selectedCalendar?.color ?? '#0078d4' }}
+            />
+            <select
+              id="m365-event-calendar"
+              value={selectedCalendarId}
+              onChange={(e) => setSelectedCalendarId(e.target.value)}
+              disabled={calendarDropdownDisabled}
+            >
+              {calendars.map((c) => (
+                <option key={c.id} value={c.id} disabled={!c.canEdit}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       <div className="m365-form-field">
         <label htmlFor="m365-event-location">Location</label>
         <input
@@ -207,8 +233,9 @@ export class EventDetailModal extends Modal {
   constructor(
     app: App,
     private readonly event: M365Event,
-    private readonly onSaveCallback: (patch: EventPatch) => Promise<void>,
+    private readonly onSaveCallback: (patch: EventPatch, targetCalendarId: string) => Promise<void>,
     private readonly onSaved: () => void,
+    private readonly calendars: M365Calendar[],
     private readonly onDeleteCallback?: () => Promise<void>,
   ) {
     super(app);
@@ -227,8 +254,9 @@ export class EventDetailModal extends Modal {
       <StrictMode>
         <EventDetailForm
           event={this.event}
-          onSave={async (patch) => {
-            await this.onSaveCallback(patch);
+          calendars={this.calendars}
+          onSave={async (patch, targetCalendarId) => {
+            await this.onSaveCallback(patch, targetCalendarId);
             this.close();
             this.onSaved();
           }}

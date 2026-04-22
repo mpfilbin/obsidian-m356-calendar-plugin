@@ -22,6 +22,7 @@ vi.mock('../../src/components/EventDetailModal', () => ({
       _event: unknown,
       _onSave: unknown,
       _onSaved: unknown,
+      _calendars: unknown,
       onDelete?: () => Promise<void>,
     ) {
       eventDetailModalCallbacks.onDelete = onDelete;

@@ -384,6 +384,17 @@
   min-width: 0;
 }
 
+.m365-form-calendar-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.m365-form-calendar-select-row select {
+  flex: 1;
+  min-width: 0;
+}
+
 .m365-form-field input:not([type="checkbox"]),
 .m365-form-field select,
 .m365-form-field textarea {

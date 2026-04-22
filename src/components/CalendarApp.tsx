@@ -212,7 +212,7 @@ export const CalendarApp: React.FC = () => {
     new EventDetailModal(
       app,
       event,
-      async (patch) => {
+      async (patch, _targetCalendarId) => {
         try {
           await calendarService.updateEvent(event.id, patch);
         } catch (e) {
@@ -221,6 +221,7 @@ export const CalendarApp: React.FC = () => {
         }
       },
       () => void fetchAll({ reloadCalendars: false }),
+      calendars,
       onDelete,
     ).open();
   };
