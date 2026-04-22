@@ -17,7 +17,7 @@ export class CalendarService {
 
   async getCalendars(): Promise<M365Calendar[]> {
     const token = await this.auth.getValidToken();
-    const response = await fetch(`${GRAPH_BASE}/me/calendars`, {
+    const response = await fetchWithRetry(`${GRAPH_BASE}/me/calendars`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error(`Failed to fetch calendars: ${response.statusText}`);
@@ -51,7 +51,7 @@ export class CalendarService {
       end: { dateTime: formatDateTime(input.end), timeZone },
       isAllDay,
     };
-    const response = await fetch(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
+    const response = await fetchWithRetry(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -74,7 +74,7 @@ export class CalendarService {
     if (patch.start !== undefined) body.start = patch.start;
     if (patch.end !== undefined) body.end = patch.end;
     if (patch.bodyContent !== undefined) body.body = { contentType: 'text', content: patch.bodyContent };
-    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
+    const response = await fetchWithRetry(`${GRAPH_BASE}/me/events/${eventId}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -88,7 +88,7 @@ export class CalendarService {
 
   async deleteEvent(eventId: string): Promise<void> {
     const token = await this.auth.getValidToken();
-    const response = await fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
+    const response = await fetchWithRetry(`${GRAPH_BASE}/me/events/${eventId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });

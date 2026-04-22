@@ -248,6 +248,92 @@ describe('CalendarService', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  // --- 429 retry for mutations ---
+
+  it('getCalendars retries on 429 and succeeds after Retry-After delay', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: (h: string) => (h === 'Retry-After' ? '1' : null) },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          value: [{ id: 'cal1', name: 'My Calendar', hexColor: '#0078d4', isDefaultCalendar: true, canEdit: true }],
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    const promise = service.getCalendars();
+    await vi.runAllTimersAsync();
+    const calendars = await promise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(calendars).toHaveLength(1);
+  });
+
+  it('createEvent retries on 429 and succeeds after Retry-After delay', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: (h: string) => (h === 'Retry-After' ? '1' : null) },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'evt2',
+          subject: 'New Event',
+          start: { dateTime: '2026-04-05T10:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-04-05T11:00:00', timeZone: 'UTC' },
+          isAllDay: false,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    const promise = service.createEvent('cal1', {
+      subject: 'New Event',
+      start: new Date('2026-04-05T10:00:00'),
+      end: new Date('2026-04-05T11:00:00'),
+    });
+    await vi.runAllTimersAsync();
+    const event = await promise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(event.subject).toBe('New Event');
+  });
+
+  it('updateEvent retries on 429 and succeeds after Retry-After delay', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: (h: string) => (h === 'Retry-After' ? '1' : null) },
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    const promise = service.updateEvent('evt1', { subject: 'Updated' });
+    await vi.runAllTimersAsync();
+    await promise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('deleteEvent retries on 429 and succeeds after Retry-After delay', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: (h: string) => (h === 'Retry-After' ? '1' : null) },
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    const promise = service.deleteEvent('evt1');
+    await vi.runAllTimersAsync();
+    await promise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   // --- createEvent / updateEvent / deleteEvent ---
 
   it('createEvent posts to Graph and returns mapped event', async () => {
