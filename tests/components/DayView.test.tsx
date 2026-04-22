@@ -307,7 +307,7 @@ describe('DayView', () => {
       expect(dashes.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('renders ? and unavailable label when weather is null', () => {
+    it('renders no weather banner when weather is null', () => {
       const weatherMap = new Map<string, DailyWeather | null>([['2026-04-14', null]]);
       render(
         <DayView
@@ -318,8 +318,8 @@ describe('DayView', () => {
           weather={weatherMap}
         />,
       );
-      expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
-      expect(screen.getByText('Weather data unavailable')).toBeInTheDocument();
+      expect(document.querySelector('.m365-weather-banner')).toBeNull();
+      expect(document.querySelector('.m365-weather-unknown')).toBeNull();
     });
 
     it('renders no weather banner when weather prop is absent', () => {

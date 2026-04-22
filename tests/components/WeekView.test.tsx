@@ -163,7 +163,7 @@ describe('WeekView', () => {
     expect(screen.getByText('L: 61°C')).toBeInTheDocument();
   });
 
-  it('renders ? placeholder in header when weather is null for a day', () => {
+  it('renders no weather element when weather is null for a day', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-06', null]]);
     render(
       <WeekView
@@ -174,7 +174,8 @@ describe('WeekView', () => {
         weather={weatherMap}
       />,
     );
-    expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
+    expect(document.querySelector('.m365-weather-unknown')).toBeNull();
+    expect(document.querySelector('.m365-weather-strip')).toBeNull();
   });
 
   it('renders no weather strip when weather prop is absent', () => {
