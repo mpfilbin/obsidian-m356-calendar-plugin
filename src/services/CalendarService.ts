@@ -3,6 +3,7 @@ import { AuthService } from './AuthService';
 import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
 import { toLocalISOString } from '../lib/datetime';
+import { fetchWithRetry } from '../lib/fetchWithRetry';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -136,7 +137,7 @@ export class CalendarService {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
       while (url) {
-        const response = await this.fetchWithRetry(url, {
+        const response = await fetchWithRetry(url, {
           headers: {
             Authorization: `Bearer ${token}`,
             Prefer: `outlook.timezone="${timeZone}"`,
@@ -152,20 +153,6 @@ export class CalendarService {
     } finally {
       this.semaphore.release();
     }
-  }
-
-  private async fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
-    const MAX_RETRIES = 3;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const response = await fetch(url, options);
-      if (response.status !== 429) return response;
-      if (attempt < MAX_RETRIES - 1) {
-        const raw = parseInt(response.headers.get('Retry-After') ?? '', 10);
-        const retryAfter = Number.isFinite(raw) && raw > 0 ? raw : 10;
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-      }
-    }
-    throw new Error('Failed to fetch events: Too Many Requests');
   }
 
   private mapEvent(e: Record<string, unknown>, calendarId: string): M365Event {
