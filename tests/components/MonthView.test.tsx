@@ -239,7 +239,7 @@ describe('MonthView', () => {
     expect(img.alt).toBe('clear sky');
   });
 
-  it('renders ? placeholder when weather is null for a date', () => {
+  it('renders no weather element when weather is null for a date', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', null]]);
     render(
       <MonthView
@@ -250,7 +250,8 @@ describe('MonthView', () => {
         weather={weatherMap}
       />,
     );
-    expect(document.querySelector('.m365-weather-unknown')).not.toBeNull();
+    expect(document.querySelector('.m365-weather-unknown')).toBeNull();
+    expect(document.querySelector('.m365-weather-icon')).toBeNull();
   });
 
   it('renders no weather element when weather prop is absent', () => {
