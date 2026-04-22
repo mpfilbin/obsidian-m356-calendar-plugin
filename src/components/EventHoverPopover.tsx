@@ -1,5 +1,6 @@
 import React from 'react';
 import { M365Event, M365Calendar } from '../types';
+import { formatTime } from '../lib/datetime';
 
 interface EventHoverPopoverProps {
   event: M365Event;
@@ -24,7 +25,7 @@ export const EventHoverPopover: React.FC<EventHoverPopoverProps> = ({
   const endTime = new Date(event.end.dateTime);
   const timeRange = event.isAllDay
     ? 'All day'
-    : `${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    : `${formatTime(startTime)} – ${formatTime(endTime)}`;
 
   return (
     <div

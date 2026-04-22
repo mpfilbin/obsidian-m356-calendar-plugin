@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput } from '../../src/lib/datetime';
+import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime } from '../../src/lib/datetime';
 
 // All Date objects are constructed with the local-time constructor (year, month, day, ...)
 // so these tests are timezone-independent.
@@ -67,5 +67,17 @@ describe('parseDateInput', () => {
     expect(d.getDate()).toBe(8);
     expect(d.getHours()).toBe(14);
     expect(d.getMinutes()).toBe(30);
+  });
+});
+
+describe('formatTime', () => {
+  it('returns a string containing the minutes', () => {
+    expect(formatTime(new Date(2026, 3, 8, 14, 30))).toContain('30');
+  });
+
+  it('returns a string containing the hours in some form', () => {
+    // toLocaleTimeString output is locale-dependent (12h vs 24h), but the
+    // minute value 45 must appear regardless of locale.
+    expect(formatTime(new Date(2026, 3, 8, 9, 45))).toContain('45');
   });
 });

@@ -26,3 +26,8 @@ export function toLocalISOString(d: Date): string {
 export function parseDateInput(s: string): Date {
   return new Date(s.length === 10 ? `${s}T00:00` : s);
 }
+
+/** Format a Date as a locale-appropriate short time string, e.g. "2:30 PM" or "14:30". */
+export function formatTime(d: Date): string {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
