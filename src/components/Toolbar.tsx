@@ -1,6 +1,5 @@
 import React from 'react';
-
-type ViewType = 'month' | 'week' | 'day';
+import type { ViewType } from '../types';
 
 interface ToolbarProps {
   currentDate: Date;
