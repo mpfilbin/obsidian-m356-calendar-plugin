@@ -261,6 +261,14 @@ describe('EventDetailForm', () => {
     expect(personalOption.disabled).toBe(false);
   });
 
+  it('disables the calendar dropdown when the event calendar is not in the calendars list', () => {
+    const unknownEvent = { ...event, calendarId: 'cal-unknown' };
+    render(
+      <EventDetailForm event={unknownEvent} onSave={onSave} onCancel={onCancel} calendars={calendars} />,
+    );
+    expect((screen.getByLabelText('Calendar') as HTMLSelectElement).disabled).toBe(true);
+  });
+
   it('passes the selected targetCalendarId as the second argument to onSave', async () => {
     render(
       <EventDetailForm event={event} onSave={onSave} onCancel={onCancel} calendars={calendars} />,

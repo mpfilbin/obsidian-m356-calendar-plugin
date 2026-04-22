@@ -212,7 +212,7 @@ export const CalendarApp: React.FC = () => {
     new EventDetailModal(
       app,
       event,
-      async (patch, _targetCalendarId) => {
+      async (patch) => {
         try {
           await calendarService.updateEvent(event.id, patch);
         } catch (e) {
