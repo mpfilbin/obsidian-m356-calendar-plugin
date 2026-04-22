@@ -212,8 +212,11 @@ export const CalendarApp: React.FC = () => {
     new EventDetailModal(
       app,
       event,
-      async (patch) => {
+      async (patch, targetCalendarId) => {
         try {
+          if (targetCalendarId !== event.calendarId) {
+            await calendarService.moveEvent(event.id, targetCalendarId);
+          }
           await calendarService.updateEvent(event.id, patch);
         } catch (e) {
           notifyError(e);

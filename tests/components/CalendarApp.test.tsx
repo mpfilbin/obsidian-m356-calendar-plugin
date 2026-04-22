@@ -6,13 +6,15 @@ import * as obsidianMock from '../../tests/__mocks__/obsidian';
 import { CalendarApp } from '../../src/components/CalendarApp';
 import { AppContext, AppContextValue } from '../../src/context';
 import { DEFAULT_SETTINGS } from '../../src/settings';
-import type { NewEventInput } from '../../src/types';
+import type { NewEventInput, EventPatch, M365Calendar } from '../../src/types';
 
 // Capture the onSubmit callback passed to CreateEventModal so tests can invoke it directly.
 const modalCallbacks = vi.hoisted(() => ({ onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null }));
 
 const eventDetailModalCallbacks = vi.hoisted(() => ({
   onDelete: undefined as (() => Promise<void>) | undefined,
+  onSave: null as ((patch: EventPatch, targetCalendarId: string) => Promise<void>) | null,
+  calendars: null as M365Calendar[] | null,
 }));
 
 vi.mock('../../src/components/EventDetailModal', () => ({
@@ -20,12 +22,14 @@ vi.mock('../../src/components/EventDetailModal', () => ({
     constructor(
       _app: unknown,
       _event: unknown,
-      _onSave: unknown,
+      onSave: (patch: EventPatch, targetCalendarId: string) => Promise<void>,
       _onSaved: unknown,
-      _calendars: unknown,
+      calendars: M365Calendar[],
       onDelete?: () => Promise<void>,
     ) {
       eventDetailModalCallbacks.onDelete = onDelete;
+      eventDetailModalCallbacks.onSave = onSave;
+      eventDetailModalCallbacks.calendars = calendars;
     }
     open() {}
   },
@@ -63,8 +67,9 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
       getEvents: vi.fn().mockResolvedValue([mockEvent]),
       createEvent: vi.fn(),
-      updateEvent: vi.fn(),
+      updateEvent: vi.fn().mockResolvedValue(undefined),
       deleteEvent: vi.fn().mockResolvedValue(undefined),
+      moveEvent: vi.fn().mockResolvedValue(undefined),
     } as unknown as AppContextValue['calendarService'],
     weatherService: {
       getWeatherForDates: vi.fn().mockResolvedValue(new Map()),
@@ -322,6 +327,56 @@ describe('CalendarApp', () => {
     await userEvent.click(screen.getByText('Standup'));
 
     await expect(eventDetailModalCallbacks.onDelete!()).rejects.toThrow('Graph error');
+  });
+
+  it('passes the full calendars list to EventDetailModal when an event is clicked', async () => {
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.calendars).toEqual([mockCalendar]);
+  });
+
+  it('calls moveEvent then updateEvent when onSave is invoked with a different calendar', async () => {
+    const moveEvent = vi.fn().mockResolvedValue(undefined);
+    const updateEvent = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([mockEvent]),
+        createEvent: vi.fn(),
+        updateEvent,
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        moveEvent,
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    await eventDetailModalCallbacks.onSave!({ subject: 'Standup' }, 'cal-2');
+    expect(moveEvent).toHaveBeenCalledWith('evt-1', 'cal-2');
+    expect(updateEvent).toHaveBeenCalledWith('evt-1', { subject: 'Standup' });
+  });
+
+  it('skips moveEvent when onSave is invoked with the same calendar', async () => {
+    const moveEvent = vi.fn().mockResolvedValue(undefined);
+    const updateEvent = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([mockEvent]),
+        createEvent: vi.fn(),
+        updateEvent,
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        moveEvent,
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    await eventDetailModalCallbacks.onSave!({ subject: 'Updated' }, 'cal-1');
+    expect(moveEvent).not.toHaveBeenCalled();
+    expect(updateEvent).toHaveBeenCalledWith('evt-1', { subject: 'Updated' });
   });
 
   it('clicking a day cell in month view navigates to day view for that date', async () => {
