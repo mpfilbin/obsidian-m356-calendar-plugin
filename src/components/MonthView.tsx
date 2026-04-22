@@ -84,7 +84,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
               {weather !== undefined && (() => {
                 const w = weather.get(cellDateStr);
                 if (w === undefined) return null;
-                if (w === null) return <span className="m365-weather-unknown m365-weather-month">?</span>;
+                if (w === null) return null;
                 return (
                   <img
                     className="m365-weather-icon m365-weather-month"

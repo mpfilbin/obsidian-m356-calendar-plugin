@@ -94,36 +94,27 @@ export const DayView: React.FC<DayViewProps> = ({
           })}
         </div>
       )}
-      {dailyWeather !== undefined && (
+      {dailyWeather != null && (
         <div className="m365-weather-banner">
-          {dailyWeather === null ? (
-            <>
-              <span className="m365-weather-unknown">?</span>
-              <span className="m365-weather-unavailable">Weather data unavailable</span>
-            </>
-          ) : (
-            <>
-              <img
-                className="m365-weather-icon"
-                src={`https://openweathermap.org/img/wn/${dailyWeather.condition.iconCode}.png`}
-                alt={dailyWeather.condition.description}
-                width={32}
-                height={32}
-              />
-              <span className="m365-weather-current">
-                {dailyWeather.tempCurrent !== null ? `${Math.round(dailyWeather.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}
-              </span>
-              <span className="m365-weather-high">
-                {dailyWeather.tempHigh !== null ? `H: ${Math.round(dailyWeather.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>H:</span> <span>—</span></>}
-              </span>
-              <span className="m365-weather-low">
-                {dailyWeather.tempLow !== null ? `L: ${Math.round(dailyWeather.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>L:</span> <span>—</span></>}
-              </span>
-              <span className="m365-weather-precip">
-                {dailyWeather.precipProbability !== null ? `☂ ${Math.round(dailyWeather.precipProbability * 100)}%` : <><span>☂</span> <span>—</span></>}
-              </span>
-            </>
-          )}
+          <img
+            className="m365-weather-icon"
+            src={`https://openweathermap.org/img/wn/${dailyWeather.condition.iconCode}.png`}
+            alt={dailyWeather.condition.description}
+            width={32}
+            height={32}
+          />
+          <span className="m365-weather-current">
+            {dailyWeather.tempCurrent !== null ? `${Math.round(dailyWeather.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}
+          </span>
+          <span className="m365-weather-high">
+            {dailyWeather.tempHigh !== null ? `H: ${Math.round(dailyWeather.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>H:</span> <span>—</span></>}
+          </span>
+          <span className="m365-weather-low">
+            {dailyWeather.tempLow !== null ? `L: ${Math.round(dailyWeather.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : <><span>L:</span> <span>—</span></>}
+          </span>
+          <span className="m365-weather-precip">
+            {dailyWeather.precipProbability !== null ? `☂ ${Math.round(dailyWeather.precipProbability * 100)}%` : <><span>☂</span> <span>—</span></>}
+          </span>
         </div>
       )}
       <div ref={timelineRef}>

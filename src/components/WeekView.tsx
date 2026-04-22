@@ -102,11 +102,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                   const dateStr = toDateOnly(day);
                   const w = weather.get(dateStr);
                   if (w === undefined) return null;
-                  if (w === null) return (
-                    <div className="m365-weather-strip m365-weather-week">
-                      <span className="m365-weather-unknown">?</span>
-                    </div>
-                  );
+                  if (w === null) return null;
                   return (
                     <div className="m365-weather-strip m365-weather-week">
                       <img
