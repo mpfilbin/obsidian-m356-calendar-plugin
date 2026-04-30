@@ -15,6 +15,9 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
         border: `1px dashed ${todoList.color}`,
         borderRadius: 'var(--radius-s)',
         color: todoList.color,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--size-4-1)',
       }}
       title={todo.title}
     >
