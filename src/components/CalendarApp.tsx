@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Notice } from 'obsidian';
-import { M365Calendar, M365Event, DailyWeather } from '../types';
+import { M365Calendar, M365Event, DailyWeather, ViewType } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
@@ -9,46 +9,12 @@ import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
 import { EventDetailModal } from './EventDetailModal';
 import { useAppContext } from '../context';
-import { toDateOnly } from '../lib/datetime';
-
-type ViewType = 'month' | 'week' | 'day';
+import { getDateRange, getDatesInRange } from '../lib/datetime';
 
 function notifyError(e: unknown): void {
   const message = e instanceof Error ? e.message : 'An error occurred';
   console.error('M365 Calendar:', e);
   new Notice(`M365 Calendar: ${message}`);
-}
-
-function getDatesInRange(start: Date, end: Date): string[] {
-  const dates: string[] = [];
-  const current = new Date(start);
-  while (current < end) {
-    dates.push(toDateOnly(current));
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
-}
-
-function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
-  if (view === 'month') {
-    return {
-      start: new Date(date.getFullYear(), date.getMonth(), 1),
-      end: new Date(date.getFullYear(), date.getMonth() + 1, 1),
-    };
-  }
-  if (view === 'day') {
-    return {
-      start: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
-      end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
-    };
-  }
-  // week — normalize to local midnight so cache keys are stable
-  const sunday = new Date(date);
-  sunday.setDate(date.getDate() - date.getDay());
-  sunday.setHours(0, 0, 0, 0);
-  const nextSunday = new Date(sunday);
-  nextSunday.setDate(sunday.getDate() + 7);
-  return { start: sunday, end: nextSunday };
 }
 
 export const CalendarApp: React.FC = () => {

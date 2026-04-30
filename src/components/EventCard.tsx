@@ -1,5 +1,6 @@
 import React from 'react';
 import { M365Event, M365Calendar } from '../types';
+import { formatTime } from '../lib/datetime';
 
 interface EventCardProps {
   event: M365Event;
@@ -11,7 +12,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, calendar, onClick }
   const startTime = new Date(event.start.dateTime);
   const timeLabel = event.isAllDay
     ? 'All day'
-    : startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    : formatTime(startTime);
 
   return (
     <div

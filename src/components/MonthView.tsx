@@ -1,7 +1,7 @@
 import React from 'react';
 import { M365Event, M365Calendar, DailyWeather } from '../types';
 import { EventCard } from './EventCard';
-import { toDateOnly } from '../lib/datetime';
+import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
 import { usePopoverContext } from '../PopoverContext';
 
 interface MonthViewProps {
@@ -12,29 +12,6 @@ interface MonthViewProps {
   onEventClick?: (event: M365Event) => void;
   maxEventsPerDay?: number;
   weather?: Map<string, DailyWeather | null>;
-}
-
-function getDaysInMonthView(date: Date): Date[] {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const days: Date[] = [];
-
-  // Leading days from previous month
-  for (let i = firstDay.getDay(); i > 0; i--) {
-    days.push(new Date(year, month, 1 - i));
-  }
-  // Days in current month
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    days.push(new Date(year, month, d));
-  }
-  // Trailing days to complete the last week
-  let trailingDay = 1;
-  while (days.length % 7 !== 0) {
-    days.push(new Date(year, month + 1, trailingDay++));
-  }
-  return days;
 }
 
 export const MonthView: React.FC<MonthViewProps> = ({

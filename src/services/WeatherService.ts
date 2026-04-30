@@ -2,6 +2,7 @@ import { DailyWeather } from '../types';
 import { WeatherCacheService } from './WeatherCacheService';
 import { Semaphore } from '../lib/semaphore';
 import { toDateOnly } from '../lib/datetime';
+import { fetchWithRetry } from '../lib/fetchWithRetry';
 
 const GEO_BASE = 'https://api.openweathermap.org/geo/1.0/direct';
 const OWM_BASE = 'https://api.openweathermap.org/data/3.0/onecall';
@@ -89,7 +90,7 @@ export class WeatherService {
       return { lat: this.geocache.lat, lon: this.geocache.lon };
     }
     const url = `${GEO_BASE}?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`;
-    const response = await this.fetchWithRetry(url, {});
+    const response = await fetchWithRetry(url, {});
     if (!response.ok) return null;
     const data = await response.json() as Array<{ lat: number; lon: number }>;
     if (!data.length) return null;
@@ -104,7 +105,7 @@ export class WeatherService {
     await this.semaphore.acquire();
     let response: Response;
     try {
-      response = await this.fetchWithRetry(url, {});
+      response = await fetchWithRetry(url, {});
     } finally {
       this.semaphore.release();
     }
@@ -141,17 +142,4 @@ export class WeatherService {
     return result;
   }
 
-  private async fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
-    const MAX_RETRIES = 3;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const response = await fetch(url, options);
-      if (response.status !== 429) return response;
-      if (attempt < MAX_RETRIES - 1) {
-        const raw = parseInt(response.headers.get('Retry-After') ?? '', 10);
-        const retryAfter = Number.isFinite(raw) && raw > 0 ? raw : 10;
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-      }
-    }
-    throw new Error('Weather API: Too Many Requests');
-  }
 }

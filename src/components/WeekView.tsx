@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar, DailyWeather } from '../types';
 import { EventCard } from './EventCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
-import { toDateOnly } from '../lib/datetime';
+import { toDateOnly, getWeekDays } from '../lib/datetime';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
 
@@ -14,16 +14,6 @@ interface WeekViewProps {
   onEventClick?: (event: M365Event) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
-}
-
-function getWeekDays(date: Date): Date[] {
-  const sunday = new Date(date);
-  sunday.setDate(date.getDate() - date.getDay());
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(sunday);
-    d.setDate(sunday.getDate() + i);
-    return d;
-  });
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({

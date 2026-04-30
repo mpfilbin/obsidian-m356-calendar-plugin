@@ -56,7 +56,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       );
 
-    let signInBtn: ButtonComponent;
+    let signInBtn!: ButtonComponent;
 
     new Setting(containerEl)
       .setName('Sign in / sign out')
@@ -69,6 +69,8 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             signInBtn.setDisabled(true);
             try {
               await this.plugin.authService.signIn();
+              new Notice('M365 Calendar: Signed in.'); // eslint-disable-line obsidianmd/ui/sentence-case
+              this.display();
             } catch (e) {
               signInBtn.setDisabled(false);
               console.error('M365 Calendar: Sign in failed', e);
@@ -88,9 +90,12 @@ export class M365CalendarSettingTab extends PluginSettingTab {
         }),
       );
 
-    // Reflect current auth state — disable Sign In if already authenticated
+    // Reflect current auth state — disable Sign In if already authenticated.
+    // Capture signInBtn in a const so this callback is bound to the button
+    // instance created in this render, not any future re-render.
+    const currentSignInBtn = signInBtn;
     void this.plugin.authService.isAuthenticated().then((authenticated) => {
-      signInBtn.setDisabled(authenticated);
+      currentSignInBtn.setDisabled(authenticated);
     });
 
     new Setting(containerEl).setName('Calendar').setHeading();
@@ -180,7 +185,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       .setDesc('Purge all cached weather data and fetch fresh data from OpenWeather.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addButton((button) =>
         button
-          .setButtonText('Clear cache') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setButtonText('Clear cache')
           .onClick(async () => {
             await this.plugin.clearWeatherCache();
             new Notice('Weather cache cleared');

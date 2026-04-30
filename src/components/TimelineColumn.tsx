@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
+import { formatTime } from '../lib/datetime';
 
 export interface LayoutEvent {
   event: M365Event;
@@ -151,8 +152,8 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
             column === 0
               ? '0'
               : `calc(${(column * 100) / columnCount}% + ${(column * gapPx) / columnCount}px)`;
-          const startTimeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const endTimeStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const startTimeStr = formatTime(start);
+          const endTimeStr = formatTime(end);
           return (
             <button
               key={event.id}
