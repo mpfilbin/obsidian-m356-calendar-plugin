@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MonthView } from '../../src/components/MonthView';
 import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
+import { M365TodoList, M365TodoItem } from '../../src/types';
 
 const calendar: M365Calendar = {
   id: 'cal1',
@@ -265,5 +266,80 @@ describe('MonthView', () => {
     );
     expect(document.querySelector('.m365-weather-icon')).toBeNull();
     expect(document.querySelector('.m365-weather-unknown')).toBeNull();
+  });
+});
+
+const todoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+const todoOnApril4: M365TodoItem = {
+  id: 'task1',
+  title: 'Buy milk',
+  listId: 'list1',
+  dueDate: '2026-04-04',
+  importance: 'normal',
+};
+
+describe('MonthView — todos', () => {
+  it('renders a todo on its due date', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril4]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
+
+  it('does not render a todo on the wrong date', () => {
+    const todoOnApril5: M365TodoItem = { ...todoOnApril4, dueDate: '2026-04-05' };
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril5]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    // April 4 cell should not show this todo
+    const cells = document.querySelectorAll('.m365-calendar-day-cell');
+    const april4 = Array.from(cells).find((c) => c.textContent?.includes('4') && !c.textContent?.includes('14') && !c.textContent?.includes('24'));
+    expect(april4?.textContent).not.toContain('Buy milk');
+  });
+
+  it('renders both events and todos in the same day cell', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[eventOnApril4]}
+        calendars={[calendar]}
+        todos={[todoOnApril4]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Team Meeting')).toBeInTheDocument();
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
+
+  it('calls onTodoClick when a todo is clicked', async () => {
+    const onTodoClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril4]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+        onTodoClick={onTodoClick}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'View task: Buy milk' }));
+    expect(onTodoClick).toHaveBeenCalledWith(todoOnApril4);
   });
 });
