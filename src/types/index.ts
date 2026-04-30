@@ -30,7 +30,7 @@ export interface M365TodoItem {
   id: string;
   title: string;
   listId: string;
-  dueDate: string;      // "YYYY-MM-DD"
+  dueDate: string;      // "YYYY-MM-DD"; only tasks with a due date are included
   body?: string;        // task notes; undefined when empty
   importance: 'low' | 'normal' | 'high';
 }
