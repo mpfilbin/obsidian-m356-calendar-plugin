@@ -90,9 +90,12 @@ export class M365CalendarSettingTab extends PluginSettingTab {
         }),
       );
 
-    // Reflect current auth state — disable Sign In if already authenticated
+    // Reflect current auth state — disable Sign In if already authenticated.
+    // Capture signInBtn in a const so this callback is bound to the button
+    // instance created in this render, not any future re-render.
+    const currentSignInBtn = signInBtn;
     void this.plugin.authService.isAuthenticated().then((authenticated) => {
-      signInBtn.setDisabled(authenticated);
+      currentSignInBtn.setDisabled(authenticated);
     });
 
     new Setting(containerEl).setName('Calendar').setHeading();

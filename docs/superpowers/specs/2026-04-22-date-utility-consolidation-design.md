@@ -14,7 +14,7 @@ Move four date-range and calendar-grid utility functions from component files in
 
 ## Changes
 
-### `src/types.ts`
+### `src/types/index.ts`
 
 Add `ViewType` as a named export:
 
@@ -22,7 +22,7 @@ Add `ViewType` as a named export:
 export type ViewType = 'month' | 'week' | 'day';
 ```
 
-`ViewType` is already implicitly used across the codebase (settings, toolbar, CalendarApp). Defining it once in `types.ts` removes the need for `CalendarApp.tsx` to own it.
+`ViewType` is already implicitly used across the codebase (settings, toolbar, CalendarApp). Defining it once in `types/index.ts` removes the need for `CalendarApp.tsx` to own it.
 
 ### `src/lib/datetime.ts`
 
