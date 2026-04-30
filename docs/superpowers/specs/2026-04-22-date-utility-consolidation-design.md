@@ -2,7 +2,7 @@
 
 ## Goal
 
-Move four date-range and calendar-grid utility functions from component files into `src/lib/datetime.ts`, where they become independently testable and component files stay focused on rendering. Also promote `ViewType` from a local type alias in `CalendarApp.tsx` to a named export in `types.ts`.
+Move four date-range and calendar-grid utility functions from component files into `src/lib/datetime.ts`, where they become independently testable and component files stay focused on rendering. Also promote `ViewType` from a local type alias in `CalendarApp.tsx` to a named export in `src/types/index.ts`.
 
 ## Motivation
 
