@@ -177,7 +177,7 @@ describe('TodoService', () => {
       expect(result[0].body).toBeUndefined();
     });
 
-    it('encodes / and + in list IDs but leaves = unencoded', async () => {
+    it('encodes /, +, and = in list IDs', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ value: [] }),
@@ -189,10 +189,10 @@ describe('TodoService', () => {
       expect(url).toContain('%2F'); // / encoded
       expect(url).toContain('%2B'); // + encoded
       expect(url).not.toContain('Yz/M'); // raw slash is gone
-      // = is left unencoded (sub-delimiter, valid in path segments)
+      // = is encoded as %3D so Microsoft's URL router doesn't misparse it
       const pathPart = url.split('?')[0];
-      expect(pathPart).toContain('mU='); // raw = preserved in the path
-      expect(pathPart).not.toContain('%3D'); // not over-encoded
+      expect(pathPart).toContain('mU%3D'); // = encoded in the path
+      expect(pathPart).not.toContain('mU='); // raw = is gone from path
     });
 
     it('throws when Graph returns an error', async () => {
