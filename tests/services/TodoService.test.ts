@@ -177,7 +177,7 @@ describe('TodoService', () => {
       expect(result[0].body).toBeUndefined();
     });
 
-    it('URL-encodes list IDs containing base64 special characters', async () => {
+    it('encodes / and + in list IDs but leaves = unencoded', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ value: [] }),
@@ -186,8 +186,13 @@ describe('TodoService', () => {
       const id = 'AAMkAGM3Yz/M1Y2Vm+LWRmYmU=';
       await service.getTasks([id], new Date('2026-04-01'), new Date('2026-04-30'));
       const url = fetchMock.mock.calls[0][0] as string;
-      expect(url).toContain(encodeURIComponent(id)); // %2F, %2B, %3D encoded
-      expect(url).not.toContain('Yz/M'); // raw slash from inside the ID is not in the URL
+      expect(url).toContain('%2F'); // / encoded
+      expect(url).toContain('%2B'); // + encoded
+      expect(url).not.toContain('Yz/M'); // raw slash is gone
+      // = is left unencoded (sub-delimiter, valid in path segments)
+      const pathPart = url.split('?')[0];
+      expect(pathPart).toContain('mU='); // raw = preserved in the path
+      expect(pathPart).not.toContain('%3D'); // not over-encoded
     });
 
     it('throws when Graph returns an error', async () => {
