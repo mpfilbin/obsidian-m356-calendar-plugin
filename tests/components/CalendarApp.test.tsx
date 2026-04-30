@@ -7,6 +7,7 @@ import { CalendarApp } from '../../src/components/CalendarApp';
 import { AppContext, AppContextValue } from '../../src/context';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import type { NewEventInput, EventPatch, M365Calendar } from '../../src/types';
+import { M365TodoList, M365TodoItem } from '../../src/types';
 
 // Capture the onSubmit callback passed to CreateEventModal so tests can invoke it directly.
 const modalCallbacks = vi.hoisted(() => ({ onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null }));
@@ -31,6 +32,13 @@ vi.mock('../../src/components/EventDetailModal', () => ({
       eventDetailModalCallbacks.onSave = onSave;
       eventDetailModalCallbacks.calendars = calendars;
     }
+    open() {}
+  },
+}));
+
+vi.mock('../../src/components/TodoDetailModal', () => ({
+  TodoDetailModal: class {
+    constructor() {}
     open() {}
   },
 }));
@@ -454,5 +462,77 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
 
     expect(ctx.weatherService.getWeatherForDates).not.toHaveBeenCalled();
+  });
+});
+
+const mockTodoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+const mockTodo: M365TodoItem = {
+  id: 'task1',
+  title: 'Buy milk',
+  listId: 'list1',
+  dueDate: '2026-04-04',
+  importance: 'normal',
+};
+
+describe('CalendarApp — todo integration', () => {
+  it('calls todoService.getLists and getTasks on mount', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledTodoListIds: ['list1'] },
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([mockTodoList]),
+        getTasks: vi.fn().mockResolvedValue([mockTodo]),
+      } as unknown as AppContextValue['todoService'],
+    });
+    render(
+      <AppContext.Provider value={ctx}>
+        <CalendarApp />
+      </AppContext.Provider>,
+    );
+    await waitFor(() => {
+      expect(ctx.todoService.getLists).toHaveBeenCalledTimes(1);
+      expect(ctx.todoService.getTasks).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not call getTasks when no todo lists are enabled', async () => {
+    const getTasks = vi.fn().mockResolvedValue([]);
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledTodoListIds: [] },
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([mockTodoList]),
+        getTasks,
+      } as unknown as AppContextValue['todoService'],
+    });
+    render(
+      <AppContext.Provider value={ctx}>
+        <CalendarApp />
+      </AppContext.Provider>,
+    );
+    await waitFor(() => {
+      expect(ctx.todoService.getLists).toHaveBeenCalled();
+    });
+    expect(getTasks).not.toHaveBeenCalled();
+  });
+
+  it('saves settings when a todo list is toggled', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledTodoListIds: [] },
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([mockTodoList]),
+        getTasks: vi.fn().mockResolvedValue([]),
+      } as unknown as AppContextValue['todoService'],
+    });
+    render(
+      <AppContext.Provider value={ctx}>
+        <CalendarApp />
+      </AppContext.Provider>,
+    );
+    await waitFor(() => screen.getByText('Work Tasks'));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Work Tasks' }));
+    await waitFor(() => {
+      expect(ctx.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ enabledTodoListIds: ['list1'] }),
+      );
+    });
   });
 });

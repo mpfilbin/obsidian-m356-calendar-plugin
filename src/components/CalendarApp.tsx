@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Notice } from 'obsidian';
-import { M365Calendar, M365Event, DailyWeather, ViewType } from '../types';
+import { M365Calendar, M365Event, M365TodoList, M365TodoItem, DailyWeather, ViewType } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
@@ -8,6 +8,7 @@ import { WeekView } from './WeekView';
 import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
 import { EventDetailModal } from './EventDetailModal';
+import { TodoDetailModal } from './TodoDetailModal';
 import { useAppContext } from '../context';
 import { getDateRange, getDatesInRange } from '../lib/datetime';
 
@@ -18,7 +19,7 @@ function notifyError(e: unknown): void {
 }
 
 export const CalendarApp: React.FC = () => {
-  const { app, calendarService, weatherService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
+  const { app, calendarService, weatherService, todoService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
@@ -29,6 +30,11 @@ export const CalendarApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [weather, setWeather] = useState<Map<string, DailyWeather | null>>(new Map());
+
+  const [todoLists, setTodoLists] = useState<M365TodoList[]>([]);
+  const [todos, setTodos] = useState<M365TodoItem[]>([]);
+  const [enabledTodoListIds, setEnabledTodoListIds] = useState<string[]>(settings.enabledTodoListIds);
+  const todoListsLoadedRef = useRef(false);
 
   const calendarsLoadedRef = useRef(false);
 
@@ -82,6 +88,25 @@ export const CalendarApp: React.FC = () => {
     }
   }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
 
+  const fetchTodos = useCallback(async (options: { reloadLists?: boolean } = {}) => {
+    try {
+      if (!todoListsLoadedRef.current || options.reloadLists) {
+        todoListsLoadedRef.current = true;
+        const lists = await todoService.getLists();
+        setTodoLists(lists);
+      }
+      if (enabledTodoListIds.length > 0) {
+        const { start, end } = getDateRange(currentDate, view);
+        const tasks = await todoService.getTasks(enabledTodoListIds, start, end);
+        setTodos(tasks);
+      } else {
+        setTodos([]);
+      }
+    } catch (e) {
+      console.error('M365 Calendar todos:', e);
+    }
+  }, [todoService, enabledTodoListIds, currentDate, view]);
+
   // Keep a ref to the latest fetchWeather so the registered callback never goes stale.
   const fetchWeatherRef = useRef(fetchWeather);
   useEffect(() => { fetchWeatherRef.current = fetchWeather; }, [fetchWeather]);
@@ -98,13 +123,18 @@ export const CalendarApp: React.FC = () => {
   }, [fetchWeather]);
 
   useEffect(() => {
+    void fetchTodos();
+  }, [fetchTodos]);
+
+  useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
     const interval = setInterval(() => {
       void fetchAll({ reloadCalendars: true });
       void fetchWeather();
+      void fetchTodos({ reloadLists: true });
     }, ms);
     return () => clearInterval(interval);
-  }, [fetchAll, fetchWeather, settings.refreshIntervalMinutes]);
+  }, [fetchAll, fetchWeather, fetchTodos, settings.refreshIntervalMinutes]);
 
   const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
     if (direction === 'today') {
@@ -143,6 +173,19 @@ export const CalendarApp: React.FC = () => {
     } catch (e) {
       setSidebarCollapsed(sidebarCollapsed);
       setError(e instanceof Error ? e.message : 'Failed to save settings');
+    }
+  };
+
+  const handleToggleTodoList = async (listId: string) => {
+    const next = enabledTodoListIds.includes(listId)
+      ? enabledTodoListIds.filter((id) => id !== listId)
+      : [...enabledTodoListIds, listId];
+    setEnabledTodoListIds(next);
+    try {
+      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed, enabledTodoListIds: next });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save settings');
+      setEnabledTodoListIds(enabledTodoListIds);
     }
   };
 
@@ -210,6 +253,12 @@ export const CalendarApp: React.FC = () => {
     ).open();
   };
 
+  const handleTodoClick = (todo: M365TodoItem) => {
+    const list = todoLists.find((l) => l.id === todo.listId);
+    if (!list) return;
+    new TodoDetailModal(app, todo, list).open();
+  };
+
   return (
     <div className="m365-calendar">
       {error && <div className="m365-calendar-error">{error}</div>}
@@ -228,6 +277,9 @@ export const CalendarApp: React.FC = () => {
           calendars={calendars}
           enabledCalendarIds={enabledIds}
           onToggle={(id) => void handleToggleCalendar(id)}
+          todoLists={todoLists}
+          enabledTodoListIds={enabledTodoListIds}
+          onToggleTodoList={(id) => void handleToggleTodoList(id)}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => void handleToggleSidebar()}
         />
@@ -237,8 +289,11 @@ export const CalendarApp: React.FC = () => {
               currentDate={currentDate}
               events={events}
               calendars={calendars}
+              todos={todos}
+              todoLists={todoLists}
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
+              onTodoClick={handleTodoClick}
               weather={weather}
             />
           )}
@@ -247,8 +302,11 @@ export const CalendarApp: React.FC = () => {
               currentDate={currentDate}
               events={events}
               calendars={calendars}
+              todos={todos}
+              todoLists={todoLists}
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
+              onTodoClick={handleTodoClick}
               weather={weather}
               weatherUnits={settings.weatherUnits}
             />
@@ -258,8 +316,11 @@ export const CalendarApp: React.FC = () => {
               currentDate={currentDate}
               events={events}
               calendars={calendars}
+              todos={todos}
+              todoLists={todoLists}
               onTimeClick={openCreateEventModal}
               onEventClick={handleEventClick}
+              onTodoClick={handleTodoClick}
               weather={weather}
               weatherUnits={settings.weatherUnits}
             />
