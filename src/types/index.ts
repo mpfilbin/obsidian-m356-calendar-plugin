@@ -20,6 +20,21 @@ export interface M365Event {
   location?: string;
 }
 
+export interface M365TodoList {
+  id: string;
+  displayName: string;
+  color: string; // deterministically assigned from a fixed palette
+}
+
+export interface M365TodoItem {
+  id: string;
+  title: string;
+  listId: string;
+  dueDate: string;      // "YYYY-MM-DD"
+  body?: string;        // task notes; undefined when empty
+  importance: 'low' | 'normal' | 'high';
+}
+
 export interface NewEventInput {
   subject: string;
   start: Date;
@@ -56,6 +71,7 @@ export interface M365CalendarSettings {
   weatherLocation: string;
   weatherUnits: 'imperial' | 'metric';
   sidebarCollapsed: boolean;
+  enabledTodoListIds: string[];
 }
 
 export interface StoredTokens {
