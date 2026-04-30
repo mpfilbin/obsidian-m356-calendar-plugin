@@ -259,7 +259,10 @@ export const CalendarApp: React.FC = () => {
 
   const handleTodoClick = (todo: M365TodoItem) => {
     const list = todoLists.find((l) => l.id === todo.listId);
-    if (!list) return;
+    if (!list) {
+      console.warn('M365 Calendar: todo list not found for task', todo.id);
+      return;
+    }
     new TodoDetailModal(app, todo, list).open();
   };
 
@@ -272,7 +275,10 @@ export const CalendarApp: React.FC = () => {
         onViewChange={setView}
         onNavigate={handleNavigate}
         onNewEvent={() => openCreateEventModal(new Date())}
-        onRefresh={() => void fetchAll({ reloadCalendars: true, userInitiated: true })}
+        onRefresh={() => {
+          void fetchAll({ reloadCalendars: true, userInitiated: true });
+          void fetchTodos({ reloadLists: true });
+        }}
         syncing={syncing}
         refreshFailed={refreshFailed}
       />
