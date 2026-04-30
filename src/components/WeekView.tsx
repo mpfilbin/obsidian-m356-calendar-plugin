@@ -38,6 +38,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   const todosByDate = useMemo(() => {
     const map = new Map<string, M365TodoItem[]>();
     for (const todo of todos) {
+      if (!todo.dueDate) continue;
       if (!map.has(todo.dueDate)) map.set(todo.dueDate, []);
       map.get(todo.dueDate)!.push(todo);
     }
