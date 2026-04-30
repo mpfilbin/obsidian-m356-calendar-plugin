@@ -455,7 +455,7 @@ describe('DayView — todos', () => {
   it('renders a todo in the all-day section when dueDate matches currentDate', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-14')}
+        currentDate={new Date(2026, 3, 14)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril14]}
@@ -469,7 +469,7 @@ describe('DayView — todos', () => {
   it('does not render a todo when dueDate does not match currentDate', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-15')}
+        currentDate={new Date(2026, 3, 15)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril14]}
@@ -484,7 +484,7 @@ describe('DayView — todos', () => {
     const onTodoClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-14')}
+        currentDate={new Date(2026, 3, 14)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril14]}

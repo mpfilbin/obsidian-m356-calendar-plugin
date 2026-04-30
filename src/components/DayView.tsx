@@ -45,11 +45,7 @@ export const DayView: React.FC<DayViewProps> = ({
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
-  // Use ISO UTC date string for todo dueDate comparison, since dueDate values from
-  // the API are date-only strings and dates constructed from ISO strings (new Date('YYYY-MM-DD'))
-  // are UTC midnight. Using toISOString().slice(0, 10) keeps the comparison consistent
-  // regardless of local timezone.
-  const todayStr = currentDate.toISOString().slice(0, 10);
+  const todayStr = toDateOnly(currentDate);
   const allDayTodos = useMemo(
     () => todos.filter((t) => t.dueDate === todayStr),
     [todos, todayStr],
