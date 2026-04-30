@@ -108,6 +108,39 @@ describe('TodoService', () => {
       });
     });
 
+    it('excludes completed tasks', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          value: [
+            {
+              id: 'task1',
+              title: 'Done',
+              status: 'completed',
+              dueDateTime: { dateTime: '2026-04-15T00:00:00' },
+              body: null,
+              importance: 'normal',
+            },
+            {
+              id: 'task2',
+              title: 'Still open',
+              status: 'notStarted',
+              dueDateTime: { dateTime: '2026-04-15T00:00:00' },
+              body: null,
+              importance: 'normal',
+            },
+          ],
+        }),
+      }));
+      const result = await service.getTasks(
+        ['list1'],
+        new Date('2026-04-01'),
+        new Date('2026-04-30'),
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Still open');
+    });
+
     it('excludes tasks without a dueDateTime', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,

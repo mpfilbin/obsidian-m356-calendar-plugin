@@ -52,8 +52,7 @@ export class TodoService {
   private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
     const token = await this.auth.getValidToken();
     const params = new URLSearchParams({
-      '$filter': "status ne 'completed'",
-      '$select': 'id,title,dueDateTime,body,importance',
+      '$select': 'id,title,status,dueDateTime,body,importance',
       '$top': '999',
     });
 
@@ -75,6 +74,7 @@ export class TodoService {
 
     return allTasks
       .filter((task) => {
+        if (task.status === 'completed') return false;
         const due = (task.dueDateTime as { dateTime: string } | null)?.dateTime;
         if (!due) return false;
         const dueDate = due.slice(0, 10);
