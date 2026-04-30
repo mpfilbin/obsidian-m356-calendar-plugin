@@ -89,8 +89,10 @@ export const CalendarApp: React.FC = () => {
   }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
 
   const fetchTodos = useCallback(async (options: { reloadLists?: boolean } = {}) => {
+    let listFetchAttempted = false;
     try {
       if (!todoListsLoadedRef.current || options.reloadLists) {
+        listFetchAttempted = true;
         todoListsLoadedRef.current = true;
         const lists = await todoService.getLists();
         setTodoLists(lists);
@@ -103,7 +105,9 @@ export const CalendarApp: React.FC = () => {
         setTodos([]);
       }
     } catch (e) {
+      if (listFetchAttempted) todoListsLoadedRef.current = false;
       console.error('M365 Calendar todos:', e);
+      setRefreshFailed(true);
     }
   }, [todoService, enabledTodoListIds, currentDate, view]);
 
