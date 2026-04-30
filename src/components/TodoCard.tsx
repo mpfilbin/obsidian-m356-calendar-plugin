@@ -13,6 +13,7 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
       style={{
         backgroundColor: `${todoList.color}26`,
         border: `1px dashed ${todoList.color}`,
+        borderRadius: 'var(--radius-s)',
         color: todoList.color,
       }}
       title={todo.title}
