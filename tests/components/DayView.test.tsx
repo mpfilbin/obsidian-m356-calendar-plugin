@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { layoutEvents, DayView } from '../../src/components/DayView';
-import { DailyWeather, M365Event, M365Calendar } from '../../src/types';
+import { DailyWeather, M365Event, M365Calendar, M365TodoList, M365TodoItem } from '../../src/types';
 
 vi.mock('../../src/hooks/useNow', () => ({
   useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
@@ -388,6 +388,15 @@ describe('DayView now-line', () => {
   });
 });
 
+const todoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+const todoOnApril14: M365TodoItem = {
+  id: 'task1',
+  title: 'Buy milk',
+  listId: 'list1',
+  dueDate: '2026-04-14',
+  importance: 'normal',
+};
+
 describe('DayView scroll-to-center', () => {
   let originalClientHeight: PropertyDescriptor | undefined;
   let originalScrollHeight: PropertyDescriptor | undefined;
@@ -439,5 +448,52 @@ describe('DayView scroll-to-center', () => {
     );
     const container = document.querySelector('.m365-day-view') as HTMLElement;
     expect(container.scrollTop).toBe(0);
+  });
+});
+
+describe('DayView — todos', () => {
+  it('renders a todo in the all-day section when dueDate matches currentDate', () => {
+    render(
+      <DayView
+        currentDate={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
+
+  it('does not render a todo when dueDate does not match currentDate', () => {
+    render(
+      <DayView
+        currentDate={new Date('2026-04-15')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Buy milk')).not.toBeInTheDocument();
+  });
+
+  it('calls onTodoClick when a todo is clicked', async () => {
+    const onTodoClick = vi.fn();
+    render(
+      <DayView
+        currentDate={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onTimeClick={vi.fn()}
+        onTodoClick={onTodoClick}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'View task: Buy milk' }));
+    expect(onTodoClick).toHaveBeenCalledWith(todoOnApril14);
   });
 });
