@@ -51,13 +51,9 @@ export class TodoService {
 
   private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
     const token = await this.auth.getValidToken();
-    const params = new URLSearchParams({
-      '$select': 'id,title,status,dueDateTime,body,importance',
-      '$top': '999',
-    });
-
     const encodedListId = encodeURIComponent(listId).replace(/%3D/g, '=');
-    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks?${params}`;
+    const queryString = '$select=id,title,status,dueDateTime,body,importance&$top=999';
+    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks?${queryString}`;
     const allTasks: Record<string, unknown>[] = [];
 
     await this.semaphore.acquire();
