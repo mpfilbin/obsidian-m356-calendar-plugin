@@ -1,6 +1,8 @@
 import { AuthService } from './AuthService';
 import { M365TodoList, M365TodoItem } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { toDateOnly } from '../lib/datetime';
+import { Semaphore } from '../lib/semaphore';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -19,6 +21,8 @@ function hashListColor(id: string): string {
 }
 
 export class TodoService {
+  private readonly semaphore = new Semaphore(2);
+
   constructor(private readonly auth: AuthService) {}
 
   async getLists(): Promise<M365TodoList[]> {
@@ -37,8 +41,8 @@ export class TodoService {
 
   async getTasks(listIds: string[], start: Date, end: Date): Promise<M365TodoItem[]> {
     if (listIds.length === 0) return [];
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
+    const startStr = toDateOnly(start);
+    const endStr = toDateOnly(end);
     const results = await Promise.all(
       listIds.map((id) => this.getTasksForList(id, startStr, endStr)),
     );
@@ -50,14 +54,26 @@ export class TodoService {
     const params = new URLSearchParams({
       '$filter': "status ne 'completed'",
       '$select': 'id,title,dueDateTime,body,importance',
+      '$top': '999',
     });
-    const response = await fetchWithRetry(
-      `${GRAPH_BASE}/me/todo/lists/${listId}/tasks?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
-    const data = await response.json() as { value: Record<string, unknown>[] };
-    return data.value
+
+    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${listId}/tasks?${params}`;
+    const allTasks: Record<string, unknown>[] = [];
+
+    await this.semaphore.acquire();
+    try {
+      while (url) {
+        const response = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+        const data = await response.json() as { value: Record<string, unknown>[]; '@odata.nextLink'?: string };
+        allTasks.push(...data.value);
+        url = data['@odata.nextLink'] ?? null;
+      }
+    } finally {
+      this.semaphore.release();
+    }
+
+    return allTasks
       .filter((task) => {
         const due = (task.dueDateTime as { dateTime: string } | null)?.dateTime;
         if (!due) return false;
