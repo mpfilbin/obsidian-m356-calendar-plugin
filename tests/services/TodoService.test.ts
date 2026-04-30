@@ -144,6 +144,19 @@ describe('TodoService', () => {
       expect(result[0].body).toBeUndefined();
     });
 
+    it('URL-encodes list IDs containing base64 special characters', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ value: [] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const id = 'AAMkAGM3Yz/M1Y2Vm+LWRmYmU=';
+      await service.getTasks([id], new Date('2026-04-01'), new Date('2026-04-30'));
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain(encodeURIComponent(id)); // %2F, %2B, %3D encoded
+      expect(url).not.toContain('Yz/M'); // raw slash from inside the ID is not in the URL
+    });
+
     it('throws when Graph returns an error', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Forbidden' }));
       await expect(

@@ -57,7 +57,7 @@ export class TodoService {
       '$top': '999',
     });
 
-    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${listId}/tasks?${params}`;
+    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks?${params}`;
     const allTasks: Record<string, unknown>[] = [];
 
     await this.semaphore.acquire();
