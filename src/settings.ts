@@ -56,7 +56,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       );
 
-    let signInBtn: ButtonComponent;
+    let signInBtn!: ButtonComponent;
 
     new Setting(containerEl)
       .setName('Sign in / sign out')
