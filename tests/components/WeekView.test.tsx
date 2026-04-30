@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WeekView } from '../../src/components/WeekView';
-import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoList, M365TodoItem } from '../../src/types';
 
 vi.mock('../../src/hooks/useNow', () => ({
   useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
@@ -319,6 +319,15 @@ describe('WeekView now-line', () => {
   });
 });
 
+const todoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+const todoOnApril14: M365TodoItem = {
+  id: 'task1',
+  title: 'Buy milk',
+  listId: 'list1',
+  dueDate: '2026-04-14',
+  importance: 'normal',
+};
+
 describe('WeekView scroll-to-center', () => {
   let originalClientHeight: PropertyDescriptor | undefined;
   let originalScrollHeight: PropertyDescriptor | undefined;
@@ -370,5 +379,53 @@ describe('WeekView scroll-to-center', () => {
     );
     const timelineArea = document.querySelector('.m365-week-timeline-area') as HTMLElement;
     expect(timelineArea.scrollTop).toBe(0);
+  });
+});
+
+describe('WeekView — todos', () => {
+  it('renders a todo in the all-day row on its due date', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
+
+  it('does not render a todo outside the current week', () => {
+    const todoOutOfRange: M365TodoItem = { ...todoOnApril14, dueDate: '2026-04-20' };
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOutOfRange]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Buy milk')).not.toBeInTheDocument();
+  });
+
+  it('calls onTodoClick when a todo button is clicked', async () => {
+    const onTodoClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-14')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+        onTodoClick={onTodoClick}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'View task: Buy milk' }));
+    expect(onTodoClick).toHaveBeenCalledWith(todoOnApril14);
   });
 });
