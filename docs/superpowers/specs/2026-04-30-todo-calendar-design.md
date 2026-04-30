@@ -46,6 +46,7 @@ Parallel to `CalendarService`. Takes `AuthService` as its only constructor depen
 - Filters by `dueDate` client-side — Graph API OData support for `dueDateTime` range queries is unreliable
 - Tasks without a `dueDateTime` are excluded
 - Results from all lists are merged and returned as a flat array
+- If `listIds` is empty, returns `[]` immediately with no API calls
 
 No caching for this phase. Todo task lists are small and fetching is fast.
 
