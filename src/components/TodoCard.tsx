@@ -17,7 +17,9 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
       }}
       title={todo.title}
     >
-      <span className="m365-todo-icon" aria-hidden="true">☐</span>
+      <svg className="m365-todo-icon" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
+        <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+      </svg>
       <span className="m365-todo-title">{todo.title}</span>
     </div>
   );

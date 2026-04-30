@@ -19,9 +19,9 @@ describe('TodoCard', () => {
     expect(screen.getByText('Finish report')).toBeInTheDocument();
   });
 
-  it('renders the checkmark icon', () => {
-    render(<TodoCard todo={todo} todoList={todoList} />);
-    expect(screen.getByText('☐')).toBeInTheDocument();
+  it('renders the task circle icon', () => {
+    const { container } = render(<TodoCard todo={todo} todoList={todoList} />);
+    expect(container.querySelector('.m365-todo-icon')).toBeInTheDocument();
   });
 
   it('applies the list color as a dashed border', () => {
