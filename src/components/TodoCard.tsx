@@ -18,6 +18,7 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--size-4-1)',
+        padding: '2px var(--size-4-1)',
       }}
       title={todo.title}
     >
