@@ -5,9 +5,9 @@ interface CalendarSelectorProps {
   calendars: M365Calendar[];
   enabledCalendarIds: string[];
   onToggle: (calendarId: string) => void;
-  todoLists: M365TodoList[];
-  enabledTodoListIds: string[];
-  onToggleTodoList: (listId: string) => void;
+  todoLists?: M365TodoList[];
+  enabledTodoListIds?: string[];
+  onToggleTodoList?: (listId: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -16,8 +16,8 @@ export const CalendarSelector: React.FC<CalendarSelectorProps> = ({
   calendars,
   enabledCalendarIds,
   onToggle,
-  todoLists,
-  enabledTodoListIds,
+  todoLists = [],
+  enabledTodoListIds = [],
   onToggleTodoList,
   collapsed,
   onToggleCollapse,
@@ -74,7 +74,7 @@ export const CalendarSelector: React.FC<CalendarSelectorProps> = ({
                 type="checkbox"
                 id={`todo-${list.id}`}
                 checked={enabledTodoListIds.includes(list.id)}
-                onChange={() => onToggleTodoList(list.id)}
+                onChange={() => onToggleTodoList?.(list.id)}
               />
               <span
                 className="m365-calendar-color-swatch"
