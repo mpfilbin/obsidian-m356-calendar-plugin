@@ -205,7 +205,10 @@ describe('CalendarApp', () => {
     });
 
     renderCalendarApp(ctx);
-    await waitFor(() => expect(getEvents).toHaveBeenCalledTimes(1));
+    // Wait for the initial event to appear in the DOM — this guarantees fetchAll's
+    // setEvents has committed before we trigger event creation (stronger than
+    // checking getEvents call count, which doesn't wait for the state to settle).
+    await screen.findByText('Standup');
 
     // Trigger create event modal via toolbar button
     await userEvent.click(screen.getByText('+ New event'));
