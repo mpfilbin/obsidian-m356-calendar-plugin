@@ -18,6 +18,7 @@ interface WeekViewProps {
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  completingTodoIds?: Set<string>;
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({
@@ -31,6 +32,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   todos = [],
   todoLists = [],
   onTodoClick,
+  completingTodoIds,
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
@@ -176,7 +178,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       onTodoClick?.(todo);
                     }}
                   >
-                    <TodoCard todo={todo} todoList={list} />
+                    <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
                   </button>
                 );
               })}

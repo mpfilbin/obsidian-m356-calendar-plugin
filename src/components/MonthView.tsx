@@ -16,6 +16,7 @@ interface MonthViewProps {
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  completingTodoIds?: Set<string>;
 }
 
 export const MonthView: React.FC<MonthViewProps> = ({
@@ -29,6 +30,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   todos = [],
   todoLists = [],
   onTodoClick,
+  completingTodoIds,
 }) => {
   const days = getDaysInMonthView(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
@@ -118,7 +120,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       onTodoClick?.(todo);
                     }}
                   >
-                    <TodoCard todo={todo} todoList={list} />
+                    <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
                   </button>
                 );
               })}
