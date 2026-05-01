@@ -168,4 +168,19 @@ export class TodoService {
     );
     if (!response.ok) throw new Error(`Failed to update checklist item: ${response.statusText}`);
   }
+
+  async deleteChecklistItem(listId: string, taskId: string, itemId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const encodedItemId = encodeURIComponent(itemId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to delete checklist item: ${response.statusText}`);
+  }
 }

@@ -345,4 +345,26 @@ describe('TodoService', () => {
       ).rejects.toThrow('Failed to update checklist item: Not Found');
     });
   });
+
+  describe('deleteChecklistItem', () => {
+    it('sends DELETE to the correct URL with auth header', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.deleteChecklistItem('list1', 'task1', 'ci1');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems/ci1',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        }),
+      );
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(service.deleteChecklistItem('list1', 'task1', 'ci1')).rejects.toThrow(
+        'Failed to delete checklist item: Not Found',
+      );
+    });
+  });
 });
