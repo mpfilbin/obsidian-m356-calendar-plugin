@@ -277,7 +277,7 @@ export const CalendarApp: React.FC = () => {
           notifyError(e);
         });
     };
-    new TodoDetailModal(app, todo, list, onComplete).open();
+    new TodoDetailModal(app, todo, list, todoService, onComplete).open();
   };
 
   return (

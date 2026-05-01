@@ -2,12 +2,14 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365TodoItem, M365TodoList } from '../types';
+import { TodoService } from '../services/TodoService';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
 interface TodoDetailFormProps {
   todo: M365TodoItem;
   todoList: M365TodoList;
+  todoService: TodoService;
   onComplete: () => void;
 }
 
@@ -59,6 +61,7 @@ export class TodoDetailModal extends Modal {
     app: App,
     private readonly todo: M365TodoItem,
     private readonly todoList: M365TodoList,
+    private readonly todoService: TodoService,
     private readonly onComplete: () => void,
   ) {
     super(app);
@@ -73,7 +76,12 @@ export class TodoDetailModal extends Modal {
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>
-        <TodoDetailForm todo={this.todo} todoList={this.todoList} onComplete={handleComplete} />
+        <TodoDetailForm
+          todo={this.todo}
+          todoList={this.todoList}
+          todoService={this.todoService}
+          onComplete={handleComplete}
+        />
       </StrictMode>,
     );
   }

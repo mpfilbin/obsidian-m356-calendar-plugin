@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { TodoDetailForm } from '../../src/components/TodoDetailModal';
 import { M365TodoItem, M365TodoList } from '../../src/types';
+import { TodoService } from '../../src/services/TodoService';
 
 const todoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
 
@@ -16,58 +17,70 @@ const todo: M365TodoItem = {
   body: 'Include Q1 metrics',
 };
 
+function makeMockTodoService() {
+  return {
+    getChecklistItems: vi.fn().mockResolvedValue([]),
+    createChecklistItem: vi.fn(),
+    updateChecklistItem: vi.fn().mockResolvedValue(undefined),
+    deleteChecklistItem: vi.fn().mockResolvedValue(undefined),
+  } as unknown as TodoService;
+}
+
 describe('TodoDetailForm', () => {
-  it('renders the list display name', () => {
-    render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByText('Work Tasks')).toBeInTheDocument();
+  it('renders the list display name', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('Work Tasks')).toBeInTheDocument();
   });
 
-  it('renders a Due: label', () => {
-    render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByText('Due:')).toBeInTheDocument();
+  it('renders a Due: label', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('Due:')).toBeInTheDocument();
   });
 
-  it('renders the body notes', () => {
-    render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByText('Include Q1 metrics')).toBeInTheDocument();
+  it('renders the body notes', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('Include Q1 metrics')).toBeInTheDocument();
   });
 
-  it('does not render priority row for normal importance', () => {
-    render(<TodoDetailForm todo={{ ...todo, importance: 'normal' }} todoList={todoList} onComplete={vi.fn()} />);
+  it('does not render priority row for normal importance', async () => {
+    render(<TodoDetailForm todo={{ ...todo, importance: 'normal' }} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    await screen.findByText('Work Tasks');
     expect(screen.queryByText('Priority:')).not.toBeInTheDocument();
   });
 
-  it('renders High priority badge for high importance', () => {
-    render(<TodoDetailForm todo={{ ...todo, importance: 'high' }} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByText('Priority:')).toBeInTheDocument();
+  it('renders High priority badge for high importance', async () => {
+    render(<TodoDetailForm todo={{ ...todo, importance: 'high' }} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('Priority:')).toBeInTheDocument();
     expect(screen.getByText('High')).toBeInTheDocument();
   });
 
-  it('renders Low priority badge for low importance', () => {
-    render(<TodoDetailForm todo={{ ...todo, importance: 'low' }} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByText('Low')).toBeInTheDocument();
+  it('renders Low priority badge for low importance', async () => {
+    render(<TodoDetailForm todo={{ ...todo, importance: 'low' }} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('Low')).toBeInTheDocument();
   });
 
-  it('does not render Notes section when body is absent', () => {
-    render(<TodoDetailForm todo={{ ...todo, body: undefined }} todoList={todoList} onComplete={vi.fn()} />);
+  it('does not render Notes section when body is absent', async () => {
+    render(<TodoDetailForm todo={{ ...todo, body: undefined }} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    await screen.findByText('Work Tasks');
     expect(screen.queryByText('Notes:')).not.toBeInTheDocument();
   });
 
-  it('applies the list color to the dot indicator', () => {
-    const { container } = render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={vi.fn()} />);
+  it('applies the list color to the dot indicator', async () => {
+    const { container } = render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    await screen.findByText('Work Tasks');
     const dot = container.querySelector('.m365-todo-detail-dot') as HTMLElement;
     expect(dot.style.backgroundColor).toBe('rgb(59, 130, 246)');
   });
 
-  it('renders a Complete button', () => {
-    render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /complete/i })).toBeInTheDocument();
+  it('renders a Complete button', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: /complete/i })).toBeInTheDocument();
   });
 
   it('calls onComplete when the Complete button is clicked', async () => {
     const onComplete = vi.fn();
-    render(<TodoDetailForm todo={todo} todoList={todoList} onComplete={onComplete} />);
-    await userEvent.click(screen.getByRole('button', { name: /complete/i }));
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={onComplete} />);
+    await userEvent.click(await screen.findByRole('button', { name: /complete/i }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });
