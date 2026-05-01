@@ -280,4 +280,34 @@ describe('TodoService', () => {
       );
     });
   });
+
+  describe('createChecklistItem', () => {
+    it('POSTs the displayName and returns the created item', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'ci3', displayName: 'New step', isChecked: false }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await service.createChecklistItem('list1', 'task1', 'New step');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ displayName: 'New step' }),
+        }),
+      );
+      expect(result).toEqual({ id: 'ci3', displayName: 'New step', isChecked: false });
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Bad Request' }));
+      await expect(service.createChecklistItem('list1', 'task1', 'Step')).rejects.toThrow(
+        'Failed to create checklist item: Bad Request',
+      );
+    });
+  });
 });

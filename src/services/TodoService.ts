@@ -120,4 +120,28 @@ export class TodoService {
       isChecked: item.isChecked as boolean,
     }));
   }
+
+  async createChecklistItem(listId: string, taskId: string, displayName: string): Promise<M365ChecklistItem> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayName }),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to create checklist item: ${response.statusText}`);
+    const data = await response.json() as Record<string, unknown>;
+    return {
+      id: data.id as string,
+      displayName: data.displayName as string,
+      isChecked: data.isChecked as boolean,
+    };
+  }
 }
