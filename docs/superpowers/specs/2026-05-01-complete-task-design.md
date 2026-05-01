@@ -42,9 +42,15 @@ const [completingTodoIds, setCompletingTodoIds] = useState<Set<string>>(new Set(
 constructor(app: App, todo: M365TodoItem, todoList: M365TodoList, onComplete: () => void)
 ```
 
-`TodoDetailForm` props gain `onComplete: () => void`. The form renders a **Complete** button below the existing detail rows. On click:
-1. Calls `onComplete()` — CalendarApp starts the async work.
-2. Calls `this.close()` on the modal — modal dismisses immediately.
+`TodoDetailForm` props gain `onComplete: () => void`. The form renders a **Complete** button below the existing detail rows. On click it calls `onComplete()`.
+
+`TodoDetailModal.onOpen()` wraps the constructor's `onComplete` before passing it to the form:
+```ts
+const handleComplete = () => {
+  this.onComplete();  // notify CalendarApp — starts async work
+  this.close();       // dismiss modal immediately
+};
+```
 
 No loading/disabled state on the button; the modal is gone before any async feedback is needed.
 
