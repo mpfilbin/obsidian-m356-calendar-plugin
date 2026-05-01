@@ -103,12 +103,18 @@ function renderCalendarApp(ctx: AppContextValue) {
 
 describe('CalendarApp', () => {
   beforeEach(() => {
+    // Pin the clock to April 2026 so mock events (2026-04-04) always fall in the
+    // current month regardless of when CI runs. shouldAdvanceTime keeps real-time
+    // passage working so waitFor / userEvent timeouts behave normally.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-04-15T12:00:00'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
     // sentinel reset so canEdit=false tests don't false-positive
     eventDetailModalCallbacks.onDelete = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
