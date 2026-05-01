@@ -33,6 +33,7 @@ export const CalendarApp: React.FC = () => {
 
   const [todoLists, setTodoLists] = useState<M365TodoList[]>([]);
   const [todos, setTodos] = useState<M365TodoItem[]>([]);
+  const [completingTodoIds, setCompletingTodoIds] = useState<Set<string>>(new Set());
   const [enabledTodoListIds, setEnabledTodoListIds] = useState<string[]>(settings.enabledTodoListIds);
   const todoListsLoadedRef = useRef(false);
 
@@ -264,7 +265,19 @@ export const CalendarApp: React.FC = () => {
       console.warn('M365 Calendar: todo list not found for task', todo.id);
       return;
     }
-    new TodoDetailModal(app, todo, list).open();
+    const onComplete = () => {
+      setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
+      void todoService.completeTask(todo.listId, todo.id)
+        .then(() => {
+          setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
+        })
+        .catch((e: unknown) => {
+          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
+          notifyError(e);
+        });
+    };
+    new TodoDetailModal(app, todo, list, onComplete).open();
   };
 
   return (
@@ -305,6 +318,7 @@ export const CalendarApp: React.FC = () => {
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
               onTodoClick={handleTodoClick}
+              completingTodoIds={completingTodoIds}
               weather={weather}
             />
           )}
@@ -318,6 +332,7 @@ export const CalendarApp: React.FC = () => {
               onDayClick={handleDayClick}
               onEventClick={handleEventClick}
               onTodoClick={handleTodoClick}
+              completingTodoIds={completingTodoIds}
               weather={weather}
               weatherUnits={settings.weatherUnits}
             />
@@ -332,6 +347,7 @@ export const CalendarApp: React.FC = () => {
               onTimeClick={openCreateEventModal}
               onEventClick={handleEventClick}
               onTodoClick={handleTodoClick}
+              completingTodoIds={completingTodoIds}
               weather={weather}
               weatherUnits={settings.weatherUnits}
             />
