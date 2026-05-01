@@ -310,4 +310,39 @@ describe('TodoService', () => {
       );
     });
   });
+
+  describe('updateChecklistItem', () => {
+    it('PATCHes the item with the given patch object', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.updateChecklistItem('list1', 'task1', 'ci1', { isChecked: true });
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems/ci1',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ isChecked: true }),
+        }),
+      );
+    });
+
+    it('encodes special characters in all three IDs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.updateChecklistItem('l/1=', 't/2=', 'ci/3=', { isChecked: false });
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain('%2F');
+      expect(url).toContain('%3D');
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(
+        service.updateChecklistItem('list1', 'task1', 'ci1', { isChecked: true }),
+      ).rejects.toThrow('Failed to update checklist item: Not Found');
+    });
+  });
 });

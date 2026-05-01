@@ -144,4 +144,28 @@ export class TodoService {
       isChecked: data.isChecked as boolean,
     };
   }
+
+  async updateChecklistItem(
+    listId: string,
+    taskId: string,
+    itemId: string,
+    patch: Partial<Pick<M365ChecklistItem, 'isChecked' | 'displayName'>>,
+  ): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const encodedItemId = encodeURIComponent(itemId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patch),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to update checklist item: ${response.statusText}`);
+  }
 }
