@@ -116,6 +116,7 @@ export const DayView: React.FC<DayViewProps> = ({
                 type="button"
                 className="m365-event-click-btn"
                 aria-label={`View task: ${todo.title}`}
+                disabled={completingTodoIds?.has(todo.id) ?? false}
                 onClick={(e) => {
                   e.stopPropagation();
                   onTodoClick?.(todo);

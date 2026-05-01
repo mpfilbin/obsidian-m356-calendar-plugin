@@ -173,6 +173,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                     type="button"
                     className="m365-event-click-btn"
                     aria-label={`View task: ${todo.title}`}
+                    disabled={completingTodoIds?.has(todo.id) ?? false}
                     onClick={(e) => {
                       e.stopPropagation();
                       onTodoClick?.(todo);
