@@ -83,4 +83,92 @@ describe('TodoDetailForm', () => {
     await userEvent.click(await screen.findByRole('button', { name: /complete/i }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
+
+  describe('checklist', () => {
+    it('shows a loading indicator while checklist items are being fetched', () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockReturnValue(new Promise(() => {})),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      expect(screen.getByText('Loading checklist…')).toBeInTheDocument();
+    });
+
+    it('renders fetched checklist items', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Step one', isChecked: false },
+          { id: 'ci2', displayName: 'Step two', isChecked: true },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      expect(await screen.findByText('Step one')).toBeInTheDocument();
+      expect(screen.getByText('Step two')).toBeInTheDocument();
+    });
+
+    it('applies line-through style to checked items', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Done step', isChecked: true },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      const label = await screen.findByText('Done step');
+      expect(label).toHaveStyle({ textDecoration: 'line-through' });
+    });
+
+    it('calls updateChecklistItem with isChecked toggled when a checkbox is clicked', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Step one', isChecked: false },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn().mockResolvedValue(undefined),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      await screen.findByText('Step one');
+      await userEvent.click(screen.getByRole('checkbox'));
+      expect(mockTodoService.updateChecklistItem).toHaveBeenCalledWith('list1', 'task1', 'ci1', { isChecked: true });
+    });
+
+    it('calls onComplete automatically when the last unchecked item is checked', async () => {
+      const onComplete = vi.fn();
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Step one', isChecked: true },
+          { id: 'ci2', displayName: 'Step two', isChecked: false },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn().mockResolvedValue(undefined),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={onComplete} />);
+      await screen.findByText('Step two');
+      const checkboxes = screen.getAllByRole('checkbox');
+      await userEvent.click(checkboxes[1]); // check the unchecked one (index 1)
+      expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not auto-complete when there are zero checklist items', async () => {
+      const onComplete = vi.fn();
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={onComplete} />);
+      await screen.findByText('Checklist');
+      expect(onComplete).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1,7 +1,7 @@
 import { App, Modal } from 'obsidian';
-import React, { StrictMode } from 'react';
+import React, { StrictMode, useState, useEffect } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { M365TodoItem, M365TodoList } from '../types';
+import { M365TodoItem, M365TodoList, M365ChecklistItem } from '../types';
 import { TodoService } from '../services/TodoService';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
@@ -13,7 +13,44 @@ interface TodoDetailFormProps {
   onComplete: () => void;
 }
 
-export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, onComplete }) => {
+export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete }) => {
+  const [checklistItems, setChecklistItems] = useState<M365ChecklistItem[]>([]);
+  const [loadingChecklist, setLoadingChecklist] = useState(true);
+  const [newItemText, setNewItemText] = useState('');
+
+  useEffect(() => {
+    void todoService.getChecklistItems(todo.listId, todo.id)
+      .then(setChecklistItems)
+      .catch((e: unknown) => console.error('Failed to load checklist items:', e))
+      .finally(() => setLoadingChecklist(false));
+  }, [todo.listId, todo.id, todoService]);
+
+  const handleToggle = (item: M365ChecklistItem) => {
+    const updated = { ...item, isChecked: !item.isChecked };
+    const nextItems = checklistItems.map((i) => i.id === item.id ? updated : i);
+    setChecklistItems(nextItems);
+    void todoService.updateChecklistItem(todo.listId, todo.id, item.id, { isChecked: updated.isChecked })
+      .catch((e: unknown) => console.error('Failed to update checklist item:', e));
+    if (nextItems.length > 0 && nextItems.every((i) => i.isChecked)) {
+      onComplete();
+    }
+  };
+
+  const handleAddItem = () => {
+    const text = newItemText.trim();
+    if (!text) return;
+    setNewItemText('');
+    void todoService.createChecklistItem(todo.listId, todo.id, text)
+      .then((created) => setChecklistItems((prev) => [...prev, created]))
+      .catch((e: unknown) => console.error('Failed to create checklist item:', e));
+  };
+
+  const handleDelete = (itemId: string) => {
+    setChecklistItems((prev) => prev.filter((i) => i.id !== itemId));
+    void todoService.deleteChecklistItem(todo.listId, todo.id, itemId)
+      .catch((e: unknown) => console.error('Failed to delete checklist item:', e));
+  };
+
   const dueDateDisplay = new Date(todo.dueDate + 'T00:00:00').toLocaleDateString(undefined, {
     weekday: 'long',
     year: 'numeric',
@@ -45,6 +82,25 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
           <p>{todo.body}</p>
         </div>
       )}
+      <div className="m365-todo-detail-checklist">
+        <span className="m365-todo-detail-label">Checklist</span>
+        {loadingChecklist ? (
+          <p>Loading checklist…</p>
+        ) : (
+          checklistItems.map((item) => (
+            <div key={item.id} className="m365-checklist-item">
+              <input
+                type="checkbox"
+                checked={item.isChecked}
+                onChange={() => handleToggle(item)}
+              />
+              <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
+                {item.displayName}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
       <div className="m365-todo-detail-footer">
         <button type="button" onClick={onComplete}>Mark complete</button>
       </div>
