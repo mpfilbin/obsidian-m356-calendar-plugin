@@ -8,9 +8,10 @@ import { M365TodoItem, M365TodoList } from '../types';
 interface TodoDetailFormProps {
   todo: M365TodoItem;
   todoList: M365TodoList;
+  onComplete: () => void;
 }
 
-export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList }) => {
+export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, onComplete }) => {
   const dueDateDisplay = new Date(todo.dueDate + 'T00:00:00').toLocaleDateString(undefined, {
     weekday: 'long',
     year: 'numeric',
@@ -42,6 +43,9 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList }
           <p>{todo.body}</p>
         </div>
       )}
+      <div className="m365-todo-detail-footer">
+        <button type="button" onClick={onComplete}>Mark complete</button>
+      </div>
     </div>
   );
 };
@@ -55,16 +59,21 @@ export class TodoDetailModal extends Modal {
     app: App,
     private readonly todo: M365TodoItem,
     private readonly todoList: M365TodoList,
+    private readonly onComplete: () => void,
   ) {
     super(app);
   }
 
   onOpen(): void {
     this.titleEl.setText(this.todo.title);
+    const handleComplete = () => {
+      this.onComplete();
+      this.close();
+    };
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>
-        <TodoDetailForm todo={this.todo} todoList={this.todoList} />
+        <TodoDetailForm todo={this.todo} todoList={this.todoList} onComplete={handleComplete} />
       </StrictMode>,
     );
   }

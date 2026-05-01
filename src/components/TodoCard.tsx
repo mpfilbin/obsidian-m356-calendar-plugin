@@ -4,9 +4,10 @@ import { M365TodoItem, M365TodoList } from '../types';
 interface TodoCardProps {
   todo: M365TodoItem;
   todoList: M365TodoList;
+  isCompleting?: boolean;
 }
 
-export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
+export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList, isCompleting }) => {
   return (
     <div
       className="m365-todo-card"
@@ -19,6 +20,7 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, todoList }) => {
         alignItems: 'center',
         gap: 'var(--size-4-1)',
         padding: '2px var(--size-4-1)',
+        ...(isCompleting ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
       }}
       title={todo.title}
     >

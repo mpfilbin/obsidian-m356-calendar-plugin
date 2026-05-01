@@ -18,6 +18,10 @@ const eventDetailModalCallbacks = vi.hoisted(() => ({
   calendars: null as M365Calendar[] | null,
 }));
 
+const todoDetailModalCallbacks = vi.hoisted(() => ({
+  onComplete: null as (() => void) | null,
+}));
+
 vi.mock('../../src/components/EventDetailModal', () => ({
   EventDetailModal: class {
     constructor(
@@ -38,7 +42,14 @@ vi.mock('../../src/components/EventDetailModal', () => ({
 
 vi.mock('../../src/components/TodoDetailModal', () => ({
   TodoDetailModal: class {
-    constructor() {}
+    constructor(
+      _app: unknown,
+      _todo: unknown,
+      _list: unknown,
+      onComplete: () => void,
+    ) {
+      todoDetailModalCallbacks.onComplete = onComplete;
+    }
     open() {}
   },
 }));
@@ -85,6 +96,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
     todoService: {
       getLists: vi.fn().mockResolvedValue([]),
       getTasks: vi.fn().mockResolvedValue([]),
+      completeTask: vi.fn().mockResolvedValue(undefined),
     } as unknown as AppContextValue['todoService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -471,6 +483,94 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
 
     expect(ctx.weatherService.getWeatherForDates).not.toHaveBeenCalled();
+  });
+
+  describe('todo completion', () => {
+    beforeEach(() => {
+      // Notice is a persistent vi.fn() — clear call history so assertions don't see
+      // calls from other tests in the suite.
+      (obsidianMock.Notice as unknown as ReturnType<typeof vi.fn>).mockClear();
+    });
+
+    const mockTodoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+    const mockTodo: M365TodoItem = {
+      id: 'task1',
+      title: 'Write quarterly report',
+      listId: 'list1',
+      dueDate: '2026-04-15',
+      importance: 'normal',
+    };
+
+    function makeTodoContext(completeTask = vi.fn().mockResolvedValue(undefined)) {
+      return makeContext({
+        todoService: {
+          getLists: vi.fn().mockResolvedValue([mockTodoList]),
+          getTasks: vi.fn().mockResolvedValue([mockTodo]),
+          completeTask,
+        } as unknown as AppContextValue['todoService'],
+        settings: {
+          ...DEFAULT_SETTINGS,
+          enabledCalendarIds: ['cal-1'],
+          enabledTodoListIds: ['list1'],
+        },
+      });
+    }
+
+    it('removes the task from the calendar on successful completion', async () => {
+      const ctx = makeTodoContext();
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onComplete!();
+
+      await waitFor(() => {
+        expect(ctx.todoService.completeTask).toHaveBeenCalledWith('list1', 'task1');
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('Write quarterly report')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows an error toast and keeps the task visible when completion fails', async () => {
+      const completeTask = vi.fn().mockRejectedValue(new Error('Network error'));
+      const ctx = makeTodoContext(completeTask);
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onComplete!();
+
+      await waitFor(() => {
+        expect(obsidianMock.Notice).toHaveBeenCalledWith(
+          expect.stringContaining('Network error'),
+        );
+      });
+      expect(screen.getByText('Write quarterly report')).toBeInTheDocument();
+    });
+
+    it('dims the task pill while completion is in flight', async () => {
+      let resolveComplete!: () => void;
+      const completeTask = vi.fn().mockReturnValue(
+        new Promise<void>((resolve) => { resolveComplete = resolve; }),
+      );
+      const ctx = makeTodoContext(completeTask);
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onComplete!();
+
+      await waitFor(() => {
+        const card = document.querySelector('.m365-todo-card') as HTMLElement;
+        expect(card.style.opacity).toBe('0.4');
+      });
+
+      resolveComplete();
+      await waitFor(() => {
+        expect(screen.queryByText('Write quarterly report')).not.toBeInTheDocument();
+      });
+    });
   });
 });
 

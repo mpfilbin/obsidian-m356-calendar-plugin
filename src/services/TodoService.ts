@@ -85,4 +85,22 @@ export class TodoService {
         importance: (task.importance as 'low' | 'normal' | 'high') ?? 'normal',
       }));
   }
+
+  async completeTask(listId: string, taskId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'completed' }),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to complete task: ${response.statusText}`);
+  }
 }

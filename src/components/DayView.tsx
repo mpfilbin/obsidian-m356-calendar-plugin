@@ -29,6 +29,7 @@ interface DayViewProps {
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  completingTodoIds?: Set<string>;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -42,6 +43,7 @@ export const DayView: React.FC<DayViewProps> = ({
   todos = [],
   todoLists = [],
   onTodoClick,
+  completingTodoIds,
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
@@ -114,12 +116,13 @@ export const DayView: React.FC<DayViewProps> = ({
                 type="button"
                 className="m365-event-click-btn"
                 aria-label={`View task: ${todo.title}`}
+                disabled={completingTodoIds?.has(todo.id) ?? false}
                 onClick={(e) => {
                   e.stopPropagation();
                   onTodoClick?.(todo);
                 }}
               >
-                <TodoCard todo={todo} todoList={list} />
+                <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
               </button>
             );
           })}

@@ -342,4 +342,19 @@ describe('MonthView — todos', () => {
     await userEvent.click(screen.getByRole('button', { name: 'View task: Buy milk' }));
     expect(onTodoClick).toHaveBeenCalledWith(todoOnApril4);
   });
+
+  it('disables the todo button when the task is completing', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        todos={[todoOnApril4]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+        completingTodoIds={new Set(['task1'])}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'View task: Buy milk' })).toBeDisabled();
+  });
 });

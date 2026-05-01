@@ -202,4 +202,38 @@ describe('TodoService', () => {
       ).rejects.toThrow('Failed to fetch tasks: Forbidden');
     });
   });
+
+  describe('completeTask', () => {
+    it('issues PATCH with status completed using the correct URL and auth header', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.completeTask('list1', 'task1');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ status: 'completed' }),
+        }),
+      );
+    });
+
+    it('encodes special characters in list and task IDs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.completeTask('list/id+1=', 'task/id+2=');
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain('%2F');
+      expect(url).toContain('%2B');
+      expect(url).toContain('%3D');
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(service.completeTask('list1', 'task1')).rejects.toThrow('Failed to complete task: Not Found');
+    });
+  });
 });

@@ -7,6 +7,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Month and week views** of your M365 calendar events
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
 - **Create events** — click any day to create a new event without leaving Obsidian
+- **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
 - **Local caching** — renders instantly from cache, refreshes in the background
 - **Theme aware** — uses Obsidian CSS variables to match your active theme
 
@@ -35,7 +36,7 @@ Before using the plugin you must register an application in Azure Active Directo
 4. Click **Register**
 5. On the app overview page, copy the **Application (client) ID**
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
-7. Add: `Calendars.Read`, `Calendars.ReadWrite`, `Tasks.Read`, `User.Read`
+7. Add: `Calendars.Read`, `Calendars.ReadWrite`, `Tasks.ReadWrite`, `User.Read`
 8. Click **Grant admin consent** (if you are an admin) or ask your admin to do so
 
 > **Personal Microsoft accounts:** Admin consent is not required. The user will be prompted to consent on first sign-in.
@@ -93,7 +94,10 @@ Ensure your Azure app has the `Calendars.Read` and `User.Read` permissions, and 
 Check that the relevant calendars are enabled in the sidebar toggle panel. If the list is empty, click the refresh button (↻) in the toolbar.
 
 **Tasks are not showing up**  
-Ensure your Azure app has the `Tasks.Read` permission and that consent has been granted. Only tasks with a due date set will appear on the calendar — tasks without a due date are not shown. Completed tasks are filtered out automatically.
+Ensure your Azure app has the `Tasks.ReadWrite` permission and that consent has been granted. Only tasks with a due date set will appear on the calendar — tasks without a due date are not shown. Completed tasks are filtered out automatically.
+
+**Clicking Complete on a task does nothing / shows an error**  
+Ensure your Azure app has the `Tasks.ReadWrite` permission (not just `Tasks.Read`) and that consent has been granted.
 
 **Changing Client ID or Tenant ID doesn't take effect**  
 Sign out and sign in again after changing these settings — the new credentials are picked up immediately without restarting the plugin.
