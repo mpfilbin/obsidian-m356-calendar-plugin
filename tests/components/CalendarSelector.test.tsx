@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CalendarSelector } from '../../src/components/CalendarSelector';
-import { M365Calendar } from '../../src/types';
+import { M365Calendar, M365TodoList } from '../../src/types';
 
 const calendars: M365Calendar[] = [
   { id: 'cal1', name: 'Work', color: '#0078d4', isDefaultCalendar: true, canEdit: true },
@@ -15,6 +15,9 @@ function renderSelector(collapsed = false, onToggleCollapse = vi.fn()) {
       calendars={calendars}
       enabledCalendarIds={[]}
       onToggle={vi.fn()}
+      todoLists={[]}
+      enabledTodoListIds={[]}
+      onToggleTodoList={vi.fn()}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}
     />,
@@ -34,6 +37,9 @@ describe('CalendarSelector — expanded', () => {
         calendars={calendars}
         enabledCalendarIds={['cal1']}
         onToggle={vi.fn()}
+        todoLists={[]}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
         collapsed={false}
         onToggleCollapse={vi.fn()}
       />,
@@ -49,6 +55,9 @@ describe('CalendarSelector — expanded', () => {
         calendars={calendars}
         enabledCalendarIds={['cal1']}
         onToggle={onToggle}
+        todoLists={[]}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
         collapsed={false}
         onToggleCollapse={vi.fn()}
       />,
@@ -96,5 +105,114 @@ describe('CalendarSelector — collapsed', () => {
     renderSelector(true, onToggleCollapse);
     await userEvent.click(screen.getByRole('button', { name: 'Expand calendar list' }));
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+  });
+});
+
+const todoLists: M365TodoList[] = [
+  { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' },
+  { id: 'list2', displayName: 'Personal', color: '#22c55e' },
+];
+
+describe('CalendarSelector — Tasks section', () => {
+  it('renders a Tasks heading', () => {
+    render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Tasks')).toBeInTheDocument();
+  });
+
+  it('renders todo list display names', () => {
+    render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Work Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Personal')).toBeInTheDocument();
+  });
+
+  it('shows enabled todo lists as checked', () => {
+    render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={['list1']}
+        onToggleTodoList={vi.fn()}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Work Tasks' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Personal' })).not.toBeChecked();
+  });
+
+  it('calls onToggleTodoList with the list id when a checkbox is clicked', async () => {
+    const onToggleTodoList = vi.fn();
+    render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={[]}
+        onToggleTodoList={onToggleTodoList}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Work Tasks' }));
+    expect(onToggleTodoList).toHaveBeenCalledWith('list1');
+  });
+
+  it('does not render the Tasks section when collapsed', () => {
+    render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
+        collapsed={true}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Tasks')).not.toBeInTheDocument();
+  });
+
+  it('renders color swatches for todo lists', () => {
+    const { container } = render(
+      <CalendarSelector
+        calendars={[]}
+        enabledCalendarIds={[]}
+        onToggle={vi.fn()}
+        todoLists={todoLists}
+        enabledTodoListIds={[]}
+        onToggleTodoList={vi.fn()}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />,
+    );
+    // todoLists has 2 lists, each gets a swatch
+    const swatches = container.querySelectorAll('.m365-calendar-color-swatch');
+    expect(swatches.length).toBeGreaterThanOrEqual(2);
   });
 });

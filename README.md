@@ -35,7 +35,7 @@ Before using the plugin you must register an application in Azure Active Directo
 4. Click **Register**
 5. On the app overview page, copy the **Application (client) ID**
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
-7. Add: `Calendars.Read`, `Calendars.ReadWrite`, `User.Read`
+7. Add: `Calendars.Read`, `Calendars.ReadWrite`, `Tasks.Read`, `User.Read`
 8. Click **Grant admin consent** (if you are an admin) or ask your admin to do so
 
 > **Personal Microsoft accounts:** Admin consent is not required. The user will be prompted to consent on first sign-in.
@@ -91,6 +91,9 @@ Ensure your Azure app has the `Calendars.Read` and `User.Read` permissions, and 
 
 **Events are not showing up**  
 Check that the relevant calendars are enabled in the sidebar toggle panel. If the list is empty, click the refresh button (↻) in the toolbar.
+
+**Tasks are not showing up**  
+Ensure your Azure app has the `Tasks.Read` permission and that consent has been granted. Only tasks with a due date set will appear on the calendar — tasks without a due date are not shown. Completed tasks are filtered out automatically.
 
 **Changing Client ID or Tenant ID doesn't take effect**  
 Sign out and sign in again after changing these settings — the new credentials are picked up immediately without restarting the plugin.

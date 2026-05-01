@@ -1,6 +1,7 @@
 import React from 'react';
-import { M365Event, M365Calendar, DailyWeather } from '../types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
 import { EventCard } from './EventCard';
+import { TodoCard } from './TodoCard';
 import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
 import { usePopoverContext } from '../PopoverContext';
 
@@ -12,6 +13,9 @@ interface MonthViewProps {
   onEventClick?: (event: M365Event) => void;
   maxEventsPerDay?: number;
   weather?: Map<string, DailyWeather | null>;
+  todos?: M365TodoItem[];
+  todoLists?: M365TodoList[];
+  onTodoClick?: (todo: M365TodoItem) => void;
 }
 
 export const MonthView: React.FC<MonthViewProps> = ({
@@ -22,9 +26,13 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onEventClick,
   maxEventsPerDay = 6,
   weather,
+  todos = [],
+  todoLists = [],
+  onTodoClick,
 }) => {
   const days = getDaysInMonthView(currentDate);
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
+  const todoListMap = new Map(todoLists.map((l) => [l.id, l]));
   const today = new Date();
   const { showPopover, hidePopover } = usePopoverContext();
 
@@ -45,6 +53,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
           const dayEvents = events.filter(
             (e) => e.start.dateTime.slice(0, 10) === cellDateStr,
           );
+          const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);
+          const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
+          const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
+          const totalItems = dayEvents.length + dayTodos.length;
           return (
             <div
               key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
@@ -72,7 +84,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   />
                 );
               })()}
-              {dayEvents.slice(0, maxEventsPerDay).map((event) => {
+              {dayEvents.slice(0, eventSlots).map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
                 return (
@@ -92,17 +104,35 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   </button>
                 );
               })}
-              {dayEvents.length > maxEventsPerDay && (
+              {dayTodos.slice(0, todoSlots).map((todo) => {
+                const list = todoListMap.get(todo.listId);
+                if (!list) return null;
+                return (
+                  <button
+                    key={todo.id}
+                    type="button"
+                    className="m365-event-click-btn"
+                    aria-label={`View task: ${todo.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTodoClick?.(todo);
+                    }}
+                  >
+                    <TodoCard todo={todo} todoList={list} />
+                  </button>
+                );
+              })}
+              {totalItems > maxEventsPerDay && (
                 <button
                   type="button"
                   className="m365-month-overflow-btn"
-                  aria-label={`Show ${dayEvents.length - maxEventsPerDay} more events`}
+                  aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDayClick(day);
                   }}
                 >
-                  + {dayEvents.length - maxEventsPerDay} more
+                  + {totalItems - maxEventsPerDay} more
                 </button>
               )}
             </div>

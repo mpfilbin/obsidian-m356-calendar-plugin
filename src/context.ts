@@ -2,12 +2,14 @@ import { createContext, useContext } from 'react';
 import { App } from 'obsidian';
 import { CalendarService } from './services/CalendarService';
 import { WeatherService } from './services/WeatherService';
+import { TodoService } from './services/TodoService';
 import { M365CalendarSettings } from './types';
 
 export interface AppContextValue {
   app: App;
   calendarService: CalendarService;
   weatherService: WeatherService;
+  todoService: TodoService;
   settings: M365CalendarSettings;
   saveSettings: (s: M365CalendarSettings) => Promise<void>;
   registerWeatherRefresh: (cb: () => void) => void;

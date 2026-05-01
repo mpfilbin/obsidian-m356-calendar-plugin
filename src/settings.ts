@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   weatherLocation: '',
   weatherUnits: 'imperial',
   sidebarCollapsed: false,
+  enabledTodoListIds: [],
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {

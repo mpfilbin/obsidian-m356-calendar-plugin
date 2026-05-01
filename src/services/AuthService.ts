@@ -8,6 +8,7 @@ export const TOKEN_SECRET_NAME = 'm365-calendar-token';
 const GRAPH_SCOPES = [
   'Calendars.Read',
   'Calendars.ReadWrite',
+  'Tasks.Read',
   'User.Read',
   'offline_access',
 ];

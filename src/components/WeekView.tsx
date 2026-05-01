@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { M365Event, M365Calendar, DailyWeather } from '../types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
 import { EventCard } from './EventCard';
+import { TodoCard } from './TodoCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly, getWeekDays } from '../lib/datetime';
 import { useNow } from '../hooks/useNow';
@@ -14,6 +15,9 @@ interface WeekViewProps {
   onEventClick?: (event: M365Event) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
+  todos?: M365TodoItem[];
+  todoLists?: M365TodoList[];
+  onTodoClick?: (todo: M365TodoItem) => void;
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({
@@ -24,9 +28,22 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onEventClick,
   weather,
   weatherUnits = 'imperial',
+  todos = [],
+  todoLists = [],
+  onTodoClick,
 }) => {
   const weekDays = getWeekDays(currentDate);
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
+  const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
+  const todosByDate = useMemo(() => {
+    const map = new Map<string, M365TodoItem[]>();
+    for (const todo of todos) {
+      if (!todo.dueDate) continue;
+      if (!map.has(todo.dueDate)) map.set(todo.dueDate, []);
+      map.get(todo.dueDate)!.push(todo);
+    }
+    return map;
+  }, [todos]);
   const eventsByDate = useMemo(() => {
     const map = new Map<string, { allDay: M365Event[]; timed: M365Event[] }>();
     for (const event of events) {
@@ -142,6 +159,24 @@ export const WeekView: React.FC<WeekViewProps> = ({
                     }}
                   >
                     <EventCard event={event} calendar={cal} />
+                  </button>
+                );
+              })}
+              {(todosByDate.get(cellDateStr) ?? []).map((todo) => {
+                const list = todoListMap.get(todo.listId);
+                if (!list) return null;
+                return (
+                  <button
+                    key={todo.id}
+                    type="button"
+                    className="m365-event-click-btn"
+                    aria-label={`View task: ${todo.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTodoClick?.(todo);
+                    }}
+                  >
+                    <TodoCard todo={todo} todoList={list} />
                   </button>
                 );
               })}

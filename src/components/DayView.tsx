@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { M365Event, M365Calendar, DailyWeather } from '../types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
 import { EventCard } from './EventCard';
+import { TodoCard } from './TodoCard';
 import { TimelineColumn, PX_PER_MIN } from './TimelineColumn';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
@@ -25,6 +26,9 @@ interface DayViewProps {
   onEventClick?: (event: M365Event) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
+  todos?: M365TodoItem[];
+  todoLists?: M365TodoList[];
+  onTodoClick?: (todo: M365TodoItem) => void;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -35,8 +39,17 @@ export const DayView: React.FC<DayViewProps> = ({
   onEventClick,
   weather,
   weatherUnits = 'imperial',
+  todos = [],
+  todoLists = [],
+  onTodoClick,
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
+  const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
+  const todayStr = toDateOnly(currentDate);
+  const allDayTodos = useMemo(
+    () => todos.filter((t) => t.dueDate === todayStr),
+    [todos, todayStr],
+  );
   const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
   const timedEvents = useMemo(() => events.filter((e) => !e.isAllDay), [events]);
 
@@ -70,7 +83,7 @@ export const DayView: React.FC<DayViewProps> = ({
 
   return (
     <div className="m365-day-view" ref={scrollRef}>
-      {allDayEvents.length > 0 && (
+      {(allDayEvents.length > 0 || allDayTodos.length > 0) && (
         <div className="m365-day-view-allday">
           {allDayEvents.map((event) => {
             const cal = calendarMap.get(event.calendarId);
@@ -89,6 +102,24 @@ export const DayView: React.FC<DayViewProps> = ({
                 }}
               >
                 <EventCard event={event} calendar={cal} />
+              </button>
+            );
+          })}
+          {allDayTodos.map((todo) => {
+            const list = todoListMap.get(todo.listId);
+            if (!list) return null;
+            return (
+              <button
+                key={todo.id}
+                type="button"
+                className="m365-event-click-btn"
+                aria-label={`View task: ${todo.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTodoClick?.(todo);
+                }}
+              >
+                <TodoCard todo={todo} todoList={list} />
               </button>
             );
           })}

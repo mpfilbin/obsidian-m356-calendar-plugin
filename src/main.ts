@@ -4,6 +4,7 @@ import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
 import { WeatherService } from './services/WeatherService';
 import { WeatherCacheService, WEATHER_CACHE_KEY } from './services/WeatherCacheService';
+import { TodoService } from './services/TodoService';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from './settings';
 import { M365CalendarView, VIEW_TYPE_M365_CALENDAR } from './view';
 import { M365CalendarSettings, CacheStore, WeatherCacheStore } from './types';
@@ -15,6 +16,7 @@ export default class M365CalendarPlugin extends Plugin {
   private cacheService!: CacheService;
   private weatherCacheService!: WeatherCacheService;
   private weatherService!: WeatherService;
+  private todoService!: TodoService;
   private saveDataQueue: Promise<void> = Promise.resolve();
   private weatherRefreshHandler: (() => void) | null = null;
 
@@ -66,11 +68,14 @@ export default class M365CalendarPlugin extends Plugin {
 
     this.calendarService = new CalendarService(this.authService, this.cacheService);
 
+    this.todoService = new TodoService(this.authService);
+
     this.registerView(VIEW_TYPE_M365_CALENDAR, (leaf) => {
       return new M365CalendarView(leaf, {
         app: this.app,
         calendarService: this.calendarService,
         weatherService: this.weatherService,
+        todoService: this.todoService,
         settings: this.settings,
         saveSettings: async (s) => {
           this.settings = s;
