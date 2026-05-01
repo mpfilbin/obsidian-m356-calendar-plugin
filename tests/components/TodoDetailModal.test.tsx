@@ -226,5 +226,21 @@ describe('TodoDetailForm', () => {
       await userEvent.tab();
       expect(mockTodoService.createChecklistItem).not.toHaveBeenCalled();
     });
+
+    it('removes an item and calls deleteChecklistItem when the delete button is clicked', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Step one', isChecked: false },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn().mockResolvedValue(undefined),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      await screen.findByText('Step one');
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Step one' }));
+      expect(mockTodoService.deleteChecklistItem).toHaveBeenCalledWith('list1', 'task1', 'ci1');
+      expect(screen.queryByText('Step one')).not.toBeInTheDocument();
+    });
   });
 });

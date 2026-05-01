@@ -45,7 +45,6 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
       .catch((e: unknown) => console.error('Failed to create checklist item:', e));
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDelete = (itemId: string) => {
     setChecklistItems((prev) => prev.filter((i) => i.id !== itemId));
     void todoService.deleteChecklistItem(todo.listId, todo.id, itemId)
@@ -99,6 +98,13 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
                 <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
                   {item.displayName}
                 </span>
+                <button
+                  type="button"
+                  aria-label={`Delete ${item.displayName}`}
+                  onClick={() => handleDelete(item.id)}
+                >
+                  ×
+                </button>
               </div>
             ))}
             <input
