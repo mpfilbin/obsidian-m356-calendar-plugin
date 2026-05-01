@@ -90,6 +90,7 @@ export const CalendarApp: React.FC = () => {
 
   const fetchTodos = useCallback(async (options: { reloadLists?: boolean } = {}) => {
     let listFetchAttempted = false;
+    setRefreshFailed(false);
     try {
       if (!todoListsLoadedRef.current || options.reloadLists) {
         listFetchAttempted = true;
@@ -135,7 +136,7 @@ export const CalendarApp: React.FC = () => {
     const interval = setInterval(() => {
       void fetchAll({ reloadCalendars: true });
       void fetchWeather();
-      void fetchTodos({ reloadLists: true });
+      void fetchTodos();
     }, ms);
     return () => clearInterval(interval);
   }, [fetchAll, fetchWeather, fetchTodos, settings.refreshIntervalMinutes]);

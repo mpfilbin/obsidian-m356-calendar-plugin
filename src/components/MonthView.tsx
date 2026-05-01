@@ -126,7 +126,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                 <button
                   type="button"
                   className="m365-month-overflow-btn"
-                  aria-label={`Show ${totalItems - maxEventsPerDay} more events`}
+                  aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDayClick(day);
