@@ -46,6 +46,7 @@ vi.mock('../../src/components/TodoDetailModal', () => ({
       _app: unknown,
       _todo: unknown,
       _list: unknown,
+      _todoService: unknown,
       onComplete: () => void,
     ) {
       todoDetailModalCallbacks.onComplete = onComplete;
