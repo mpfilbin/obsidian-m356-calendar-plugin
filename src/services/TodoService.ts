@@ -1,5 +1,5 @@
 import { AuthService } from './AuthService';
-import { M365TodoList, M365TodoItem } from '../types';
+import { M365TodoList, M365TodoItem, M365ChecklistItem } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -102,5 +102,22 @@ export class TodoService {
       },
     );
     if (!response.ok) throw new Error(`Failed to complete task: ${response.statusText}`);
+  }
+
+  async getChecklistItems(listId: string, taskId: string): Promise<M365ChecklistItem[]> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok) throw new Error(`Failed to fetch checklist items: ${response.statusText}`);
+    const data = await response.json() as { value: Record<string, unknown>[] };
+    return data.value.map((item) => ({
+      id: item.id as string,
+      displayName: item.displayName as string,
+      isChecked: item.isChecked as boolean,
+    }));
   }
 }
