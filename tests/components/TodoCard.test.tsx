@@ -42,4 +42,25 @@ describe('TodoCard', () => {
     // backgroundColor is set to color + '26' (10% opacity hex suffix)
     expect(card.style.backgroundColor).toBeTruthy();
   });
+
+  it('applies opacity 0.4 and disables pointer events when isCompleting is true', () => {
+    const { container } = render(<TodoCard todo={todo} todoList={todoList} isCompleting={true} />);
+    const card = container.querySelector('.m365-todo-card') as HTMLElement;
+    expect(card.style.opacity).toBe('0.4');
+    expect(card.style.pointerEvents).toBe('none');
+  });
+
+  it('does not apply completing styles when isCompleting is false', () => {
+    const { container } = render(<TodoCard todo={todo} todoList={todoList} isCompleting={false} />);
+    const card = container.querySelector('.m365-todo-card') as HTMLElement;
+    expect(card.style.opacity).toBe('');
+    expect(card.style.pointerEvents).toBe('');
+  });
+
+  it('does not apply completing styles when isCompleting is omitted', () => {
+    const { container } = render(<TodoCard todo={todo} todoList={todoList} />);
+    const card = container.querySelector('.m365-todo-card') as HTMLElement;
+    expect(card.style.opacity).toBe('');
+    expect(card.style.pointerEvents).toBe('');
+  });
 });
