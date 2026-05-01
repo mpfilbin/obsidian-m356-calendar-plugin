@@ -46,9 +46,13 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   };
 
   const handleDelete = (itemId: string) => {
-    setChecklistItems((prev) => prev.filter((i) => i.id !== itemId));
+    const prev = checklistItems;
+    setChecklistItems((items) => items.filter((i) => i.id !== itemId));
     void todoService.deleteChecklistItem(todo.listId, todo.id, itemId)
-      .catch((e: unknown) => console.error('Failed to delete checklist item:', e));
+      .catch((e: unknown) => {
+        console.error('Failed to delete checklist item:', e);
+        setChecklistItems(prev);
+      });
   };
 
   const dueDateDisplay = new Date(todo.dueDate + 'T00:00:00').toLocaleDateString(undefined, {

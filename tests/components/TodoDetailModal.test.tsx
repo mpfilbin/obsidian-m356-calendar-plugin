@@ -242,5 +242,22 @@ describe('TodoDetailForm', () => {
       expect(mockTodoService.deleteChecklistItem).toHaveBeenCalledWith('list1', 'task1', 'ci1');
       expect(screen.queryByText('Step one')).not.toBeInTheDocument();
     });
+
+    it('restores the item if deleteChecklistItem fails', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([
+          { id: 'ci1', displayName: 'Step one', isChecked: false },
+        ]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn().mockRejectedValue(new Error('Network error')),
+      } as unknown as TodoService;
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      await screen.findByText('Step one');
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Step one' }));
+      expect(await screen.findByText('Step one')).toBeInTheDocument();
+      consoleSpy.mockRestore();
+    });
   });
 });
