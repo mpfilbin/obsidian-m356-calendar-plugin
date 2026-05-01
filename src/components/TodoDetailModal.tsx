@@ -36,7 +36,6 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleAddItem = () => {
     const text = newItemText.trim();
     if (!text) return;
@@ -89,18 +88,28 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
         {loadingChecklist ? (
           <p>Loading checklist…</p>
         ) : (
-          checklistItems.map((item) => (
-            <div key={item.id} className="m365-checklist-item">
-              <input
-                type="checkbox"
-                checked={item.isChecked}
-                onChange={() => handleToggle(item)}
-              />
-              <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
-                {item.displayName}
-              </span>
-            </div>
-          ))
+          <>
+            {checklistItems.map((item) => (
+              <div key={item.id} className="m365-checklist-item">
+                <input
+                  type="checkbox"
+                  checked={item.isChecked}
+                  onChange={() => handleToggle(item)}
+                />
+                <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
+                  {item.displayName}
+                </span>
+              </div>
+            ))}
+            <input
+              type="text"
+              placeholder="Add item"
+              value={newItemText}
+              onChange={(e) => setNewItemText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(); }}
+              onBlur={handleAddItem}
+            />
+          </>
         )}
       </div>
       <div className="m365-todo-detail-footer">

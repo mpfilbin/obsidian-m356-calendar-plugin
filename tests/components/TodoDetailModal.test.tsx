@@ -170,5 +170,61 @@ describe('TodoDetailForm', () => {
       await screen.findByText('Checklist');
       expect(onComplete).not.toHaveBeenCalled();
     });
+
+    it('shows an Add item input below the checklist', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      expect(await screen.findByPlaceholderText('Add item')).toBeInTheDocument();
+    });
+
+    it('calls createChecklistItem and appends the new item when Enter is pressed', async () => {
+      const created = { id: 'ci3', displayName: 'New step', isChecked: false };
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([]),
+        createChecklistItem: vi.fn().mockResolvedValue(created),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      const input = await screen.findByPlaceholderText('Add item');
+      await userEvent.type(input, 'New step{Enter}');
+      expect(mockTodoService.createChecklistItem).toHaveBeenCalledWith('list1', 'task1', 'New step');
+      expect(await screen.findByText('New step')).toBeInTheDocument();
+      expect(input).toHaveValue('');
+    });
+
+    it('calls createChecklistItem when the input loses focus with non-empty text', async () => {
+      const created = { id: 'ci4', displayName: 'Blur step', isChecked: false };
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([]),
+        createChecklistItem: vi.fn().mockResolvedValue(created),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      const input = await screen.findByPlaceholderText('Add item');
+      await userEvent.type(input, 'Blur step');
+      await userEvent.tab();
+      expect(mockTodoService.createChecklistItem).toHaveBeenCalledWith('list1', 'task1', 'Blur step');
+    });
+
+    it('does not call createChecklistItem when input is empty on blur', async () => {
+      const mockTodoService = {
+        getChecklistItems: vi.fn().mockResolvedValue([]),
+        createChecklistItem: vi.fn(),
+        updateChecklistItem: vi.fn(),
+        deleteChecklistItem: vi.fn(),
+      } as unknown as TodoService;
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={mockTodoService} onComplete={vi.fn()} />);
+      const input = await screen.findByPlaceholderText('Add item');
+      await userEvent.click(input);
+      await userEvent.tab();
+      expect(mockTodoService.createChecklistItem).not.toHaveBeenCalled();
+    });
   });
 });
