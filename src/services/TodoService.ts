@@ -225,8 +225,8 @@ export class TodoService {
       id: data.id as string,
       title: data.title as string,
       listId,
-      dueDate: input.dueDate,
-      body: input.notes || undefined,
+      dueDate: (data.dueDateTime as { dateTime: string } | undefined)?.dateTime.slice(0, 10) ?? input.dueDate,
+      body: (data.body as { content: string } | undefined)?.content || undefined,
       importance: (data.importance as 'low' | 'normal' | 'high') ?? 'normal',
     };
   }
@@ -245,6 +245,10 @@ export class TodoService {
         return { type: 'absoluteMonthly', interval: recurrence.interval, dayOfMonth: dueDate.getDate() };
       case 'yearly':
         return { type: 'absoluteYearly', interval: recurrence.interval, dayOfMonth: dueDate.getDate(), month: dueDate.getMonth() + 1 };
+      default: {
+        const _exhaustive: never = recurrence.frequency;
+        throw new Error(`Unsupported recurrence frequency: ${_exhaustive}`);
+      }
     }
   }
 }

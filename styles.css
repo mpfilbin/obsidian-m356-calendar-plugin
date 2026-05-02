@@ -395,7 +395,7 @@
   white-space: nowrap;
 }
 
-/* ─── Create Event Form ───────────────────────────────────────────────────── */
+/* ─── Create Task Form ────────────────────────────────────────────────────── */
 
 .m365-create-task-form {
   padding: var(--size-4-3);

@@ -228,28 +228,34 @@ export const CalendarApp: React.FC = () => {
       new Notice('No task lists available. Enable at least one task list.');
       return;
     }
-    const defaultListId = enabledTodoListIds[0] ?? todoLists[0]?.id ?? '';
+    const todoListIds = new Set(todoLists.map((l) => l.id));
+    const defaultListId = enabledTodoListIds.find((id) => todoListIds.has(id)) ?? todoLists[0]?.id ?? '';
     new CreateTaskModal(
       app,
       todoLists,
       defaultListId,
       date,
       async (listId, input, steps) => {
+        let created: M365TodoItem;
         try {
-          const created = await todoService.createTask(listId, input);
-          // Add to view state immediately — task exists in To Do regardless of whether steps succeed
-          const { start, end } = getDateRange(currentDate, view);
-          const startStr = toDateOnly(start);
-          const endStr = toDateOnly(end);
-          if (created.dueDate >= startStr && created.dueDate <= endStr) {
-            setTodos((prev) => [...prev, created]);
-          }
-          for (const step of steps) {
-            await todoService.createChecklistItem(listId, created.id, step);
-          }
+          created = await todoService.createTask(listId, input);
         } catch (e) {
           notifyError(e);
-          throw e;
+          throw e; // keep modal open
+        }
+        // Task created — append to state before attempting steps so it's visible even if steps fail
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = toDateOnly(start);
+        const endStr = toDateOnly(end);
+        if (created.dueDate >= startStr && created.dueDate <= endStr) {
+          setTodos((prev) => [...prev, created]);
+        }
+        for (const step of steps) {
+          try {
+            await todoService.createChecklistItem(listId, created.id, step);
+          } catch (e) {
+            notifyError(e); // partial failure — task was created; don't rethrow or modal stays open
+          }
         }
       },
     ).open();

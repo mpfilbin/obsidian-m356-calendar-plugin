@@ -20,7 +20,8 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   onCancel,
 }) => {
   const [title, setTitle] = useState('');
-  const [listId, setListId] = useState(defaultListId || todoLists[0]?.id || '');
+  const validDefaultId = todoLists.some((l) => l.id === defaultListId) ? defaultListId : (todoLists[0]?.id || '');
+  const [listId, setListId] = useState(validDefaultId);
   const [dueDate, setDueDate] = useState(toDateOnly(initialDate));
   const [repeat, setRepeat] = useState(false);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
@@ -44,6 +45,10 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   const handleSubmit = () => {
     if (!title.trim()) {
       setError('Title is required');
+      return;
+    }
+    if (!dueDate) {
+      setError('Due date is required');
       return;
     }
     if (!listId) {

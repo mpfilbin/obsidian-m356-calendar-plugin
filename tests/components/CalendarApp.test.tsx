@@ -148,6 +148,7 @@ describe('CalendarApp', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     // sentinel reset so canEdit=false tests don't false-positive
     eventDetailModalCallbacks.onDelete = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
+    createTaskModalCallbacks.onSubmit = null;
   });
 
   afterEach(() => {
