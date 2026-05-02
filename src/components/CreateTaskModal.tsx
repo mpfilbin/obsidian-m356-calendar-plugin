@@ -24,7 +24,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   const [dueDate, setDueDate] = useState(toDateOnly(initialDate));
   const [repeat, setRepeat] = useState(false);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
-  const [interval, setInterval] = useState(1);
+  const [intervalStr, setIntervalStr] = useState('1');
   const [notes, setNotes] = useState('');
   const [steps, setSteps] = useState<string[]>([]);
   const [newStep, setNewStep] = useState('');
@@ -52,7 +52,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     }
     const pendingStep = newStep.trim();
     const allSteps = pendingStep ? [...steps, pendingStep] : steps;
-    const recurrence: TaskRecurrence | undefined = repeat ? { frequency, interval } : undefined;
+    const recurrence: TaskRecurrence | undefined = repeat ? { frequency, interval: Math.max(1, parseInt(intervalStr) || 1) } : undefined;
     onSubmit(listId, {
       title: title.trim(),
       dueDate,
@@ -127,8 +127,8 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
               id="m365-create-task-interval"
               type="number"
               min="1"
-              value={interval}
-              onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value) || 1))}
+              value={intervalStr}
+              onChange={(e) => setIntervalStr(e.target.value)}
             />
           </div>
         </div>
