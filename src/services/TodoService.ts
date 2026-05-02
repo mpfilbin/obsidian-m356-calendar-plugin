@@ -1,5 +1,5 @@
 import { AuthService } from './AuthService';
-import { M365TodoList, M365TodoItem } from '../types';
+import { M365TodoList, M365TodoItem, M365ChecklistItem } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -102,5 +102,85 @@ export class TodoService {
       },
     );
     if (!response.ok) throw new Error(`Failed to complete task: ${response.statusText}`);
+  }
+
+  async getChecklistItems(listId: string, taskId: string): Promise<M365ChecklistItem[]> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok) throw new Error(`Failed to fetch checklist items: ${response.statusText}`);
+    const data = await response.json() as { value: Record<string, unknown>[] };
+    return data.value.map((item) => ({
+      id: item.id as string,
+      displayName: item.displayName as string,
+      isChecked: item.isChecked as boolean,
+    }));
+  }
+
+  async createChecklistItem(listId: string, taskId: string, displayName: string): Promise<M365ChecklistItem> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayName }),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to create checklist item: ${response.statusText}`);
+    const data = await response.json() as Record<string, unknown>;
+    return {
+      id: data.id as string,
+      displayName: data.displayName as string,
+      isChecked: data.isChecked as boolean,
+    };
+  }
+
+  async updateChecklistItem(
+    listId: string,
+    taskId: string,
+    itemId: string,
+    patch: Partial<Pick<M365ChecklistItem, 'isChecked' | 'displayName'>>,
+  ): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const encodedItemId = encodeURIComponent(itemId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patch),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to update checklist item: ${response.statusText}`);
+  }
+
+  async deleteChecklistItem(listId: string, taskId: string, itemId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const encodedItemId = encodeURIComponent(itemId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to delete checklist item: ${response.statusText}`);
   }
 }

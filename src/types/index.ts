@@ -35,6 +35,12 @@ export interface M365TodoItem {
   importance: 'low' | 'normal' | 'high';
 }
 
+export interface M365ChecklistItem {
+  id: string;
+  displayName: string;
+  isChecked: boolean;
+}
+
 export interface NewEventInput {
   subject: string;
   start: Date;

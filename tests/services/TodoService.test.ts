@@ -236,4 +236,135 @@ describe('TodoService', () => {
       await expect(service.completeTask('list1', 'task1')).rejects.toThrow('Failed to complete task: Not Found');
     });
   });
+
+  describe('getChecklistItems', () => {
+    it('fetches items for the given list and task', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          value: [
+            { id: 'ci1', displayName: 'Step one', isChecked: false },
+            { id: 'ci2', displayName: 'Step two', isChecked: true },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await service.getChecklistItems('list1', 'task1');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer token' }) }),
+      );
+      expect(result).toEqual([
+        { id: 'ci1', displayName: 'Step one', isChecked: false },
+        { id: 'ci2', displayName: 'Step two', isChecked: true },
+      ]);
+    });
+
+    it('encodes special characters in list and task IDs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ value: [] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.getChecklistItems('list/id+1=', 'task/id+2=');
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain('%2F');
+      expect(url).toContain('%2B');
+      expect(url).toContain('%3D');
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Forbidden' }));
+      await expect(service.getChecklistItems('list1', 'task1')).rejects.toThrow(
+        'Failed to fetch checklist items: Forbidden',
+      );
+    });
+  });
+
+  describe('createChecklistItem', () => {
+    it('POSTs the displayName and returns the created item', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'ci3', displayName: 'New step', isChecked: false }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await service.createChecklistItem('list1', 'task1', 'New step');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ displayName: 'New step' }),
+        }),
+      );
+      expect(result).toEqual({ id: 'ci3', displayName: 'New step', isChecked: false });
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Bad Request' }));
+      await expect(service.createChecklistItem('list1', 'task1', 'Step')).rejects.toThrow(
+        'Failed to create checklist item: Bad Request',
+      );
+    });
+  });
+
+  describe('updateChecklistItem', () => {
+    it('PATCHes the item with the given patch object', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.updateChecklistItem('list1', 'task1', 'ci1', { isChecked: true });
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems/ci1',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ isChecked: true }),
+        }),
+      );
+    });
+
+    it('encodes special characters in all three IDs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.updateChecklistItem('l/1=', 't/2=', 'ci/3=', { isChecked: false });
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain('%2F');
+      expect(url).toContain('%3D');
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(
+        service.updateChecklistItem('list1', 'task1', 'ci1', { isChecked: true }),
+      ).rejects.toThrow('Failed to update checklist item: Not Found');
+    });
+  });
+
+  describe('deleteChecklistItem', () => {
+    it('sends DELETE to the correct URL with auth header', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.deleteChecklistItem('list1', 'task1', 'ci1');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/checklistItems/ci1',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        }),
+      );
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(service.deleteChecklistItem('list1', 'task1', 'ci1')).rejects.toThrow(
+        'Failed to delete checklist item: Not Found',
+      );
+    });
+  });
 });
