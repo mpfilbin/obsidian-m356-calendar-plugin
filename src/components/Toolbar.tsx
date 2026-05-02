@@ -8,6 +8,7 @@ interface ToolbarProps {
   onNavigate: (direction: 'prev' | 'next' | 'today') => void;
   onRefresh: () => void;
   onNewEvent: () => void;
+  onNewTask: () => void;
   syncing: boolean;
   refreshFailed: boolean;
 }
@@ -19,6 +20,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onNavigate,
   onRefresh,
   onNewEvent,
+  onNewTask,
   syncing,
   refreshFailed,
 }) => {
@@ -60,6 +62,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </button>
       </div>
       <div className="m365-toolbar-actions">
+        <button className="m365-new-task-btn" onClick={onNewTask}>
+          + New task
+        </button>
         <button className="m365-new-event-btn" onClick={onNewEvent}>
           + New event
         </button>
