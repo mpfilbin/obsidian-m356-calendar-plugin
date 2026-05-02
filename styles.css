@@ -395,7 +395,40 @@
   white-space: nowrap;
 }
 
-/* ─── Create Event Form ───────────────────────────────────────────────────── */
+/* ─── Create Task Form ────────────────────────────────────────────────────── */
+
+.m365-create-task-form {
+  padding: var(--size-4-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Steps section: collapse the extra spacing from the reused todo-detail classes */
+.m365-create-task-form .m365-todo-detail-checklist {
+  gap: var(--size-4-1);
+}
+
+.m365-create-task-form .m365-checklist-items {
+  margin-top: 0;
+}
+
+/* Add step input — same height and appearance as other form inputs */
+.m365-create-task-form .m365-checklist-add-input {
+  margin-top: 0;
+  height: 30px;
+  padding: 0 0 0 5px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-family: var(--font-interface);
+  width: 100%;
+  box-sizing: border-box;
+}
 
 .m365-create-event-form {
   padding: var(--size-4-3);

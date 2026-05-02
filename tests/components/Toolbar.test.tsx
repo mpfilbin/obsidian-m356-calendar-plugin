@@ -10,6 +10,7 @@ const defaultProps = {
   onNavigate: vi.fn(),
   onRefresh: vi.fn(),
   onNewEvent: vi.fn(),
+  onNewTask: vi.fn(),
   syncing: false,
   refreshFailed: false,
 };
@@ -66,6 +67,13 @@ describe('Toolbar', () => {
     render(<Toolbar {...defaultProps} onNewEvent={onNewEvent} />);
     await userEvent.click(screen.getByText('+ New event'));
     expect(onNewEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onNewTask when "+ New task" button is clicked', async () => {
+    const onNewTask = vi.fn();
+    render(<Toolbar {...defaultProps} onNewTask={onNewTask} />);
+    await userEvent.click(screen.getByText('+ New task'));
+    expect(onNewTask).toHaveBeenCalledTimes(1);
   });
 
   it('shows full date label in day view', () => {

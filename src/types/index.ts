@@ -49,6 +49,18 @@ export interface NewEventInput {
   isAllDay?: boolean;
 }
 
+export interface NewTaskInput {
+  title: string;
+  dueDate: string;        // "YYYY-MM-DD"
+  notes?: string;
+  recurrence?: TaskRecurrence;
+}
+
+export interface TaskRecurrence {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;       // 1 = every period, 2 = every other, etc.
+}
+
 export interface EventPatch {
   subject?: string;
   location?: string;

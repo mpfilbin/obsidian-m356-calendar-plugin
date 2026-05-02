@@ -70,6 +70,25 @@ vi.mock('../../src/components/CreateEventModal', () => ({
   },
 }));
 
+const createTaskModalCallbacks = vi.hoisted(() => ({
+  onSubmit: null as ((listId: string, input: import('../../src/types').NewTaskInput, steps: string[]) => Promise<void>) | null,
+}));
+
+vi.mock('../../src/components/CreateTaskModal', () => ({
+  CreateTaskModal: class {
+    constructor(
+      _app: unknown,
+      _todoLists: unknown,
+      _defaultListId: unknown,
+      _initialDate: unknown,
+      onSubmit: (listId: string, input: import('../../src/types').NewTaskInput, steps: string[]) => Promise<void>,
+    ) {
+      createTaskModalCallbacks.onSubmit = onSubmit;
+    }
+    open() {}
+  },
+}));
+
 const mockCalendar = { id: 'cal-1', name: 'Work', color: '#0078d4', isDefaultCalendar: true, canEdit: true };
 const mockEvent = {
   id: 'evt-1',
@@ -98,6 +117,11 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       getLists: vi.fn().mockResolvedValue([]),
       getTasks: vi.fn().mockResolvedValue([]),
       completeTask: vi.fn().mockResolvedValue(undefined),
+      createTask: vi.fn().mockResolvedValue({
+        id: 'new-task-1', title: 'New task', listId: 'list1',
+        dueDate: '2026-04-15', importance: 'normal' as const,
+      }),
+      createChecklistItem: vi.fn().mockResolvedValue({ id: 'ci1', displayName: 'Step', isChecked: false }),
     } as unknown as AppContextValue['todoService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
@@ -124,6 +148,7 @@ describe('CalendarApp', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     // sentinel reset so canEdit=false tests don't false-positive
     eventDetailModalCallbacks.onDelete = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
+    createTaskModalCallbacks.onSubmit = null;
   });
 
   afterEach(() => {
@@ -572,6 +597,80 @@ describe('CalendarApp', () => {
         expect(screen.queryByText('Write quarterly report')).not.toBeInTheDocument();
       });
     });
+  });
+
+  it('renders the "+ New task" button', async () => {
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getCalendars).toHaveBeenCalled());
+    expect(screen.getByText('+ New task')).toBeInTheDocument();
+  });
+
+  it('opens CreateTaskModal when "+ New task" is clicked', async () => {
+    const ctx = makeContext({
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([{ id: 'list1', displayName: 'Work', color: '#ef4444' }]),
+        getTasks: vi.fn().mockResolvedValue([]),
+        completeTask: vi.fn(),
+        createTask: vi.fn().mockResolvedValue({
+          id: 'new-task-1', title: 'New task', listId: 'list1',
+          dueDate: '2026-04-15', importance: 'normal' as const,
+        }),
+        createChecklistItem: vi.fn().mockResolvedValue({ id: 'ci1', displayName: 'Step', isChecked: false }),
+      } as unknown as AppContextValue['todoService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getCalendars).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByText('+ New task'));
+    expect(createTaskModalCallbacks.onSubmit).not.toBeNull();
+  });
+
+  it('calls todoService.createTask and createChecklistItem on submit', async () => {
+    const createTask = vi.fn().mockResolvedValue({
+      id: 'new-task-1', title: 'Buy milk', listId: 'list1',
+      dueDate: '2026-04-15', importance: 'normal' as const,
+    });
+    const createChecklistItem = vi.fn().mockResolvedValue({ id: 'ci1', displayName: 'Step one', isChecked: false });
+    const ctx = makeContext({
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([{ id: 'list1', displayName: 'Work', color: '#ef4444' }]),
+        getTasks: vi.fn().mockResolvedValue([]),
+        completeTask: vi.fn(),
+        createTask,
+        createChecklistItem,
+      } as unknown as AppContextValue['todoService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getCalendars).toHaveBeenCalled());
+    await userEvent.click(screen.getByText('+ New task'));
+
+    await createTaskModalCallbacks.onSubmit!('list1', { title: 'Buy milk', dueDate: '2026-04-15' }, ['Step one']);
+
+    expect(createTask).toHaveBeenCalledWith('list1', { title: 'Buy milk', dueDate: '2026-04-15' });
+    expect(createChecklistItem).toHaveBeenCalledWith('list1', 'new-task-1', 'Step one');
+  });
+
+  it('calls notifyError and rethrows when createTask fails', async () => {
+    const createTask = vi.fn().mockRejectedValue(new Error('Graph error'));
+    const ctx = makeContext({
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([{ id: 'list1', displayName: 'Work', color: '#ef4444' }]),
+        getTasks: vi.fn().mockResolvedValue([]),
+        completeTask: vi.fn(),
+        createTask,
+        createChecklistItem: vi.fn(),
+      } as unknown as AppContextValue['todoService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getCalendars).toHaveBeenCalled());
+    await userEvent.click(screen.getByText('+ New task'));
+
+    await expect(
+      createTaskModalCallbacks.onSubmit!('list1', { title: 'Buy milk', dueDate: '2026-04-15' }, []),
+    ).rejects.toThrow('Graph error');
+
+    expect(obsidianMock.Notice).toHaveBeenCalledWith(expect.stringContaining('Graph error'));
   });
 });
 

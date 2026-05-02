@@ -1,7 +1,7 @@
 {
 	"id": "m365-calendar",
 	"name": "M365 Calendar",
-	"version": "0.15.0",
+	"version": "0.16.0",
 	"minAppVersion": "1.0.0",
 	"description": "Microsoft 365 calendar view for Obsidian",
 	"author": "Michael Filbin",

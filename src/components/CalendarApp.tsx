@@ -7,10 +7,11 @@ import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
+import { CreateTaskModal } from './CreateTaskModal';
 import { EventDetailModal } from './EventDetailModal';
 import { TodoDetailModal } from './TodoDetailModal';
 import { useAppContext } from '../context';
-import { getDateRange, getDatesInRange } from '../lib/datetime';
+import { getDateRange, getDatesInRange, toDateOnly } from '../lib/datetime';
 
 function notifyError(e: unknown): void {
   const message = e instanceof Error ? e.message : 'An error occurred';
@@ -222,6 +223,44 @@ export const CalendarApp: React.FC = () => {
     ).open();
   };
 
+  const openCreateTaskModal = (date: Date) => {
+    if (todoLists.length === 0) {
+      new Notice('No task lists available. Enable at least one task list.');
+      return;
+    }
+    const todoListIds = new Set(todoLists.map((l) => l.id));
+    const defaultListId = enabledTodoListIds.find((id) => todoListIds.has(id)) ?? todoLists[0]?.id ?? '';
+    new CreateTaskModal(
+      app,
+      todoLists,
+      defaultListId,
+      date,
+      async (listId, input, steps) => {
+        let created: M365TodoItem;
+        try {
+          created = await todoService.createTask(listId, input);
+        } catch (e) {
+          notifyError(e);
+          throw e; // keep modal open
+        }
+        // Task created — append to state before attempting steps so it's visible even if steps fail
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = toDateOnly(start);
+        const endStr = toDateOnly(end);
+        if (created.dueDate >= startStr && created.dueDate <= endStr) {
+          setTodos((prev) => [...prev, created]);
+        }
+        for (const step of steps) {
+          try {
+            await todoService.createChecklistItem(listId, created.id, step);
+          } catch (e) {
+            notifyError(e); // partial failure — task was created; don't rethrow or modal stays open
+          }
+        }
+      },
+    ).open();
+  };
+
   const handleDayClick = (date: Date) => {
     setView('day');
     setCurrentDate(date);
@@ -289,6 +328,7 @@ export const CalendarApp: React.FC = () => {
         onViewChange={setView}
         onNavigate={handleNavigate}
         onNewEvent={() => openCreateEventModal(new Date())}
+        onNewTask={() => openCreateTaskModal(view === 'day' ? currentDate : new Date())}
         onRefresh={() => {
           void fetchAll({ reloadCalendars: true, userInitiated: true });
           void fetchTodos({ reloadLists: true });
