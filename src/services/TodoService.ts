@@ -200,6 +200,43 @@ export class TodoService {
       body.body = { contentType: 'text', content: input.notes };
     }
 
+    if (input.recurrence) {
+      const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dueDate = new Date(`${input.dueDate}T00:00:00`);
+      let pattern!: Record<string, unknown>;
+      switch (input.recurrence.frequency) {
+        case 'daily':
+          pattern = { type: 'daily', interval: input.recurrence.interval };
+          break;
+        case 'weekly':
+          pattern = {
+            type: 'weekly',
+            interval: input.recurrence.interval,
+            daysOfWeek: [DAYS_OF_WEEK[dueDate.getDay()]],
+          };
+          break;
+        case 'monthly':
+          pattern = {
+            type: 'absoluteMonthly',
+            interval: input.recurrence.interval,
+            dayOfMonth: dueDate.getDate(),
+          };
+          break;
+        case 'yearly':
+          pattern = {
+            type: 'absoluteYearly',
+            interval: input.recurrence.interval,
+            dayOfMonth: dueDate.getDate(),
+            month: dueDate.getMonth() + 1,
+          };
+          break;
+      }
+      body.recurrence = {
+        pattern,
+        range: { type: 'noEnd', startDate: input.dueDate },
+      };
+    }
+
     const response = await fetchWithRetry(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks`,
       {

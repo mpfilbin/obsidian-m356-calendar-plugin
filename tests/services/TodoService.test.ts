@@ -473,5 +473,120 @@ describe('TodoService', () => {
         service.createTask('list1', { title: 'Task', dueDate: '2026-05-15' }),
       ).rejects.toThrow('Failed to create task: Bad Request');
     });
+
+    it('includes daily recurrence pattern when frequency is daily', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'task-new', title: 'Daily task',
+          dueDateTime: { dateTime: '2026-05-15T00:00:00', timeZone: 'UTC' },
+          body: null, importance: 'normal',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await service.createTask('list1', {
+        title: 'Daily task',
+        dueDate: '2026-05-15',
+        recurrence: { frequency: 'daily', interval: 1 },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+      expect(body.recurrence).toEqual({
+        pattern: { type: 'daily', interval: 1 },
+        range: { type: 'noEnd', startDate: '2026-05-15' },
+      });
+    });
+
+    it('includes weekly recurrence with daysOfWeek derived from the due date', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'task-new', title: 'Weekly task',
+          dueDateTime: { dateTime: '2026-05-15T00:00:00', timeZone: 'UTC' },
+          body: null, importance: 'normal',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      // 2026-05-15 is a Friday
+      await service.createTask('list1', {
+        title: 'Weekly task',
+        dueDate: '2026-05-15',
+        recurrence: { frequency: 'weekly', interval: 2 },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+      expect(body.recurrence).toEqual({
+        pattern: { type: 'weekly', interval: 2, daysOfWeek: ['friday'] },
+        range: { type: 'noEnd', startDate: '2026-05-15' },
+      });
+    });
+
+    it('includes absoluteMonthly recurrence with dayOfMonth derived from the due date', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'task-new', title: 'Monthly task',
+          dueDateTime: { dateTime: '2026-05-15T00:00:00', timeZone: 'UTC' },
+          body: null, importance: 'normal',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await service.createTask('list1', {
+        title: 'Monthly task',
+        dueDate: '2026-05-15',
+        recurrence: { frequency: 'monthly', interval: 1 },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+      expect(body.recurrence).toEqual({
+        pattern: { type: 'absoluteMonthly', interval: 1, dayOfMonth: 15 },
+        range: { type: 'noEnd', startDate: '2026-05-15' },
+      });
+    });
+
+    it('includes absoluteYearly recurrence with dayOfMonth and month derived from the due date', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'task-new', title: 'Yearly task',
+          dueDateTime: { dateTime: '2026-05-15T00:00:00', timeZone: 'UTC' },
+          body: null, importance: 'normal',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      // May = month 5
+      await service.createTask('list1', {
+        title: 'Yearly task',
+        dueDate: '2026-05-15',
+        recurrence: { frequency: 'yearly', interval: 1 },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+      expect(body.recurrence).toEqual({
+        pattern: { type: 'absoluteYearly', interval: 1, dayOfMonth: 15, month: 5 },
+        range: { type: 'noEnd', startDate: '2026-05-15' },
+      });
+    });
+
+    it('omits recurrence from payload when recurrence is not provided', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'task-new', title: 'No recurrence',
+          dueDateTime: { dateTime: '2026-05-15T00:00:00', timeZone: 'UTC' },
+          body: null, importance: 'normal',
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await service.createTask('list1', { title: 'No recurrence', dueDate: '2026-05-15' });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+      expect(body.recurrence).toBeUndefined();
+    });
   });
 });
