@@ -1,5 +1,5 @@
 import { AuthService } from './AuthService';
-import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput } from '../types';
+import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput, TaskRecurrence } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -201,38 +201,9 @@ export class TodoService {
     }
 
     if (input.recurrence) {
-      const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const dueDate = new Date(`${input.dueDate}T00:00:00`);
-      let pattern!: Record<string, unknown>;
-      switch (input.recurrence.frequency) {
-        case 'daily':
-          pattern = { type: 'daily', interval: input.recurrence.interval };
-          break;
-        case 'weekly':
-          pattern = {
-            type: 'weekly',
-            interval: input.recurrence.interval,
-            daysOfWeek: [DAYS_OF_WEEK[dueDate.getDay()]],
-          };
-          break;
-        case 'monthly':
-          pattern = {
-            type: 'absoluteMonthly',
-            interval: input.recurrence.interval,
-            dayOfMonth: dueDate.getDate(),
-          };
-          break;
-        case 'yearly':
-          pattern = {
-            type: 'absoluteYearly',
-            interval: input.recurrence.interval,
-            dayOfMonth: dueDate.getDate(),
-            month: dueDate.getMonth() + 1,
-          };
-          break;
-      }
+      const dueDate = new Date(`${input.dueDate}T00:00:00`); // local time: we want local day-of-week
       body.recurrence = {
-        pattern,
+        pattern: TodoService.buildRecurrencePattern(input.recurrence, dueDate),
         range: { type: 'noEnd', startDate: input.dueDate },
       };
     }
@@ -258,5 +229,22 @@ export class TodoService {
       body: input.notes || undefined,
       importance: (data.importance as 'low' | 'normal' | 'high') ?? 'normal',
     };
+  }
+
+  private static buildRecurrencePattern(
+    recurrence: TaskRecurrence,
+    dueDate: Date,
+  ): Record<string, unknown> {
+    const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    switch (recurrence.frequency) {
+      case 'daily':
+        return { type: 'daily', interval: recurrence.interval };
+      case 'weekly':
+        return { type: 'weekly', interval: recurrence.interval, daysOfWeek: [DAYS_OF_WEEK[dueDate.getDay()]] };
+      case 'monthly':
+        return { type: 'absoluteMonthly', interval: recurrence.interval, dayOfMonth: dueDate.getDate() };
+      case 'yearly':
+        return { type: 'absoluteYearly', interval: recurrence.interval, dayOfMonth: dueDate.getDate(), month: dueDate.getMonth() + 1 };
+    }
   }
 }
