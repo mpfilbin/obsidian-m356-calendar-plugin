@@ -219,7 +219,7 @@ export class TodoService {
       listId,
       dueDate: input.dueDate,
       body: input.notes || undefined,
-      importance: 'normal',
+      importance: (data.importance as 'low' | 'normal' | 'high') ?? 'normal',
     };
   }
 }
