@@ -65,11 +65,15 @@ describe('TodoDetailForm', () => {
     expect(screen.queryByText('Notes:')).not.toBeInTheDocument();
   });
 
-  it('applies the list color to the dot indicator', async () => {
-    const { container } = render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
-    await screen.findByText('Work Tasks');
-    const dot = container.querySelector('.m365-todo-detail-dot') as HTMLElement;
-    expect(dot.style.backgroundColor).toBe('rgb(59, 130, 246)');
+  it('applies the list color to the list name text', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    const listName = await screen.findByText('Work Tasks');
+    expect(listName).toHaveStyle({ color: 'rgb(59, 130, 246)' });
+  });
+
+  it('renders a List: label before the list name', async () => {
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} />);
+    expect(await screen.findByText('List:')).toBeInTheDocument();
   });
 
   it('renders a Complete button', async () => {

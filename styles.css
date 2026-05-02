@@ -672,3 +672,88 @@
 .m365-weather-strip.m365-weather-week .m365-weather-temps {
   display: contents;
 }
+
+/* ─── Todo Detail Modal ───────────────────────────────────────────────────── */
+
+.m365-todo-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) 0;
+}
+
+.m365-todo-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-4-2);
+}
+
+.m365-todo-detail-notes {
+  align-items: flex-start;
+}
+
+.m365-todo-detail-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  min-width: 4.5rem;
+}
+
+.m365-todo-detail-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+}
+
+.m365-checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  margin-top: var(--size-4-1);
+}
+
+.m365-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.m365-checklist-item input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.m365-checklist-item button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 var(--size-4-1);
+  line-height: 1;
+}
+
+.m365-checklist-item button:hover {
+  color: var(--text-normal);
+}
+
+.m365-checklist-add-input {
+  margin-top: var(--size-4-2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.m365-todo-detail-footer {
+  margin-top: var(--size-4-2);
+}
+
+.m365-todo-complete-btn {
+  background-color: var(--interactive-accent) !important;
+  color: var(--text-on-accent) !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  padding: var(--size-4-1) var(--size-4-3);
+}

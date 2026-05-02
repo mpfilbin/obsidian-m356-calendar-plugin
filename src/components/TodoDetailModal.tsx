@@ -65,8 +65,8 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   return (
     <div className="m365-todo-detail">
       <div className="m365-todo-detail-row">
-        <span className="m365-todo-detail-dot" style={{ backgroundColor: todoList.color }} />
-        <span>{todoList.displayName}</span>
+        <span className="m365-todo-detail-label">List:</span>
+        <span style={{ color: todoList.color }}>{todoList.displayName}</span>
       </div>
       <div className="m365-todo-detail-row">
         <span className="m365-todo-detail-label">Due:</span>
@@ -81,9 +81,9 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
         </div>
       )}
       {todo.body && (
-        <div className="m365-todo-detail-notes">
+        <div className="m365-todo-detail-row m365-todo-detail-notes">
           <span className="m365-todo-detail-label">Notes:</span>
-          <p>{todo.body}</p>
+          <span>{todo.body}</span>
         </div>
       )}
       <div className="m365-todo-detail-checklist">
@@ -92,26 +92,29 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
           <p>Loading checklist…</p>
         ) : (
           <>
-            {checklistItems.map((item) => (
-              <div key={item.id} className="m365-checklist-item">
-                <input
-                  type="checkbox"
-                  checked={item.isChecked}
-                  onChange={() => handleToggle(item)}
-                />
-                <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
-                  {item.displayName}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Delete ${item.displayName}`}
-                  onClick={() => handleDelete(item.id)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+            <div className="m365-checklist-items">
+              {checklistItems.map((item) => (
+                <div key={item.id} className="m365-checklist-item">
+                  <input
+                    type="checkbox"
+                    checked={item.isChecked}
+                    onChange={() => handleToggle(item)}
+                  />
+                  <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
+                    {item.displayName}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${item.displayName}`}
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
             <input
+              className="m365-checklist-add-input"
               type="text"
               placeholder="Add item"
               value={newItemText}
@@ -123,7 +126,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
         )}
       </div>
       <div className="m365-todo-detail-footer">
-        <button type="button" onClick={onComplete}>Mark complete</button>
+        <button className="m365-todo-complete-btn" type="button" onClick={onComplete}>Mark complete</button>
       </div>
     </div>
   );
