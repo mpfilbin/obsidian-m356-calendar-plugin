@@ -7,10 +7,11 @@ import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
 import { CreateEventModal } from './CreateEventModal';
+import { CreateTaskModal } from './CreateTaskModal';
 import { EventDetailModal } from './EventDetailModal';
 import { TodoDetailModal } from './TodoDetailModal';
 import { useAppContext } from '../context';
-import { getDateRange, getDatesInRange } from '../lib/datetime';
+import { getDateRange, getDatesInRange, toDateOnly } from '../lib/datetime';
 
 function notifyError(e: unknown): void {
   const message = e instanceof Error ? e.message : 'An error occurred';
@@ -222,6 +223,37 @@ export const CalendarApp: React.FC = () => {
     ).open();
   };
 
+  const openCreateTaskModal = (date: Date) => {
+    if (todoLists.length === 0) {
+      new Notice('No task lists available. Enable at least one task list.');
+      return;
+    }
+    const defaultListId = enabledTodoListIds[0] ?? todoLists[0]?.id ?? '';
+    new CreateTaskModal(
+      app,
+      todoLists,
+      defaultListId,
+      date,
+      async (listId, input, steps) => {
+        try {
+          const created = await todoService.createTask(listId, input);
+          for (const step of steps) {
+            await todoService.createChecklistItem(listId, created.id, step);
+          }
+          const { start, end } = getDateRange(currentDate, view);
+          const startStr = toDateOnly(start);
+          const endStr = toDateOnly(end);
+          if (created.dueDate >= startStr && created.dueDate <= endStr) {
+            setTodos((prev) => [...prev, created]);
+          }
+        } catch (e) {
+          notifyError(e);
+          throw e;
+        }
+      },
+    ).open();
+  };
+
   const handleDayClick = (date: Date) => {
     setView('day');
     setCurrentDate(date);
@@ -289,6 +321,7 @@ export const CalendarApp: React.FC = () => {
         onViewChange={setView}
         onNavigate={handleNavigate}
         onNewEvent={() => openCreateEventModal(new Date())}
+        onNewTask={() => openCreateTaskModal(view === 'day' ? currentDate : new Date())}
         onRefresh={() => {
           void fetchAll({ reloadCalendars: true, userInitiated: true });
           void fetchTodos({ reloadLists: true });
