@@ -1,5 +1,5 @@
 import { AuthService } from './AuthService';
-import { M365TodoList, M365TodoItem, M365ChecklistItem } from '../types';
+import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -182,5 +182,44 @@ export class TodoService {
       },
     );
     if (!response.ok) throw new Error(`Failed to delete checklist item: ${response.statusText}`);
+  }
+
+  async createTask(listId: string, input: NewTaskInput): Promise<M365TodoItem> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+
+    const body: Record<string, unknown> = {
+      title: input.title,
+      dueDateTime: {
+        dateTime: `${input.dueDate}T00:00:00`,
+        timeZone: 'UTC',
+      },
+    };
+
+    if (input.notes) {
+      body.body = { contentType: 'text', content: input.notes };
+    }
+
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to create task: ${response.statusText}`);
+    const data = await response.json() as Record<string, unknown>;
+    return {
+      id: data.id as string,
+      title: data.title as string,
+      listId,
+      dueDate: input.dueDate,
+      body: input.notes || undefined,
+      importance: 'normal',
+    };
   }
 }
