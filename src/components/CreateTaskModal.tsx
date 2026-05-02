@@ -197,7 +197,7 @@ export class CreateTaskModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText('New task'); // eslint-disable-line obsidianmd/ui/sentence-case
+    this.titleEl.setText('New task');
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>
