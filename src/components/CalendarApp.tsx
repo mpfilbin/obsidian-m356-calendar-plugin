@@ -237,14 +237,15 @@ export const CalendarApp: React.FC = () => {
       async (listId, input, steps) => {
         try {
           const created = await todoService.createTask(listId, input);
-          for (const step of steps) {
-            await todoService.createChecklistItem(listId, created.id, step);
-          }
+          // Add to view state immediately — task exists in To Do regardless of whether steps succeed
           const { start, end } = getDateRange(currentDate, view);
           const startStr = toDateOnly(start);
           const endStr = toDateOnly(end);
           if (created.dueDate >= startStr && created.dueDate <= endStr) {
             setTodos((prev) => [...prev, created]);
+          }
+          for (const step of steps) {
+            await todoService.createChecklistItem(listId, created.id, step);
           }
         } catch (e) {
           notifyError(e);
