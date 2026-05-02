@@ -14,8 +14,11 @@ Files changed:
 - `src/types/index.ts` — new `M365ChecklistItem` type
 - `src/services/TodoService.ts` — four new Graph API methods
 - `src/components/TodoDetailModal.tsx` — checklist UI in `TodoDetailForm`
-
-No changes to `TodoCard`, `CalendarApp`, modal shell, or any other files.
+- `src/components/CalendarApp.tsx` — pass `todoService` to `TodoDetailModal` constructor
+- `styles.css` — todo detail modal and checklist layout styles
+- `tests/services/TodoService.test.ts` — tests for new CRUD methods
+- `tests/components/TodoDetailModal.test.tsx` — checklist interaction tests
+- `tests/components/CalendarApp.test.tsx` — update modal mock constructor signature
 
 ## Data Model
 

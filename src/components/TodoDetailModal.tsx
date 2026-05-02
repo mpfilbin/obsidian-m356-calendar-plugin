@@ -19,10 +19,12 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   const [newItemText, setNewItemText] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     void todoService.getChecklistItems(todo.listId, todo.id)
-      .then(setChecklistItems)
-      .catch((e: unknown) => console.error('Failed to load checklist items:', e))
-      .finally(() => setLoadingChecklist(false));
+      .then((items) => { if (!cancelled) setChecklistItems(items); })
+      .catch((e: unknown) => { if (!cancelled) console.error('Failed to load checklist items:', e); })
+      .finally(() => { if (!cancelled) setLoadingChecklist(false); });
+    return () => { cancelled = true; };
   }, [todo.listId, todo.id, todoService]);
 
   const handleToggle = (item: M365ChecklistItem) => {
@@ -46,12 +48,17 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   };
 
   const handleDelete = (itemId: string) => {
-    const prev = checklistItems;
+    const index = checklistItems.findIndex((i) => i.id === itemId);
+    const item = checklistItems[index];
     setChecklistItems((items) => items.filter((i) => i.id !== itemId));
     void todoService.deleteChecklistItem(todo.listId, todo.id, itemId)
       .catch((e: unknown) => {
         console.error('Failed to delete checklist item:', e);
-        setChecklistItems(prev);
+        setChecklistItems((items) => {
+          const next = [...items];
+          next.splice(index, 0, item);
+          return next;
+        });
       });
   };
 
@@ -97,6 +104,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
                 <div key={item.id} className="m365-checklist-item">
                   <input
                     type="checkbox"
+                    aria-label={item.displayName}
                     checked={item.isChecked}
                     onChange={() => handleToggle(item)}
                   />
@@ -117,6 +125,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
               className="m365-checklist-add-input"
               type="text"
               placeholder="Add item"
+              aria-label="Add checklist item"
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(); }}
