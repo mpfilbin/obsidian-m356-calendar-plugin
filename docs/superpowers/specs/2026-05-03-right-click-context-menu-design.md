@@ -80,6 +80,7 @@ const handleDayContextMenu = (payload: DayContextMenuPayload, event: MouseEvent)
   );
   menu.addItem(item =>
     item.setTitle('New task').setIcon('check-square').onClick(() => {
+      // Tasks only have a due date (no time), so always pass the date portion only.
       const date = payload.kind === 'timed' ? payload.dateTime : payload.date;
       openCreateTaskModal(date);
     })
