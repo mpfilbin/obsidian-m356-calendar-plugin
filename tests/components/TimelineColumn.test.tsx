@@ -216,3 +216,41 @@ describe('TimelineColumn now-line', () => {
     expect(document.querySelector('.m365-now-line')).not.toBeInTheDocument();
   });
 });
+
+describe('TimelineColumn context menu', () => {
+  it('calls onTimeContextMenu with correct dateTime when right-clicked', () => {
+    const onTimeContextMenu = vi.fn();
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-09')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        onTimeContextMenu={onTimeContextMenu}
+        data-testid="col"
+      />,
+    );
+    // clientY=90 → offsetY=90 (rect.top=0 in jsdom) → 90 min → rounds to 1h 30m
+    fireEvent.contextMenu(screen.getByTestId('col'), { clientY: 90 });
+    expect(onTimeContextMenu).toHaveBeenCalledTimes(1);
+    const [dateTime, event] = onTimeContextMenu.mock.calls[0] as [Date, MouseEvent];
+    expect(dateTime.getHours()).toBe(1);
+    expect(dateTime.getMinutes()).toBe(30);
+    expect(event).toBeInstanceOf(MouseEvent);
+  });
+
+  it('right-clicking the timeline does not trigger onTimeClick', () => {
+    const onTimeClick = vi.fn();
+    render(
+      <TimelineColumn
+        date={new Date('2026-04-09')}
+        events={[]}
+        calendars={[]}
+        onTimeClick={onTimeClick}
+        data-testid="col"
+      />,
+    );
+    fireEvent.contextMenu(screen.getByTestId('col'), { clientY: 90 });
+    expect(onTimeClick).not.toHaveBeenCalled();
+  });
+});
