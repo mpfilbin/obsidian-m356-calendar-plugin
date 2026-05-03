@@ -89,6 +89,23 @@ export class Setting {
   }
 }
 
+export class Menu {
+  addItem(cb: (item: {
+    setTitle: (t: string) => typeof item;
+    setIcon: (i: string) => typeof item;
+    onClick: (fn: () => void) => typeof item;
+  }) => void) {
+    const item = {
+      setTitle: (_t: string) => item,
+      setIcon: (_i: string) => item,
+      onClick: (_fn: () => void) => item,
+    };
+    cb(item);
+    return this;
+  }
+  showAtMouseEvent(_event: MouseEvent) { return this; }
+}
+
 // vi.fn() is callable with `new` and records all invocations — use expect(Notice).toHaveBeenCalledWith(...)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Notice = vi.fn() as unknown as new (message: string, timeout?: number) => void;
