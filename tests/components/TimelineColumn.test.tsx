@@ -239,6 +239,26 @@ describe('TimelineColumn context menu', () => {
     expect(event).toBeInstanceOf(MouseEvent);
   });
 
+  it('clamps context menu to 23:45 when at bottom of timeline', () => {
+    const onTimeContextMenu = vi.fn();
+    const baseDate = new Date('2026-04-09');
+    render(
+      <TimelineColumn
+        date={baseDate}
+        events={[]}
+        calendars={[]}
+        onTimeClick={vi.fn()}
+        onTimeContextMenu={onTimeContextMenu}
+        data-testid="col"
+      />,
+    );
+    fireEvent.contextMenu(screen.getByTestId('col'), { clientY: 1440 });
+    const [dateTime] = onTimeContextMenu.mock.calls[0] as [Date, MouseEvent];
+    expect(dateTime.getHours()).toBe(23);
+    expect(dateTime.getMinutes()).toBe(45);
+    expect(dateTime.getDate()).toBe(baseDate.getDate());
+  });
+
   it('right-clicking the timeline does not trigger onTimeClick', () => {
     const onTimeClick = vi.fn();
     render(

@@ -96,27 +96,22 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   const now = useNow(showNowLine);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const computeTimeFromMouseEvent = (e: React.MouseEvent<HTMLDivElement>): Date => {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const totalMinutes = Math.min(Math.round(offsetY / PX_PER_MIN / 15) * 15, 23 * 60 + 45);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
     const d = new Date(date);
-    d.setHours(hours, minutes, 0, 0);
-    onTimeClick(d);
+    d.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+    return d;
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    onTimeClick(computeTimeFromMouseEvent(e));
   };
 
   const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top;
-    const totalMinutes = Math.min(Math.round(offsetY / PX_PER_MIN / 15) * 15, 23 * 60 + 45);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const d = new Date(date);
-    d.setHours(hours, minutes, 0, 0);
-    onTimeContextMenu?.(d, e.nativeEvent);
+    onTimeContextMenu?.(computeTimeFromMouseEvent(e), e.nativeEvent);
   };
 
   const eventsLeft = showLabels ? TIME_LABEL_WIDTH_PX : 0;
