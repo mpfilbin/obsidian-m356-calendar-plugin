@@ -119,3 +119,7 @@ export interface WeatherCacheEntry {
 }
 
 export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY-MM-DD:location:units"
+
+export type DayContextMenuPayload =
+  | { kind: 'timed'; dateTime: Date }   // timeline right-click — includes computed time
+  | { kind: 'allday'; date: Date }      // month cell, week header, or all-day row
