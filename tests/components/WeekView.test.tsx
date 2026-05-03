@@ -507,6 +507,41 @@ describe('WeekView — context menu', () => {
     const dateTime = (payload as { kind: 'timed'; dateTime: Date }).dateTime;
     expect(dateTime.getHours()).toBe(1);
     expect(dateTime.getMinutes()).toBe(30);
+    expect(dateTime.getFullYear()).toBe(2026);
+    expect(dateTime.getMonth()).toBe(3); // April (0-indexed)
+    expect(dateTime.getDate()).toBe(6); // Monday Apr 6
+  });
+
+  it('prevents the default browser context menu when right-clicking the day header', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const headers = document.querySelectorAll('.m365-calendar-week-day');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    headers[0].dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('right-clicking an all-day cell does not call onDayClick', () => {
+    const onDayClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={onDayClick}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const allDayCells = document.querySelectorAll('.m365-week-allday-cell');
+    fireEvent.contextMenu(allDayCells[0]);
+    expect(onDayClick).not.toHaveBeenCalled();
   });
 
   it('right-clicking day header does not call onDayClick', () => {
