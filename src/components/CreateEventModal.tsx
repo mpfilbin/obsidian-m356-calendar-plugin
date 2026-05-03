@@ -82,6 +82,7 @@ interface CreateEventFormProps {
   calendars: M365Calendar[];
   defaultCalendarId: string;
   initialDate: Date;
+  initialAllDay?: boolean;
   onSubmit: (calendarId: string, event: NewEventInput) => void;
   onCancel: () => void;
 }
@@ -90,6 +91,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   calendars,
   defaultCalendarId,
   initialDate,
+  initialAllDay = false,
   onSubmit,
   onCancel,
 }) => {
@@ -102,9 +104,19 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const defaultEnd = new Date(initialDate);
   defaultEnd.setHours(10, 0, 0, 0);
 
-  const [isAllDay, setIsAllDay] = useState(false);
-  const [startStr, setStartStr] = useState(toDateTimeLocal(defaultStart));
-  const [endStr, setEndStr] = useState(toDateTimeLocal(defaultEnd));
+  const [isAllDay, setIsAllDay] = useState(initialAllDay);
+  const [startStr, setStartStr] = useState(() => {
+    if (initialAllDay) return toDateOnly(defaultStart);
+    return toDateTimeLocal(defaultStart);
+  });
+  const [endStr, setEndStr] = useState(() => {
+    if (initialAllDay) {
+      const nextDay = new Date(defaultStart);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return toDateOnly(nextDay);
+    }
+    return toDateTimeLocal(defaultEnd);
+  });
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
 
@@ -421,6 +433,7 @@ export class CreateEventModal extends Modal {
       calendarId: string,
       event: NewEventInput,
     ) => Promise<void>,
+    private readonly initialAllDay: boolean = false,
   ) {
     super(app);
   }
@@ -434,6 +447,7 @@ export class CreateEventModal extends Modal {
           calendars={this.calendars}
           defaultCalendarId={this.defaultCalendarId}
           initialDate={this.initialDate}
+          initialAllDay={this.initialAllDay}
           onSubmit={async (calendarId, event) => {
             await this.onSubmit(calendarId, event);
             this.close();
