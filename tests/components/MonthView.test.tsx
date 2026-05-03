@@ -421,4 +421,20 @@ describe('MonthView — context menu', () => {
     expect(date.getMonth()).toBe(3); // April = 3 (0-indexed)
     expect(date.getDate()).toBe(15);
   });
+
+  it('prevents the default browser context menu on right-click', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const cells = document.querySelectorAll('.m365-calendar-day-cell');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    cells[0].dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
 });
