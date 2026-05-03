@@ -779,6 +779,9 @@
 
 .m365-todo-detail-footer {
   margin-top: var(--size-4-2);
+  display: flex;
+  gap: var(--size-4-2);
+  align-items: center;
 }
 
 .m365-todo-complete-btn {

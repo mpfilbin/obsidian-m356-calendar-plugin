@@ -6,9 +6,8 @@ import { StoredTokens } from '../types';
 export const TOKEN_SECRET_NAME = 'm365-calendar-token';
 
 const GRAPH_SCOPES = [
-  'Calendars.Read',
-  'Calendars.ReadWrite',
-  'Tasks.Read',
+  'Calendars.ReadWrite.Shared',
+  'Tasks.ReadWrite',
   'User.Read',
   'offline_access',
 ];

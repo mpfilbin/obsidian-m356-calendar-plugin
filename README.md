@@ -36,7 +36,7 @@ Before using the plugin you must register an application in Azure Active Directo
 4. Click **Register**
 5. On the app overview page, copy the **Application (client) ID**
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
-7. Add: `Calendars.Read`, `Calendars.ReadWrite`, `Tasks.ReadWrite`, `User.Read`
+7. Add: `Calendars.ReadWrite.Shared`, `Tasks.ReadWrite`, `User.Read`
 8. Click **Grant admin consent** (if you are an admin) or ask your admin to do so
 
 > **Personal Microsoft accounts:** Admin consent is not required. The user will be prompted to consent on first sign-in.
@@ -88,7 +88,7 @@ Make sure `http://localhost` is listed as a redirect URI under the **Mobile and 
 Your Azure app registration is using the wrong platform type. In Azure Portal → your app → Authentication, remove the Single-page application redirect URI and add a Mobile and desktop applications platform with `http://localhost` as the redirect URI. Sign out and sign back in once to get a new token.
 
 **I see "Failed to fetch calendars" after signing in**  
-Ensure your Azure app has the `Calendars.Read` and `User.Read` permissions, and that consent has been granted.
+Ensure your Azure app has the `Calendars.ReadWrite.Shared` and `User.Read` permissions, and that consent has been granted.
 
 **Events are not showing up**  
 Check that the relevant calendars are enabled in the sidebar toggle panel. If the list is empty, click the refresh button (↻) in the toolbar.
