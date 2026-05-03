@@ -316,7 +316,19 @@ export const CalendarApp: React.FC = () => {
           notifyError(e);
         });
     };
-    new TodoDetailModal(app, todo, list, todoService, onComplete).open();
+    const onDelete = () => {
+      setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
+      void todoService.deleteTask(todo.listId, todo.id)
+        .then(() => {
+          setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
+        })
+        .catch((e: unknown) => {
+          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
+          notifyError(e);
+        });
+    };
+    new TodoDetailModal(app, todo, list, todoService, onComplete, onDelete).open();
   };
 
   return (

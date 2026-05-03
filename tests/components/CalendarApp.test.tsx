@@ -20,6 +20,7 @@ const eventDetailModalCallbacks = vi.hoisted(() => ({
 
 const todoDetailModalCallbacks = vi.hoisted(() => ({
   onComplete: null as (() => void) | null,
+  onDelete: null as (() => void) | null,
 }));
 
 vi.mock('../../src/components/EventDetailModal', () => ({
@@ -48,8 +49,10 @@ vi.mock('../../src/components/TodoDetailModal', () => ({
       _list: unknown,
       _todoService: unknown,
       onComplete: () => void,
+      onDelete: () => void,
     ) {
       todoDetailModalCallbacks.onComplete = onComplete;
+      todoDetailModalCallbacks.onDelete = onDelete;
     }
     open() {}
   },
@@ -117,6 +120,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       getLists: vi.fn().mockResolvedValue([]),
       getTasks: vi.fn().mockResolvedValue([]),
       completeTask: vi.fn().mockResolvedValue(undefined),
+      deleteTask: vi.fn().mockResolvedValue(undefined),
       createTask: vi.fn().mockResolvedValue({
         id: 'new-task-1', title: 'New task', listId: 'list1',
         dueDate: '2026-04-15', importance: 'normal' as const,
@@ -533,6 +537,7 @@ describe('CalendarApp', () => {
           getLists: vi.fn().mockResolvedValue([mockTodoList]),
           getTasks: vi.fn().mockResolvedValue([mockTodo]),
           completeTask,
+          deleteTask: vi.fn().mockResolvedValue(undefined),
         } as unknown as AppContextValue['todoService'],
         settings: {
           ...DEFAULT_SETTINGS,
@@ -596,6 +601,57 @@ describe('CalendarApp', () => {
       await waitFor(() => {
         expect(screen.queryByText('Write quarterly report')).not.toBeInTheDocument();
       });
+    });
+
+    it('onDelete immediately adds the task to completingTodoIds (dims the pill)', async () => {
+      const ctx = makeTodoContext();
+      (ctx.todoService.deleteTask as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onDelete!();
+
+      await waitFor(() => {
+        const card = document.querySelector('.m365-todo-card') as HTMLElement;
+        expect(card.style.opacity).toBe('0.4');
+        expect(card.style.pointerEvents).toBe('none');
+      });
+    });
+
+    it('onDelete removes the task from the list on success', async () => {
+      const ctx = makeTodoContext();
+      (ctx.todoService.deleteTask as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onDelete!();
+
+      await waitFor(() => {
+        expect(ctx.todoService.deleteTask).toHaveBeenCalledWith('list1', 'task1');
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('Write quarterly report')).not.toBeInTheDocument();
+      });
+    });
+
+    it('onDelete shows an error Notice and restores the pill on failure', async () => {
+      const ctx = makeTodoContext();
+      (ctx.todoService.deleteTask as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      renderCalendarApp(ctx);
+      await screen.findByText('Write quarterly report');
+
+      await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
+      todoDetailModalCallbacks.onDelete!();
+
+      await waitFor(() => {
+        expect(obsidianMock.Notice).toHaveBeenCalledWith(
+          expect.stringContaining('Network error'),
+        );
+      });
+      const card = document.querySelector('.m365-todo-card') as HTMLElement;
+      expect(card.style.opacity).not.toBe('0.4');
     });
   });
 
