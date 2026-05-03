@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList, DayContextMenuPayload } from '../types';
 import { EventCard } from './EventCard';
 import { TodoCard } from './TodoCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
@@ -12,6 +12,7 @@ interface WeekViewProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
+  onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
@@ -26,6 +27,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   events,
   calendars,
   onDayClick,
+  onDayContextMenu,
   onEventClick,
   weather,
   weatherUnits = 'imperial',
@@ -95,6 +97,10 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 .filter(Boolean)
                 .join(' ')}
               onClick={() => onDayClick(day)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+              }}
             >
               <div className="m365-calendar-week-day-header">
                 <span className="m365-calendar-week-day-name">
@@ -143,7 +149,14 @@ export const WeekView: React.FC<WeekViewProps> = ({
           const cellDateStr = toDateOnly(day);
           const allDayEvents = eventsByDate.get(cellDateStr)?.allDay ?? [];
           return (
-            <div key={`allday-${cellDateStr}`} className="m365-week-allday-cell">
+            <div
+              key={`allday-${cellDateStr}`}
+              className="m365-week-allday-cell"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+              }}
+            >
               {allDayEvents.map((event) => {
                 const cal = calendarMap.get(event.calendarId);
                 if (!cal) return null;
@@ -220,6 +233,9 @@ export const WeekView: React.FC<WeekViewProps> = ({
               events={timedEvents}
               calendars={calendars}
               onTimeClick={onDayClick}
+              onTimeContextMenu={(dateTime, e) =>
+                onDayContextMenu?.({ kind: 'timed', dateTime }, e)
+              }
               onEventClick={onEventClick}
               data-testid={`m365-week-timeline-${cellDateStr}`}
             />
