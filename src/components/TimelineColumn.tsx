@@ -71,6 +71,7 @@ interface TimelineColumnProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
+  onTimeContextMenu?: (dateTime: Date, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   showLabels?: boolean;
   showNowLine?: boolean;
@@ -82,6 +83,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   events,
   calendars,
   onTimeClick,
+  onTimeContextMenu,
   onEventClick,
   showLabels = false,
   showNowLine = false,
@@ -105,6 +107,18 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
     onTimeClick(d);
   };
 
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const totalMinutes = Math.min(Math.round(offsetY / PX_PER_MIN / 15) * 15, 23 * 60 + 45);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const d = new Date(date);
+    d.setHours(hours, minutes, 0, 0);
+    onTimeContextMenu?.(d, e.nativeEvent);
+  };
+
   const eventsLeft = showLabels ? TIME_LABEL_WIDTH_PX : 0;
 
   return (
@@ -112,6 +126,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
       className="m365-timeline-column"
       style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       data-testid={testId}
     >
       {Array.from({ length: HOURS_IN_DAY * 4 }, (_, i) => {
