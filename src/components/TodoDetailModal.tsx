@@ -11,12 +11,14 @@ interface TodoDetailFormProps {
   todoList: M365TodoList;
   todoService: TodoService;
   onComplete: () => void;
+  onDelete?: () => void;
 }
 
-export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete }) => {
+export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete }) => {
   const [checklistItems, setChecklistItems] = useState<M365ChecklistItem[]>([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
   const [newItemText, setNewItemText] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +137,20 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
         )}
       </div>
       <div className="m365-todo-detail-footer">
-        <button className="m365-todo-complete-btn" type="button" onClick={onComplete}>Mark complete</button>
+        {confirmingDelete ? (
+          <>
+            <span>This will permanently delete the task.</span>
+            <button type="button" onClick={() => setConfirmingDelete(false)}>Cancel</button>
+            <button className="mod-warning" type="button" onClick={onDelete}>Delete task</button>
+          </>
+        ) : (
+          <>
+            <button className="m365-todo-complete-btn" type="button" onClick={onComplete}>Mark complete</button>
+            {onDelete && (
+              <button className="mod-warning" type="button" onClick={() => setConfirmingDelete(true)}>Delete</button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

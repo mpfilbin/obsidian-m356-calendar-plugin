@@ -88,6 +88,80 @@ describe('TodoDetailForm', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('renders a Delete button when onDelete is provided', async () => {
+    render(
+      <TodoDetailForm
+        todo={todo}
+        todoList={todoList}
+        todoService={makeMockTodoService()}
+        onComplete={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(await screen.findByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+  });
+
+  it('does not render a Delete button when onDelete is not provided', async () => {
+    render(
+      <TodoDetailForm
+        todo={todo}
+        todoList={todoList}
+        todoService={makeMockTodoService()}
+        onComplete={vi.fn()}
+      />,
+    );
+    await screen.findByRole('button', { name: /complete/i });
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking Delete shows the confirmation footer', async () => {
+    render(
+      <TodoDetailForm
+        todo={todo}
+        todoList={todoList}
+        todoService={makeMockTodoService()}
+        onComplete={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    expect(screen.getByText('This will permanently delete the task.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^delete task$/i })).toBeInTheDocument();
+  });
+
+  it('Cancel in confirmation footer restores the normal footer', async () => {
+    render(
+      <TodoDetailForm
+        todo={todo}
+        todoList={todoList}
+        todoService={makeMockTodoService()}
+        onComplete={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByText('This will permanently delete the task.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /complete/i })).toBeInTheDocument();
+  });
+
+  it('confirming Delete calls onDelete', async () => {
+    const onDelete = vi.fn();
+    render(
+      <TodoDetailForm
+        todo={todo}
+        todoList={todoList}
+        todoService={makeMockTodoService()}
+        onComplete={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^delete task$/i }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   describe('checklist', () => {
     it('shows a loading indicator while checklist items are being fetched', () => {
       const mockTodoService = {
