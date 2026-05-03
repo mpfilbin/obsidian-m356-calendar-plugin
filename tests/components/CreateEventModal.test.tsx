@@ -281,5 +281,29 @@ describe('CreateEventForm', () => {
       const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
       expect(checkbox.checked).toBe(false);
     });
+
+    it('submits with isAllDay true and correct dates when initialAllDay is true and no interaction occurs', async () => {
+      const onSubmit = vi.fn();
+      render(
+        <CreateEventForm
+          calendars={calendars}
+          defaultCalendarId="cal1"
+          initialDate={new Date(2026, 3, 10)}
+          initialAllDay={true}
+          onSubmit={onSubmit}
+          onCancel={vi.fn()}
+        />,
+      );
+      await userEvent.type(screen.getByPlaceholderText('Event title'), 'Day Off');
+      await userEvent.click(screen.getByText('Create'));
+      expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({
+        subject: 'Day Off',
+        isAllDay: true,
+      }));
+      // Verify start and end dates are correct by checking their ISO representation
+      const callArgs = onSubmit.mock.calls[0][1];
+      expect(callArgs.start).toEqual(new Date('2026-04-10T00:00:00.000Z'));
+      expect(callArgs.end).toEqual(new Date('2026-04-11T00:00:00.000Z'));
+    });
   });
 });
