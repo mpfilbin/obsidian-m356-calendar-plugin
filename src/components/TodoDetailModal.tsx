@@ -167,6 +167,7 @@ export class TodoDetailModal extends Modal {
     private readonly todoList: M365TodoList,
     private readonly todoService: TodoService,
     private readonly onComplete: () => void,
+    private readonly onDelete: () => void,
   ) {
     super(app);
   }
@@ -177,6 +178,10 @@ export class TodoDetailModal extends Modal {
       this.onComplete();
       this.close();
     };
+    const handleDelete = () => {
+      this.close();
+      this.onDelete();
+    };
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>
@@ -185,6 +190,7 @@ export class TodoDetailModal extends Modal {
           todoList={this.todoList}
           todoService={this.todoService}
           onComplete={handleComplete}
+          onDelete={handleDelete}
         />
       </StrictMode>,
     );
