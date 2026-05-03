@@ -104,6 +104,20 @@ export class TodoService {
     if (!response.ok) throw new Error(`Failed to complete task: ${response.statusText}`);
   }
 
+  async deleteTask(listId: string, taskId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const encodedListId = encodeURIComponent(listId);
+    const encodedTaskId = encodeURIComponent(taskId);
+    const response = await fetchWithRetry(
+      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    if (!response.ok) throw new Error(`Failed to delete task: ${response.statusText}`);
+  }
+
   async getChecklistItems(listId: string, taskId: string): Promise<M365ChecklistItem[]> {
     const token = await this.auth.getValidToken();
     const encodedListId = encodeURIComponent(listId);

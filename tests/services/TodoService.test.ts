@@ -589,4 +589,34 @@ describe('TodoService', () => {
       expect(body.recurrence).toBeUndefined();
     });
   });
+
+  describe('deleteTask', () => {
+    it('sends DELETE to the correct URL with auth header', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.deleteTask('list1', 'task1');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+        }),
+      );
+    });
+
+    it('encodes special characters in list and task IDs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.deleteTask('list/id+1=', 'task/id+2=');
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain('%2F');
+      expect(url).toContain('%2B');
+      expect(url).toContain('%3D');
+    });
+
+    it('throws when Graph returns an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+      await expect(service.deleteTask('list1', 'task1')).rejects.toThrow('Failed to delete task: Not Found');
+    });
+  });
 });
