@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MonthView } from '../../src/components/MonthView';
-import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
+import { M365Event, M365Calendar, DailyWeather, DayContextMenuPayload } from '../../src/types';
 import { M365TodoList, M365TodoItem } from '../../src/types';
 
 const calendar: M365Calendar = {
@@ -359,6 +359,7 @@ describe('MonthView — todos', () => {
   });
 });
 
+<<<<<<< HEAD
 describe('MonthView — overflow popup hover', () => {
   const events8 = Array.from({ length: 8 }, (_, i) => ({
     ...eventOnApril4,
@@ -530,5 +531,68 @@ describe('MonthView — event sort order', () => {
     );
     const subjects = buttons.map((b) => b.getAttribute('aria-label')?.replace('Edit event: ', ''));
     expect(subjects).toEqual(['All Day Event', '9 AM Meeting']);
+  });
+});
+
+describe('MonthView — context menu', () => {
+  it('calls onDayContextMenu with allday payload when a day cell is right-clicked', () => {
+    const onDayContextMenu = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={onDayContextMenu}
+      />,
+    );
+    const cells = document.querySelectorAll('.m365-calendar-day-cell');
+    fireEvent.contextMenu(cells[0]);
+    expect(onDayContextMenu).toHaveBeenCalledTimes(1);
+    const [payload] = onDayContextMenu.mock.calls[0] as [DayContextMenuPayload, MouseEvent];
+    expect(payload.kind).toBe('allday');
+    expect((payload as { kind: 'allday'; date: Date }).date).toBeInstanceOf(Date);
+  });
+
+  it('right-clicking a day cell does not call onDayClick', () => {
+    const onDayClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={onDayClick}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const cells = document.querySelectorAll('.m365-calendar-day-cell');
+    fireEvent.contextMenu(cells[0]);
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  it('passes the correct date in the payload', () => {
+    const onDayContextMenu = vi.fn();
+    const testDate = new Date('2026-04-15');
+    render(
+      <MonthView
+        currentDate={testDate}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={onDayContextMenu}
+      />,
+    );
+    const cells = Array.from(document.querySelectorAll('.m365-calendar-day-cell'));
+    const april15 = cells.find((c) => {
+      const span = c.querySelector('.m365-calendar-day-number');
+      return span?.textContent === '15' && !c.className.includes('other-month');
+    })!;
+    fireEvent.contextMenu(april15);
+    const [payload] = onDayContextMenu.mock.calls[0] as [DayContextMenuPayload, MouseEvent];
+    expect(payload.kind).toBe('allday');
+    const date = (payload as { kind: 'allday'; date: Date }).date;
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(3);
+    expect(date.getDate()).toBe(15);
   });
 });
