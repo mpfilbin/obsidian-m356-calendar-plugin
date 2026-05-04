@@ -1,5 +1,5 @@
 import React from 'react';
-import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList, DayContextMenuPayload } from '../types';
 import { EventCard } from './EventCard';
 import { TodoCard } from './TodoCard';
 import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
@@ -10,6 +10,7 @@ interface MonthViewProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
+  onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   maxEventsPerDay?: number;
   weather?: Map<string, DailyWeather | null>;
@@ -24,6 +25,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   events,
   calendars,
   onDayClick,
+  onDayContextMenu,
   onEventClick,
   maxEventsPerDay = 6,
   weather,
@@ -70,6 +72,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
                 .filter(Boolean)
                 .join(' ')}
               onClick={() => onDayClick(day)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+              }}
             >
               <span className="m365-calendar-day-number">{day.getDate()}</span>
               {weather !== undefined && (() => {

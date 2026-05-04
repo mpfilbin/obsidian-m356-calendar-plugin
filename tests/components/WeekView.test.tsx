@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WeekView } from '../../src/components/WeekView';
-import { M365Event, M365Calendar, DailyWeather, M365TodoList, M365TodoItem } from '../../src/types';
+import { M365Event, M365Calendar, DailyWeather, M365TodoList, M365TodoItem, DayContextMenuPayload } from '../../src/types';
 
 vi.mock('../../src/hooks/useNow', () => ({
   useNow: vi.fn(() => new Date('2026-04-14T14:30:00')),
@@ -442,5 +442,121 @@ describe('WeekView — todos', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'View task: Buy milk' })).toBeDisabled();
+  });
+});
+
+describe('WeekView — context menu', () => {
+  it('calls onDayContextMenu with allday payload when a day header is right-clicked', () => {
+    const onDayContextMenu = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={onDayContextMenu}
+      />,
+    );
+    const headers = document.querySelectorAll('.m365-calendar-week-day');
+    fireEvent.contextMenu(headers[1]); // Monday (index 1, Sun is 0)
+    expect(onDayContextMenu).toHaveBeenCalledTimes(1);
+    const [payload] = onDayContextMenu.mock.calls[0] as [DayContextMenuPayload, MouseEvent];
+    expect(payload.kind).toBe('allday');
+    const date = (payload as { kind: 'allday'; date: Date }).date;
+    expect(date.getDay()).toBe(1); // Monday
+  });
+
+  it('calls onDayContextMenu with allday payload when an all-day cell is right-clicked', () => {
+    const onDayContextMenu = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={onDayContextMenu}
+      />,
+    );
+    const allDayCells = document.querySelectorAll('.m365-week-allday-cell');
+    fireEvent.contextMenu(allDayCells[1]); // Monday cell
+    expect(onDayContextMenu).toHaveBeenCalledTimes(1);
+    const [payload] = onDayContextMenu.mock.calls[0] as [DayContextMenuPayload, MouseEvent];
+    expect(payload.kind).toBe('allday');
+    const date = (payload as { kind: 'allday'; date: Date }).date;
+    expect(date.getDay()).toBe(1); // Monday
+  });
+
+  it('calls onDayContextMenu with timed payload when timeline is right-clicked', () => {
+    const onDayContextMenu = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={onDayContextMenu}
+      />,
+    );
+    // Monday column is index 1 (Sunday is 0)
+    const timelines = document.querySelectorAll('[data-testid^="m365-week-timeline-"]');
+    // clientY=90 → offsetY=90 (rect.top=0 in jsdom) → 90 min → rounds to 1h 30m
+    fireEvent.contextMenu(timelines[1], { clientY: 90 });
+    expect(onDayContextMenu).toHaveBeenCalledTimes(1);
+    const [payload] = onDayContextMenu.mock.calls[0] as [DayContextMenuPayload, MouseEvent];
+    expect(payload.kind).toBe('timed');
+    const dateTime = (payload as { kind: 'timed'; dateTime: Date }).dateTime;
+    expect(dateTime.getHours()).toBe(1);
+    expect(dateTime.getMinutes()).toBe(30);
+    expect(dateTime.getFullYear()).toBe(2026);
+    expect(dateTime.getMonth()).toBe(3); // April (0-indexed)
+    expect(dateTime.getDate()).toBe(6); // Monday Apr 6
+  });
+
+  it('prevents the default browser context menu when right-clicking the day header', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const headers = document.querySelectorAll('.m365-calendar-week-day');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    headers[0].dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('right-clicking an all-day cell does not call onDayClick', () => {
+    const onDayClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={onDayClick}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const allDayCells = document.querySelectorAll('.m365-week-allday-cell');
+    fireEvent.contextMenu(allDayCells[0]);
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  it('right-clicking day header does not call onDayClick', () => {
+    const onDayClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[]}
+        calendars={[]}
+        onDayClick={onDayClick}
+        onDayContextMenu={vi.fn()}
+      />,
+    );
+    const headers = document.querySelectorAll('.m365-calendar-week-day');
+    fireEvent.contextMenu(headers[0]);
+    expect(onDayClick).not.toHaveBeenCalled();
   });
 });

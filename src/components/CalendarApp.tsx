@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Notice } from 'obsidian';
-import { M365Calendar, M365Event, M365TodoList, M365TodoItem, DailyWeather, ViewType } from '../types';
+import { Notice, Menu } from 'obsidian';
+import { M365Calendar, M365Event, M365TodoList, M365TodoItem, DailyWeather, ViewType, DayContextMenuPayload } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
@@ -196,7 +196,7 @@ export const CalendarApp: React.FC = () => {
     }
   };
 
-  const openCreateEventModal = (date: Date) => {
+  const openCreateEventModal = (date: Date, initialAllDay = false) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
     if (enabledCalendars.length === 0) {
       new Notice('Enable at least one calendar to create events.');
@@ -220,6 +220,7 @@ export const CalendarApp: React.FC = () => {
           throw e;
         }
       },
+      initialAllDay,
     ).open();
   };
 
@@ -259,6 +260,24 @@ export const CalendarApp: React.FC = () => {
         }
       },
     ).open();
+  };
+
+  const handleDayContextMenu = (payload: DayContextMenuPayload, event: MouseEvent) => {
+    const menu = new Menu();
+    menu.addItem((item) =>
+      item.setTitle('New event').setIcon('calendar-plus').onClick(() => {
+        const date = payload.kind === 'timed' ? payload.dateTime : payload.date;
+        openCreateEventModal(date, payload.kind === 'allday');
+      }),
+    );
+    menu.addItem((item) =>
+      item.setTitle('New task').setIcon('check-square').onClick(() => {
+        // Tasks only have a due date (no time), so always pass the date portion only.
+        const date = payload.kind === 'timed' ? payload.dateTime : payload.date;
+        openCreateTaskModal(date);
+      }),
+    );
+    menu.showAtMouseEvent(event);
   };
 
   const handleDayClick = (date: Date) => {
@@ -368,6 +387,7 @@ export const CalendarApp: React.FC = () => {
               todos={todos}
               todoLists={todoLists}
               onDayClick={handleDayClick}
+              onDayContextMenu={handleDayContextMenu}
               onEventClick={handleEventClick}
               onTodoClick={handleTodoClick}
               completingTodoIds={completingTodoIds}
@@ -382,6 +402,7 @@ export const CalendarApp: React.FC = () => {
               todos={todos}
               todoLists={todoLists}
               onDayClick={handleDayClick}
+              onDayContextMenu={handleDayContextMenu}
               onEventClick={handleEventClick}
               onTodoClick={handleTodoClick}
               completingTodoIds={completingTodoIds}

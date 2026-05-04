@@ -71,6 +71,7 @@ interface TimelineColumnProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
+  onTimeContextMenu?: (dateTime: Date, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   showLabels?: boolean;
   showNowLine?: boolean;
@@ -82,6 +83,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   events,
   calendars,
   onTimeClick,
+  onTimeContextMenu,
   onEventClick,
   showLabels = false,
   showNowLine = false,
@@ -94,15 +96,22 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   const now = useNow(showNowLine);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const computeTimeFromMouseEvent = (e: React.MouseEvent<HTMLDivElement>): Date => {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const totalMinutes = Math.min(Math.round(offsetY / PX_PER_MIN / 15) * 15, 23 * 60 + 45);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
     const d = new Date(date);
-    d.setHours(hours, minutes, 0, 0);
-    onTimeClick(d);
+    d.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+    return d;
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    onTimeClick(computeTimeFromMouseEvent(e));
+  };
+
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    onTimeContextMenu?.(computeTimeFromMouseEvent(e), e.nativeEvent);
   };
 
   const eventsLeft = showLabels ? TIME_LABEL_WIDTH_PX : 0;
@@ -112,6 +121,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
       className="m365-timeline-column"
       style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       data-testid={testId}
     >
       {Array.from({ length: HOURS_IN_DAY * 4 }, (_, i) => {
