@@ -1,8 +1,13 @@
+import type { Logger } from './logger';
+
 const MAX_RETRIES = 3;
 
-export async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+export async function fetchWithRetry(url: string, options: RequestInit, logger?: Logger): Promise<Response> {
+  const method = options.method ?? 'GET';
+  logger?.log(`[M365] ${method} ${url}`);
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const response = await fetch(url, options);
+    logger?.log(`[M365] ${method} ${url} → ${response.status} ${response.statusText}`);
     if (response.status !== 429) return response;
     if (attempt < MAX_RETRIES - 1) {
       const raw = parseInt(response.headers.get('Retry-After') ?? '', 10);

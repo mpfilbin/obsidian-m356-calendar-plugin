@@ -70,6 +70,18 @@ describe('AuthService', () => {
     await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
   });
 
+  it('uses POST with contentType field for token requests so Obsidian routes through main-process net, not renderer fetch', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+    );
+    await auth.getValidToken();
+    const opts = vi.mocked(requestUrl).mock.calls[0][0] as Record<string, unknown>;
+    expect(opts.method).toBe('POST');
+    expect(opts.contentType).toBe('application/x-www-form-urlencoded');
+    expect(opts.headers).toBeUndefined();
+  });
+
   it('signOut clears the stored secret using the hardcoded key', async () => {
     await auth.signOut();
     expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');

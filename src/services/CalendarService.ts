@@ -4,6 +4,7 @@ import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
 import { toLocalISOString } from '../lib/datetime';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { type Logger, NullLogger } from '../lib/logger';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -13,11 +14,16 @@ export class CalendarService {
   constructor(
     private readonly auth: AuthService,
     private readonly cache: CacheService,
+    private readonly logger: Logger = new NullLogger(),
   ) {}
+
+  private fetch(url: string, options: RequestInit = {}): Promise<Response> {
+    return fetchWithRetry(url, options, this.logger);
+  }
 
   async getCalendars(): Promise<M365Calendar[]> {
     const token = await this.auth.getValidToken();
-    const response = await fetchWithRetry(`${GRAPH_BASE}/me/calendars`, {
+    const response = await this.fetch(`${GRAPH_BASE}/me/calendars`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error(`Failed to fetch calendars: ${response.statusText}`);
@@ -51,7 +57,7 @@ export class CalendarService {
       end: { dateTime: formatDateTime(input.end), timeZone },
       isAllDay,
     };
-    const response = await fetchWithRetry(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
+    const response = await this.fetch(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -74,7 +80,7 @@ export class CalendarService {
     if (patch.start !== undefined) body.start = patch.start;
     if (patch.end !== undefined) body.end = patch.end;
     if (patch.bodyContent !== undefined) body.body = { contentType: 'text', content: patch.bodyContent };
-    const response = await fetchWithRetry(`${GRAPH_BASE}/me/events/${eventId}`, {
+    const response = await this.fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -88,7 +94,7 @@ export class CalendarService {
 
   async deleteEvent(eventId: string): Promise<void> {
     const token = await this.auth.getValidToken();
-    const response = await fetchWithRetry(`${GRAPH_BASE}/me/events/${eventId}`, {
+    const response = await this.fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -137,7 +143,7 @@ export class CalendarService {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
       while (url) {
-        const response = await fetchWithRetry(url, {
+        const response = await this.fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
             Prefer: `outlook.timezone="${timeZone}"`,

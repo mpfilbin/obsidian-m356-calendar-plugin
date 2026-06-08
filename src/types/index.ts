@@ -90,6 +90,7 @@ export interface M365CalendarSettings {
   weatherUnits: 'imperial' | 'metric';
   sidebarCollapsed: boolean;
   enabledTodoListIds: string[];
+  debugLogging: boolean;
 }
 
 export interface StoredTokens {
