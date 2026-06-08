@@ -82,8 +82,6 @@ export class AuthService {
       let redirectUri = '';
 
       const server = http.createServer((req, res) => {
-        this.logger.log('[M365 Auth] Server received request:', req.method, req.url);
-
         if (!req.url) {
           res.writeHead(400);
           res.end();
@@ -91,6 +89,7 @@ export class AuthService {
         }
 
         const url = new URL(req.url, 'http://localhost');
+        this.logger.log('[M365 Auth] Server received request:', req.method, url.pathname);
 
         // Ignore browser-initiated requests that aren't the OAuth callback
         // (e.g. favicon.ico, preflight). Only the root path carries OAuth params.
@@ -128,7 +127,7 @@ export class AuthService {
       });
 
       server.on('error', (err) => {
-        console.error('[M365 Auth] Server error:', err);
+        this.logger.error('[M365 Auth] Server error:', err);
         reject(err);
       });
 
@@ -140,7 +139,10 @@ export class AuthService {
         this.logger.log('[M365 Auth] Opening auth URL:', authUrl);
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { shell } = require('electron') as { shell: { openExternal: (url: string) => Promise<void> } };
-        void shell.openExternal(authUrl);
+        shell.openExternal(authUrl).catch((err: unknown) => {
+          this.logger.error('[M365 Auth] Failed to open auth URL:', err);
+          reject(err instanceof Error ? err : new Error(String(err)));
+        });
       });
 
       const timeoutHandle = setTimeout(() => {
@@ -174,11 +176,12 @@ export class AuthService {
     });
 
     const tokenUrl = `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`;
-    this.logger.log('[M365 Auth] exchangeCode requestUrl:', {
+    this.logger.log('[M365 Auth] exchangeCode request:', {
       method: 'POST',
       url: tokenUrl,
-      contentType: 'application/x-www-form-urlencoded',
-      body: Object.fromEntries(body),
+      grant_type: 'authorization_code',
+      client_id: this.getClientId(),
+      redirect_uri: redirectUri,
     });
     const response = await requestUrl({
       url: tokenUrl,
@@ -187,10 +190,11 @@ export class AuthService {
       body: body.toString(),
       throw: false,
     });
-    this.logger.log('[M365 Auth] exchangeCode response:', { status: response.status, body: response.json ?? response.text });
+    this.logger.log('[M365 Auth] exchangeCode response: status', response.status);
 
     if (response.status >= 400) {
       const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      this.logger.log('[M365 Auth] exchangeCode error:', detail);
       throw new Error(`Token exchange failed (${response.status}): ${detail}`);
     }
     const data = response.json;
@@ -210,11 +214,11 @@ export class AuthService {
     });
 
     const tokenUrl = `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`;
-    this.logger.log('[M365 Auth] refreshAccessToken requestUrl:', {
+    this.logger.log('[M365 Auth] refreshAccessToken request:', {
       method: 'POST',
       url: tokenUrl,
-      contentType: 'application/x-www-form-urlencoded',
-      body: Object.fromEntries(body),
+      grant_type: 'refresh_token',
+      client_id: this.getClientId(),
     });
     const response = await requestUrl({
       url: tokenUrl,
@@ -223,10 +227,11 @@ export class AuthService {
       body: body.toString(),
       throw: false,
     });
-    this.logger.log('[M365 Auth] refreshAccessToken response:', { status: response.status, body: response.json ?? response.text });
+    this.logger.log('[M365 Auth] refreshAccessToken response: status', response.status);
 
     if (response.status >= 400) {
       const detail = response.json != null ? JSON.stringify(response.json) : response.text;
+      this.logger.log('[M365 Auth] refreshAccessToken error:', detail);
       throw new Error(`Token refresh failed (${response.status}): ${detail}`);
     }
     const data = response.json;
