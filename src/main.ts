@@ -1,4 +1,5 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
+import { SwitchableLogger } from './lib/logger';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
@@ -12,6 +13,7 @@ import { M365CalendarSettings, CacheStore, WeatherCacheStore } from './types';
 export default class M365CalendarPlugin extends Plugin {
   settings!: M365CalendarSettings;
   authService!: AuthService;
+  private logger!: SwitchableLogger;
   private calendarService!: CalendarService;
   private cacheService!: CacheService;
   private weatherCacheService!: WeatherCacheService;
@@ -33,6 +35,8 @@ export default class M365CalendarPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+
+    this.logger = new SwitchableLogger(this.settings.debugLogging);
 
     this.cacheService = new CacheService(
       async () => {
@@ -64,11 +68,12 @@ export default class M365CalendarPlugin extends Plugin {
       () => this.settings.tenantId,
       (name) => this.app.secretStorage.getSecret(name),
       async (name, value) => { await this.app.secretStorage.setSecret(name, value); },
+      this.logger,
     );
 
-    this.calendarService = new CalendarService(this.authService, this.cacheService);
+    this.calendarService = new CalendarService(this.authService, this.cacheService, this.logger);
 
-    this.todoService = new TodoService(this.authService);
+    this.todoService = new TodoService(this.authService, this.logger);
 
     this.registerView(VIEW_TYPE_M365_CALENDAR, (leaf) => {
       return new M365CalendarView(leaf, {
@@ -114,6 +119,7 @@ export default class M365CalendarPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.queueSave({ settings: this.settings });
+    this.logger.setEnabled(this.settings.debugLogging);
   }
 
   private async activateView(): Promise<void> {

@@ -1,6 +1,7 @@
 import { AuthService } from './AuthService';
 import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput, TaskRecurrence } from '../types';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { type Logger, NullLogger } from '../lib/logger';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
 
@@ -23,11 +24,18 @@ function hashListColor(id: string): string {
 export class TodoService {
   private readonly semaphore = new Semaphore(2);
 
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly logger: Logger = new NullLogger(),
+  ) {}
+
+  private fetch(url: string, options: RequestInit = {}): Promise<Response> {
+    return fetchWithRetry(url, options, this.logger);
+  }
 
   async getLists(): Promise<M365TodoList[]> {
     const token = await this.auth.getValidToken();
-    const response = await fetchWithRetry(`${GRAPH_BASE}/me/todo/lists`, {
+    const response = await this.fetch(`${GRAPH_BASE}/me/todo/lists`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error(`Failed to fetch todo lists: ${response.statusText}`);
@@ -58,7 +66,7 @@ export class TodoService {
     await this.semaphore.acquire();
     try {
       while (url) {
-        const response = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
+        const response = await this.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
         const data = await response.json() as { value: Record<string, unknown>[]; '@odata.nextLink'?: string };
         allTasks.push(...data.value);
@@ -90,7 +98,7 @@ export class TodoService {
     const token = await this.auth.getValidToken();
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
       {
         method: 'PATCH',
@@ -108,7 +116,7 @@ export class TodoService {
     const token = await this.auth.getValidToken();
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
       {
         method: 'DELETE',
@@ -122,7 +130,7 @@ export class TodoService {
     const token = await this.auth.getValidToken();
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
@@ -139,7 +147,7 @@ export class TodoService {
     const token = await this.auth.getValidToken();
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
       {
         method: 'POST',
@@ -169,7 +177,7 @@ export class TodoService {
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
     const encodedItemId = encodeURIComponent(itemId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
       {
         method: 'PATCH',
@@ -188,7 +196,7 @@ export class TodoService {
     const encodedListId = encodeURIComponent(listId);
     const encodedTaskId = encodeURIComponent(taskId);
     const encodedItemId = encodeURIComponent(itemId);
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
       {
         method: 'DELETE',
@@ -222,7 +230,7 @@ export class TodoService {
       };
     }
 
-    const response = await fetchWithRetry(
+    const response = await this.fetch(
       `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks`,
       {
         method: 'POST',

@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   weatherUnits: 'imperial',
   sidebarCollapsed: false,
   enabledTodoListIds: [],
+  debugLogging: false,
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {
@@ -190,6 +191,20 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           .onClick(async () => {
             await this.plugin.clearWeatherCache();
             new Notice('Weather cache cleared');
+          }),
+      );
+
+    new Setting(containerEl).setName('Advanced').setHeading();
+
+    new Setting(containerEl)
+      .setName('Debug logging')
+      .setDesc('Log HTTP requests and responses to the developer console (Ctrl+Shift+I). Disable when not needed.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.debugLogging)
+          .onChange(async (value) => {
+            this.plugin.settings.debugLogging = value;
+            await this.plugin.saveSettings();
           }),
       );
   }
