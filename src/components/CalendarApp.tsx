@@ -39,23 +39,32 @@ export const CalendarApp: React.FC = () => {
   const todoListsLoadedRef = useRef(false);
 
   const calendarsLoadedRef = useRef(false);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
     setSyncing(true);
     if (options.userInitiated) setError(null);
     setRefreshFailed(false);
     let calendarsFetchAttempted = false;
+    let activeEnabledIds = enabledIds;
     try {
       if (!calendarsLoadedRef.current || options.reloadCalendars) {
         calendarsFetchAttempted = true;
-        calendarsLoadedRef.current = true;
         const fetchedCalendars = await calendarService.getCalendars();
+        calendarsLoadedRef.current = true;
         setCalendars(fetchedCalendars);
+        const fetchedIdSet = new Set(fetchedCalendars.map((c) => c.id));
+        activeEnabledIds = enabledIds.filter((id) => fetchedIdSet.has(id));
+        if (activeEnabledIds.length !== enabledIds.length) {
+          setEnabledIds(activeEnabledIds);
+          void saveSettings({ ...settingsRef.current, enabledCalendarIds: activeEnabledIds });
+        }
       }
-      if (enabledIds.length > 0) {
+      if (activeEnabledIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
         const bypassCache = !!options.reloadCalendars;
-        const fetched = await calendarService.getEvents(enabledIds, start, end, bypassCache);
+        const fetched = await calendarService.getEvents(activeEnabledIds, start, end, bypassCache);
         setEvents(fetched);
       } else {
         setEvents([]);
@@ -73,7 +82,7 @@ export const CalendarApp: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  }, [calendarService, enabledIds, currentDate, view]);
+  }, [calendarService, enabledIds, currentDate, view, saveSettings]);
 
   const fetchWeather = useCallback(async () => {
     if (!settings.weatherEnabled) {
