@@ -39,6 +39,8 @@ export const CalendarApp: React.FC = () => {
   const todoListsLoadedRef = useRef(false);
 
   const calendarsLoadedRef = useRef(false);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
     setSyncing(true);
@@ -56,6 +58,7 @@ export const CalendarApp: React.FC = () => {
         activeEnabledIds = enabledIds.filter((id) => fetchedIdSet.has(id));
         if (activeEnabledIds.length !== enabledIds.length) {
           setEnabledIds(activeEnabledIds);
+          void saveSettings({ ...settingsRef.current, enabledCalendarIds: activeEnabledIds });
         }
       }
       if (activeEnabledIds.length > 0) {
@@ -79,7 +82,7 @@ export const CalendarApp: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  }, [calendarService, enabledIds, currentDate, view]);
+  }, [calendarService, enabledIds, currentDate, view, saveSettings]);
 
   const fetchWeather = useCallback(async () => {
     if (!settings.weatherEnabled) {

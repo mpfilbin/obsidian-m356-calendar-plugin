@@ -322,6 +322,32 @@ describe('CalendarApp', () => {
     expect(ctx.calendarService.getCalendars).toHaveBeenCalledTimes(1);
   });
 
+  it('filters orphaned calendar IDs from event fetch and persists cleanup to settings', async () => {
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([mockEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn(),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1', 'deleted-cal'] },
+    });
+    renderCalendarApp(ctx);
+
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
+
+    const [calendarIds] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(calendarIds).toEqual(['cal-1']);
+
+    await waitFor(() => {
+      expect(ctx.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ enabledCalendarIds: ['cal-1'] }),
+      );
+    });
+  });
+
   it('passes onDelete to EventDetailModal when calendar canEdit is true', async () => {
     const ctx = makeContext();
     renderCalendarApp(ctx);
