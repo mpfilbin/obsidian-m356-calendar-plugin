@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CreateEventForm } from '../../src/components/CreateEventModal';
+import { CreateEventForm, buildRecurrence } from '../../src/components/CreateEventModal';
 import { M365Calendar } from '../../src/types';
 
 const calendars: M365Calendar[] = [
@@ -205,5 +205,205 @@ describe('CreateEventForm', () => {
     await userEvent.click(screen.getByText('Create'));
 
     expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({ isAllDay: false }));
+  });
+
+  it('does not show frequency select when Repeat is unchecked', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    expect(screen.queryByRole('combobox', { name: /frequency/i })).not.toBeInTheDocument();
+  });
+
+  it('shows recurrence controls when Repeat checkbox is checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    expect(screen.getByRole('combobox', { name: /frequency/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /no end/i })).toBeInTheDocument();
+  });
+
+  it('pre-checks the start day in the day-of-week row for weekly frequency', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)} // Monday
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    // default frequency is weekly
+    const monCb = screen.getByRole('checkbox', { name: /^monday$/i }) as HTMLInputElement;
+    expect(monCb).toBeInTheDocument();
+    expect(monCb.checked).toBe(true);
+    const sunCb = screen.getByRole('checkbox', { name: /^sunday$/i }) as HTMLInputElement;
+    expect(sunCb.checked).toBe(false);
+  });
+
+  it('shows absolute and relative radio options when Monthly is selected', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)} // Monday the 15th → "third Monday"
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /frequency/i }), 'monthly');
+    expect(screen.getByRole('radio', { name: /on day 15/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /third monday/i })).toBeInTheDocument();
+  });
+
+  it('does not show day-of-week row when Daily is selected', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /frequency/i }), 'daily');
+    expect(screen.queryByRole('checkbox', { name: /^monday$/i })).not.toBeInTheDocument();
+  });
+
+  it('submits with weekly recurrence when Repeat is checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'Standup');
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    await userEvent.click(screen.getByText('Create'));
+    expect(onSubmit).toHaveBeenCalledWith(
+      'cal1',
+      expect.objectContaining({
+        recurrence: expect.objectContaining({ frequency: 'weekly' }),
+      }),
+    );
+  });
+
+  it('submits without recurrence when Repeat is unchecked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'One-off');
+    await userEvent.click(screen.getByText('Create'));
+    expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({ recurrence: undefined }));
+  });
+
+  it('shows validation error when Weekly selected with no days checked', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 5, 15)} // Monday pre-checked
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'Standup');
+    await userEvent.click(screen.getByRole('checkbox', { name: /repeat/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /^monday$/i })); // uncheck
+    await userEvent.click(screen.getByText('Create'));
+    expect(screen.getByText('Select at least one day of the week')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildRecurrence', () => {
+  // June 15 2026 is a Monday; 15th of month; 15+7=22 ≤ 30 days → 'third' occurrence
+  const MON_15 = new Date(2026, 5, 15, 9, 0, 0);
+
+  it('returns undefined when repeat is false', () => {
+    expect(buildRecurrence(false, 'weekly', '1', ['monday'], 'absolute', 'noEnd', '', '10', MON_15)).toBeUndefined();
+  });
+
+  it('returns daily noEnd recurrence', () => {
+    const result = buildRecurrence(true, 'daily', '1', [], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result).toEqual({ frequency: 'daily', interval: 1, end: { type: 'noEnd' } });
+  });
+
+  it('returns weekly recurrence with selected days', () => {
+    const result = buildRecurrence(true, 'weekly', '2', ['monday', 'friday'], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result).toEqual({
+      frequency: 'weekly', interval: 2, daysOfWeek: ['monday', 'friday'], end: { type: 'noEnd' },
+    });
+  });
+
+  it('falls back to start day when weekly daysOfWeek list is empty', () => {
+    const result = buildRecurrence(true, 'weekly', '1', [], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result?.daysOfWeek).toEqual(['monday']);
+  });
+
+  it('returns absoluteMonthly recurrence', () => {
+    const result = buildRecurrence(true, 'monthly', '1', [], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result).toEqual({ frequency: 'absoluteMonthly', interval: 1, end: { type: 'noEnd' } });
+  });
+
+  it('returns relativeMonthly recurrence with weekIndex and daysOfWeek derived from start date', () => {
+    const result = buildRecurrence(true, 'monthly', '1', [], 'relative', 'noEnd', '', '10', MON_15);
+    expect(result).toEqual({
+      frequency: 'relativeMonthly', interval: 1,
+      daysOfWeek: ['monday'],
+      weekIndex: 'third',
+      end: { type: 'noEnd' },
+    });
+  });
+
+  it('returns absoluteYearly recurrence', () => {
+    const result = buildRecurrence(true, 'yearly', '1', [], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result).toEqual({ frequency: 'absoluteYearly', interval: 1, end: { type: 'noEnd' } });
+  });
+
+  it('returns endDate range', () => {
+    const result = buildRecurrence(true, 'weekly', '1', ['monday'], 'absolute', 'endDate', '2026-12-31', '10', MON_15);
+    expect(result?.end).toEqual({ type: 'endDate', endDate: '2026-12-31' });
+  });
+
+  it('returns numbered range', () => {
+    const result = buildRecurrence(true, 'daily', '1', [], 'absolute', 'numbered', '', '5', MON_15);
+    expect(result?.end).toEqual({ type: 'numbered', numberOfOccurrences: 5 });
+  });
+
+  it('clamps interval to minimum of 1 for invalid string input', () => {
+    const result = buildRecurrence(true, 'daily', 'xyz', [], 'absolute', 'noEnd', '', '10', MON_15);
+    expect(result?.interval).toBe(1);
+  });
+
+  it('returns weekIndex "last" when start day is the last occurrence of that weekday in the month', () => {
+    // June 29 2026 is a Monday; 29+7=36 > 30 → last
+    const lastMon = new Date(2026, 5, 29, 9, 0, 0);
+    const result = buildRecurrence(true, 'monthly', '1', [], 'relative', 'noEnd', '', '10', lastMon);
+    expect(result?.weekIndex).toBe('last');
   });
 });

@@ -1,8 +1,8 @@
-import { M365Calendar, M365Event, NewEventInput, EventPatch } from '../types';
+import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence } from '../types';
 import { AuthService } from './AuthService';
 import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
-import { toLocalISOString } from '../lib/datetime';
+import { toLocalISOString, toDateOnly } from '../lib/datetime';
 import { fetchWithRetry } from '../lib/fetchWithRetry';
 import { type Logger, NullLogger } from '../lib/logger';
 
@@ -56,6 +56,7 @@ export class CalendarService {
       start: { dateTime: formatDateTime(input.start), timeZone },
       end: { dateTime: formatDateTime(input.end), timeZone },
       isAllDay,
+      ...(input.recurrence ? { recurrence: this.buildRecurrenceBody(input.recurrence, input.start) } : {}),
     };
     const response = await this.fetch(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
       method: 'POST',
@@ -129,6 +130,30 @@ export class CalendarService {
       description: patch.bodyContent ?? event.bodyPreview,
     });
     await this.deleteEvent(event.id);
+  }
+
+  private buildRecurrenceBody(r: EventRecurrence, start: Date): object {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const pattern: Record<string, unknown> = { type: r.frequency, interval: r.interval };
+    if (r.frequency === 'weekly') {
+      pattern.daysOfWeek = r.daysOfWeek;
+    } else if (r.frequency === 'absoluteMonthly') {
+      pattern.dayOfMonth = start.getDate();
+    } else if (r.frequency === 'relativeMonthly') {
+      pattern.daysOfWeek = r.daysOfWeek;
+      pattern.index = r.weekIndex;
+    } else if (r.frequency === 'absoluteYearly') {
+      pattern.dayOfMonth = start.getDate();
+      pattern.month = start.getMonth() + 1;
+    }
+    const range: Record<string, unknown> = {
+      type: r.end.type,
+      startDate: toDateOnly(start),
+      recurrenceTimeZone: timeZone,
+    };
+    if (r.end.type === 'endDate') range.endDate = r.end.endDate;
+    if (r.end.type === 'numbered') range.numberOfOccurrences = r.end.numberOfOccurrences;
+    return { pattern, range };
   }
 
   private async getEventsForCalendar(

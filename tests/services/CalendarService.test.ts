@@ -587,4 +587,104 @@ describe('CalendarService', () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  describe('createEvent recurrence', () => {
+    // June 15 2026 is a Monday; month index 5 → month number 6; getDate() = 15
+    const START = new Date(2026, 5, 15, 9, 0, 0);
+    const END = new Date(2026, 5, 15, 9, 30, 0);
+    const BASE = { subject: 'Standup', start: START, end: END };
+    const RESP = {
+      ok: true,
+      json: () => Promise.resolve({
+        id: 'evt1', subject: 'Standup',
+        start: { dateTime: '2026-06-15T09:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-06-15T09:30:00', timeZone: 'UTC' },
+        isAllDay: false,
+      }),
+    };
+
+    it('omits recurrence block when recurrence is undefined', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', BASE);
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.recurrence).toBeUndefined();
+    });
+
+    it('sends daily noEnd recurrence', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', {
+        ...BASE,
+        recurrence: { frequency: 'daily', interval: 1, end: { type: 'noEnd' } },
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.recurrence.pattern).toMatchObject({ type: 'daily', interval: 1 });
+      expect(body.recurrence.range.type).toBe('noEnd');
+      expect(body.recurrence.range.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(body.recurrence.range.recurrenceTimeZone).toBeTruthy();
+    });
+
+    it('sends weekly recurrence with daysOfWeek and endDate range', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', {
+        ...BASE,
+        recurrence: {
+          frequency: 'weekly',
+          interval: 2,
+          daysOfWeek: ['monday', 'wednesday'],
+          end: { type: 'endDate', endDate: '2026-12-31' },
+        },
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.recurrence.pattern).toMatchObject({
+        type: 'weekly', interval: 2, daysOfWeek: ['monday', 'wednesday'],
+      });
+      expect(body.recurrence.range).toMatchObject({ type: 'endDate', endDate: '2026-12-31' });
+    });
+
+    it('sends absoluteMonthly recurrence with dayOfMonth from start and numbered range', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', {
+        ...BASE,
+        recurrence: { frequency: 'absoluteMonthly', interval: 1, end: { type: 'numbered', numberOfOccurrences: 6 } },
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.recurrence.pattern).toMatchObject({ type: 'absoluteMonthly', interval: 1, dayOfMonth: 15 });
+      expect(body.recurrence.range).toMatchObject({ type: 'numbered', numberOfOccurrences: 6 });
+    });
+
+    it('sends relativeMonthly recurrence with daysOfWeek and index', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', {
+        ...BASE,
+        recurrence: {
+          frequency: 'relativeMonthly',
+          interval: 1,
+          daysOfWeek: ['monday'],
+          weekIndex: 'third',
+          end: { type: 'noEnd' },
+        },
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.recurrence.pattern).toMatchObject({
+        type: 'relativeMonthly', interval: 1, daysOfWeek: ['monday'], index: 'third',
+      });
+    });
+
+    it('sends absoluteYearly recurrence with month and dayOfMonth from start', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(RESP);
+      vi.stubGlobal('fetch', fetchMock);
+      await service.createEvent('cal1', {
+        ...BASE,
+        recurrence: { frequency: 'absoluteYearly', interval: 1, end: { type: 'noEnd' } },
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      // START is June (month index 5 → month number 6), day 15
+      expect(body.recurrence.pattern).toMatchObject({ type: 'absoluteYearly', month: 6, dayOfMonth: 15 });
+    });
+  });
 });

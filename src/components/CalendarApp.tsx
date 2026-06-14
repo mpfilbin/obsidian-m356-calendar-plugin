@@ -218,12 +218,8 @@ export const CalendarApp: React.FC = () => {
       date,
       async (calendarId, event) => {
         try {
-          const created = await calendarService.createEvent(calendarId, event);
-          setEvents((prev) =>
-            [...prev, created].sort(
-              (a, b) => new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
-            ),
-          );
+          await calendarService.createEvent(calendarId, event);
+          await fetchAll();
         } catch (e) {
           notifyError(e);
           throw e;
