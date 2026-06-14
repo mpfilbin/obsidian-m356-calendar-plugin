@@ -102,6 +102,16 @@ export class CalendarService {
     await this.cache.clearAll();
   }
 
+  async deleteEventSeries(seriesMasterId: string): Promise<void> {
+    const token = await this.auth.getValidToken();
+    const response = await this.fetch(`${GRAPH_BASE}/me/events/${seriesMasterId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error(`Failed to delete event series: ${response.statusText}`);
+    await this.cache.clearAll();
+  }
+
   async moveEvent(event: M365Event, destinationCalendarId: string, patch: EventPatch): Promise<void> {
     // The Graph API has no move endpoint for calendar events (only for mail).
     // Create in the destination calendar first (so the original is preserved if
@@ -136,7 +146,7 @@ export class CalendarService {
       const params = new URLSearchParams({
         startDateTime: start.toISOString(),
         endDateTime: end.toISOString(),
-        $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location',
+        $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location,type,seriesMasterId',
         $top: '999',
       });
       const events: M365Event[] = [];
@@ -172,6 +182,8 @@ export class CalendarService {
       bodyPreview: e.bodyPreview as string | undefined,
       webLink: e.webLink as string | undefined,
       location: (e.location as { displayName?: string } | undefined)?.displayName,
+      type: e.type as M365Event['type'] | undefined,
+      seriesMasterId: e.seriesMasterId as string | undefined,
     };
   }
 }

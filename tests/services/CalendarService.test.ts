@@ -151,6 +151,38 @@ describe('CalendarService', () => {
     expect(events[0].location).toBeUndefined();
   });
 
+  it('getEvents maps type and seriesMasterId from Graph response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        value: [{
+          id: 'evt1',
+          subject: 'Team Standup',
+          start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-04-04T09:30:00', timeZone: 'UTC' },
+          isAllDay: false,
+          bodyPreview: '',
+          webLink: 'https://outlook.office.com/calendar/item/evt1',
+          type: 'occurrence',
+          seriesMasterId: 'master-id-1',
+        }],
+      }),
+    }));
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(events[0].type).toBe('occurrence');
+    expect(events[0].seriesMasterId).toBe('master-id-1');
+  });
+
+  it('getEvents sets type and seriesMasterId to undefined when absent from Graph response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [FAKE_EVENT_RESPONSE] }),
+    }));
+    const events = await service.getEvents(['cal1'], new Date('2026-04-01'), new Date('2026-04-30'));
+    expect(events[0].type).toBeUndefined();
+    expect(events[0].seriesMasterId).toBeUndefined();
+  });
+
   it('getEvents follows @odata.nextLink to collect all pages', async () => {
     const page2Event = { ...FAKE_EVENT_RESPONSE, id: 'evt2', subject: 'Second Event' };
     const fetchMock = vi.fn()
@@ -471,6 +503,34 @@ describe('CalendarService', () => {
   it('deleteEvent throws when Graph returns error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
     await expect(service.deleteEvent('evt1')).rejects.toThrow('Failed to delete event: Not Found');
+  });
+
+  // --- deleteEventSeries ---
+
+  it('deleteEventSeries sends DELETE to /me/events/{seriesMasterId} with correct auth header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.deleteEventSeries('master-id-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/me/events/master-id-1',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+      }),
+    );
+  });
+
+  it('deleteEventSeries clears the cache on success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    await service.deleteEventSeries('master-id-1');
+    expect(cache.clearAll).toHaveBeenCalled();
+  });
+
+  it('deleteEventSeries throws when Graph returns error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Not Found' }));
+    await expect(service.deleteEventSeries('master-id-1')).rejects.toThrow(
+      'Failed to delete event series: Not Found',
+    );
   });
 
   // --- moveEvent ---
