@@ -17,10 +17,6 @@ const INTERVAL_LABELS: Record<'daily' | 'weekly' | 'monthly' | 'yearly', string>
   daily: 'day(s)', weekly: 'week(s)', monthly: 'month(s)', yearly: 'year(s)',
 };
 
-const WEEK_INDEX_LABELS: Record<WeekIndex, string> = {
-  first: 'first', second: 'second', third: 'third', fourth: 'fourth', last: 'last',
-};
-
 const DAY_DISPLAY: Record<DayOfWeek, string> = {
   sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
   thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
@@ -118,7 +114,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const [daysOfWeek, setDaysOfWeek] = useState<DayOfWeek[]>([getDayOfWeek(initialDate)]);
   const [monthlyMode, setMonthlyMode] = useState<'absolute' | 'relative'>('absolute');
   const [endType, setEndType] = useState<RecurrenceEndType>('noEnd');
-  const [endDateStr, setEndDateStr] = useState(() => {
+  const [recurrenceEndDateStr, setRecurrenceEndDateStr] = useState(() => {
     const d = new Date(initialDate);
     d.setFullYear(d.getFullYear() + 1);
     return toDateOnly(d);
@@ -173,6 +169,10 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       setError('End time must be after start time');
       return;
     }
+    if (repeat && isNaN(start.getTime())) {
+      setError('Invalid start date');
+      return;
+    }
     if (repeat) {
       if (frequency === 'weekly' && daysOfWeek.length === 0) {
         setError('Select at least one day of the week');
@@ -180,7 +180,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       }
       if (endType === 'endDate') {
         const startDateOnly = startStr.slice(0, 10);
-        if (!endDateStr || endDateStr <= startDateOnly) {
+        if (!recurrenceEndDateStr || recurrenceEndDateStr <= startDateOnly) {
           setError('Recurrence end date must be after the event start date');
           return;
         }
@@ -196,7 +196,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       end,
       isAllDay,
       description: description.trim() || undefined,
-      recurrence: buildRecurrence(repeat, frequency, intervalStr, daysOfWeek, monthlyMode, endType, endDateStr, occurrencesStr, start),
+      recurrence: buildRecurrence(repeat, frequency, intervalStr, daysOfWeek, monthlyMode, endType, recurrenceEndDateStr, occurrencesStr, start),
     });
   };
 
@@ -317,7 +317,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
             const isValidStart = !isNaN(startDateForMonthly.getTime());
             const refDate = isValidStart ? startDateForMonthly : initialDate;
             const dayOfMonth = refDate.getDate();
-            const weekIdxLabel = WEEK_INDEX_LABELS[getWeekIndex(refDate)];
+            const weekIdxLabel = getWeekIndex(refDate);
             const dayName = DAY_DISPLAY[getDayOfWeek(refDate)];
             return (
               <div className="m365-form-recurrence-monthly">
@@ -369,8 +369,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
             {endType === 'endDate' && (
               <input
                 type="date"
-                value={endDateStr}
-                onChange={(e) => setEndDateStr(e.target.value)}
+                value={recurrenceEndDateStr}
+                onChange={(e) => setRecurrenceEndDateStr(e.target.value)}
                 aria-label="Recurrence end date"
               />
             )}
