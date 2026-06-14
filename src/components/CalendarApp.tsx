@@ -277,11 +277,24 @@ export const CalendarApp: React.FC = () => {
 
   const handleEventClick = (event: M365Event) => {
     const calendar = calendars.find((c) => c.id === event.calendarId);
+    const isSeries = event.type === 'occurrence' || event.type === 'exception';
+    const isMaster = event.type === 'seriesMaster';
     const onDelete = calendar?.canEdit
       ? async () => {
           await calendarService.deleteEvent(event.id);
-          setEvents((prev) => prev.filter((e) => e.id !== event.id));
-          new Notice('Event deleted');
+          setEvents((prev) => prev.filter(
+            (e) => e.id !== event.id && e.seriesMasterId !== event.id,
+          ));
+          new Notice(isMaster ? 'Series deleted' : 'Event deleted');
+        }
+      : undefined;
+    const onDeleteSeries = isSeries && calendar?.canEdit
+      ? async () => {
+          await calendarService.deleteEventSeries(event.seriesMasterId!);
+          setEvents((prev) => prev.filter(
+            (e) => e.seriesMasterId !== event.seriesMasterId && e.id !== event.seriesMasterId,
+          ));
+          new Notice('Series deleted');
         }
       : undefined;
     new EventDetailModal(
@@ -304,6 +317,7 @@ export const CalendarApp: React.FC = () => {
       () => void fetchAll({ reloadCalendars: false }),
       calendars,
       onDelete,
+      onDeleteSeries,
     ).open();
   };
 
