@@ -219,7 +219,7 @@ export const CalendarApp: React.FC = () => {
       async (calendarId, event) => {
         try {
           await calendarService.createEvent(calendarId, event);
-          void fetchAll();
+          await fetchAll();
         } catch (e) {
           notifyError(e);
           throw e;

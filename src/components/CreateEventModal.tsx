@@ -160,6 +160,10 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
     const start = parseDateInput(startStr);
     const end = parseDateInput(endStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      setError('Invalid date or time');
+      return;
+    }
     if (isAllDay) {
       if (endStr <= startStr) {
         setError('For all-day events, the end date must be after the start date');
@@ -167,10 +171,6 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       }
     } else if (end <= start) {
       setError('End time must be after start time');
-      return;
-    }
-    if (repeat && isNaN(start.getTime())) {
-      setError('Invalid start date');
       return;
     }
     if (repeat) {
