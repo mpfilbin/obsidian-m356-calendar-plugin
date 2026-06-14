@@ -428,6 +428,56 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(screen.queryByText('Standup')).not.toBeInTheDocument());
   });
 
+  it('onDelete of a seriesMaster removes the master and all its occurrences from state', async () => {
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const seriesMasterEvent = {
+      ...mockEvent,
+      id: 'master-1',
+      subject: 'Weekly Standup',
+      type: 'seriesMaster' as const,
+    };
+    const occurrence1 = {
+      ...mockEvent,
+      id: 'occ-1',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const occurrence2 = {
+      ...mockEvent,
+      id: 'occ-2',
+      subject: 'Standup Repeat',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const unrelated = { ...mockEvent, id: 'unrelated-1', subject: 'Other Meeting' };
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([seriesMasterEvent, occurrence1, occurrence2, unrelated]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent,
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Weekly Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Weekly Standup'));
+
+    await eventDetailModalCallbacks.onDelete!();
+
+    expect(deleteEvent).toHaveBeenCalledWith('master-1');
+    expect(NoticeSpy).toHaveBeenCalledWith('Series deleted');
+    await waitFor(() => {
+      expect(screen.queryByText('Weekly Standup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Standup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Standup Repeat')).not.toBeInTheDocument();
+      expect(screen.getByText('Other Meeting')).toBeInTheDocument();
+    });
+  });
+
   it('onDelete rejects when deleteEvent throws', async () => {
     const error = new Error('Graph error');
     const deleteEvent = vi.fn().mockRejectedValue(error);

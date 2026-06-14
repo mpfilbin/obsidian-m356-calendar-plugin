@@ -357,6 +357,26 @@ describe('EventDetailForm', () => {
       expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
     });
 
+    it('shows inline error and resets confirm state when onDelete rejects in occurrence confirm mode', async () => {
+      const occurrenceEvent = { ...event, type: 'occurrence' as const, seriesMasterId: 'master-1' };
+      const onDelete = vi.fn().mockRejectedValue(new Error('Delete failed'));
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Delete this event'));
+      await waitFor(() => expect(screen.getByText('Delete failed')).toBeInTheDocument());
+      expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
+    });
+
     it('shows two delete buttons for an exception event when onDeleteSeries is provided', async () => {
       const exceptionEvent = { ...event, type: 'exception' as const, seriesMasterId: 'master-1' };
       const onDelete = vi.fn().mockResolvedValue(undefined);
