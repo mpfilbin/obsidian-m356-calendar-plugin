@@ -356,6 +356,25 @@ describe('EventDetailForm', () => {
       await waitFor(() => expect(screen.getByText('Series error')).toBeInTheDocument());
       expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
     });
+
+    it('shows two delete buttons for an exception event when onDeleteSeries is provided', async () => {
+      const exceptionEvent = { ...event, type: 'exception' as const, seriesMasterId: 'master-1' };
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={exceptionEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      expect(screen.getByText('Delete this event')).toBeInTheDocument();
+      expect(screen.getByText('Delete the series')).toBeInTheDocument();
+    });
   });
 
   // ── Calendar dropdown ──────────────────────────────────────────────────────

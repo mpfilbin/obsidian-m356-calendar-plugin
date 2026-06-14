@@ -90,6 +90,10 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     setSaving(true);
     setError('');
     try {
+      // Send the raw datetime string (without UTC conversion) paired with the
+      // event's original timezone so Graph interprets the wall-clock time correctly.
+      // datetime-local values are "YYYY-MM-DDTHH:MM" — append seconds for Graph.
+      // date-only values (all-day) are "YYYY-MM-DD" — append midnight time.
       const toGraphDateTime = (s: string) =>
         s.length === 10 ? `${s}T00:00:00` : s.length === 16 ? `${s}:00` : s;
       const patch: EventPatch = {
