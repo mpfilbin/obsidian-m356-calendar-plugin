@@ -49,6 +49,7 @@ export interface NewEventInput {
   end: Date;
   description?: string;
   isAllDay?: boolean;
+  recurrence?: EventRecurrence;
 }
 
 export interface NewTaskInput {
@@ -61,6 +62,38 @@ export interface NewTaskInput {
 export interface TaskRecurrence {
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
   interval: number;       // 1 = every period, 2 = every other, etc.
+}
+
+export type RecurrenceFrequency =
+  | 'daily'
+  | 'weekly'
+  | 'absoluteMonthly'
+  | 'relativeMonthly'
+  | 'absoluteYearly';
+
+export type DayOfWeek =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday';
+
+export type WeekIndex = 'first' | 'second' | 'third' | 'fourth' | 'last';
+
+export type RecurrenceEndType = 'noEnd' | 'endDate' | 'numbered';
+
+export interface EventRecurrence {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  daysOfWeek?: DayOfWeek[];
+  weekIndex?: WeekIndex;
+  end: {
+    type: RecurrenceEndType;
+    endDate?: string;
+    numberOfOccurrences?: number;
+  };
 }
 
 export interface EventPatch {
