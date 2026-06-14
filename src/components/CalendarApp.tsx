@@ -288,11 +288,12 @@ export const CalendarApp: React.FC = () => {
           new Notice(isMaster ? 'Series deleted' : 'Event deleted');
         }
       : undefined;
-    const onDeleteSeries = isSeries && calendar?.canEdit
+    const { seriesMasterId } = event;
+    const onDeleteSeries = isSeries && calendar?.canEdit && seriesMasterId
       ? async () => {
-          await calendarService.deleteEventSeries(event.seriesMasterId!);
+          await calendarService.deleteEventSeries(seriesMasterId);
           setEvents((prev) => prev.filter(
-            (e) => e.seriesMasterId !== event.seriesMasterId && e.id !== event.seriesMasterId,
+            (e) => e.seriesMasterId !== seriesMasterId && e.id !== seriesMasterId,
           ));
           new Notice('Series deleted');
         }
