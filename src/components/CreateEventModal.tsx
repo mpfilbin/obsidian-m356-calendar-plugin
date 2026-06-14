@@ -158,8 +158,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       setError('Please select a calendar');
       return;
     }
-    const start = new Date(startStr);
-    const end = new Date(endStr);
+    const start = parseDateInput(startStr);
+    const end = parseDateInput(endStr);
     if (isAllDay) {
       if (endStr <= startStr) {
         setError('For all-day events, the end date must be after the start date');
