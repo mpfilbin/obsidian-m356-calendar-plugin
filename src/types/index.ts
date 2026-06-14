@@ -18,6 +18,8 @@ export interface M365Event {
   bodyPreview?: string;
   webLink?: string;
   location?: string;
+  type?: 'singleInstance' | 'occurrence' | 'exception' | 'seriesMaster';
+  seriesMasterId?: string;
 }
 
 export interface M365TodoList {

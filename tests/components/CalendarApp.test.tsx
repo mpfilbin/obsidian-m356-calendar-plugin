@@ -14,6 +14,7 @@ const modalCallbacks = vi.hoisted(() => ({ onSubmit: null as ((calendarId: strin
 
 const eventDetailModalCallbacks = vi.hoisted(() => ({
   onDelete: undefined as (() => Promise<void>) | undefined,
+  onDeleteSeries: undefined as (() => Promise<void>) | undefined,
   onSave: null as ((patch: EventPatch, targetCalendarId: string) => Promise<void>) | null,
   calendars: null as M365Calendar[] | null,
 }));
@@ -32,8 +33,10 @@ vi.mock('../../src/components/EventDetailModal', () => ({
       _onSaved: unknown,
       calendars: M365Calendar[],
       onDelete?: () => Promise<void>,
+      onDeleteSeries?: () => Promise<void>,
     ) {
       eventDetailModalCallbacks.onDelete = onDelete;
+      eventDetailModalCallbacks.onDeleteSeries = onDeleteSeries;
       eventDetailModalCallbacks.onSave = onSave;
       eventDetailModalCallbacks.calendars = calendars;
     }
@@ -111,6 +114,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
       createEvent: vi.fn(),
       updateEvent: vi.fn().mockResolvedValue(undefined),
       deleteEvent: vi.fn().mockResolvedValue(undefined),
+      deleteEventSeries: vi.fn().mockResolvedValue(undefined),
       moveEvent: vi.fn().mockResolvedValue(undefined),
     } as unknown as AppContextValue['calendarService'],
     weatherService: {
@@ -152,6 +156,7 @@ describe('CalendarApp', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     // sentinel reset so canEdit=false tests don't false-positive
     eventDetailModalCallbacks.onDelete = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
+    eventDetailModalCallbacks.onDeleteSeries = 'NOT_CALLED' as unknown as (() => Promise<void>) | undefined;
     createTaskModalCallbacks.onSubmit = null;
   });
 
@@ -373,6 +378,30 @@ describe('CalendarApp', () => {
     expect(eventDetailModalCallbacks.onDelete).toBeUndefined();
   });
 
+  it('does not pass onDeleteSeries to EventDetailModal when calendar canEdit is false', async () => {
+    const readOnlyCalendar = { ...mockCalendar, canEdit: false };
+    const occurrenceEvent = {
+      ...mockEvent,
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([readOnlyCalendar]),
+        getEvents: vi.fn().mockResolvedValue([occurrenceEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDeleteSeries).toBeUndefined();
+  });
+
   it('removes deleted event from state without re-fetching when onDelete resolves', async () => {
     const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
     const deleteEvent = vi.fn().mockResolvedValue(undefined);
@@ -399,6 +428,56 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(screen.queryByText('Standup')).not.toBeInTheDocument());
   });
 
+  it('onDelete of a seriesMaster removes the master and all its occurrences from state', async () => {
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const seriesMasterEvent = {
+      ...mockEvent,
+      id: 'master-1',
+      subject: 'Weekly Standup',
+      type: 'seriesMaster' as const,
+    };
+    const occurrence1 = {
+      ...mockEvent,
+      id: 'occ-1',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const occurrence2 = {
+      ...mockEvent,
+      id: 'occ-2',
+      subject: 'Standup Repeat',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const unrelated = { ...mockEvent, id: 'unrelated-1', subject: 'Other Meeting' };
+    const deleteEvent = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([seriesMasterEvent, occurrence1, occurrence2, unrelated]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent,
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Weekly Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Weekly Standup'));
+
+    await eventDetailModalCallbacks.onDelete!();
+
+    expect(deleteEvent).toHaveBeenCalledWith('master-1');
+    expect(NoticeSpy).toHaveBeenCalledWith('Series deleted');
+    await waitFor(() => {
+      expect(screen.queryByText('Weekly Standup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Standup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Standup Repeat')).not.toBeInTheDocument();
+      expect(screen.getByText('Other Meeting')).toBeInTheDocument();
+    });
+  });
+
   it('onDelete rejects when deleteEvent throws', async () => {
     const error = new Error('Graph error');
     const deleteEvent = vi.fn().mockRejectedValue(error);
@@ -416,6 +495,122 @@ describe('CalendarApp', () => {
     await userEvent.click(screen.getByText('Standup'));
 
     await expect(eventDetailModalCallbacks.onDelete!()).rejects.toThrow('Graph error');
+  });
+
+  it('does not pass onDeleteSeries to EventDetailModal for a singleInstance event', async () => {
+    const ctx = makeContext(); // mockEvent has no type field — single-instance path
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDeleteSeries).toBeUndefined();
+  });
+
+  it('passes onDeleteSeries to EventDetailModal when event is an occurrence', async () => {
+    const occurrenceEvent = {
+      ...mockEvent,
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([occurrenceEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDeleteSeries).toBeDefined();
+  });
+
+  it('passes onDeleteSeries to EventDetailModal when event is an exception', async () => {
+    const exceptionEvent = {
+      ...mockEvent,
+      type: 'exception' as const,
+      seriesMasterId: 'master-1',
+    };
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([exceptionEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDeleteSeries).toBeDefined();
+  });
+
+  it('does not pass onDeleteSeries to EventDetailModal for a seriesMaster event', async () => {
+    const seriesMasterEvent = { ...mockEvent, type: 'seriesMaster' as const };
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([seriesMasterEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEventSeries: vi.fn().mockResolvedValue(undefined),
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+    expect(eventDetailModalCallbacks.onDeleteSeries).toBeUndefined();
+  });
+
+  it('onDeleteSeries calls deleteEventSeries and removes all series occurrences from state', async () => {
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const seriesEvent1 = {
+      ...mockEvent,
+      id: 'occ-1',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const seriesEvent2 = {
+      ...mockEvent,
+      id: 'occ-2',
+      subject: 'Standup Repeat',
+      type: 'occurrence' as const,
+      seriesMasterId: 'master-1',
+    };
+    const singleEvent = { ...mockEvent, id: 'single-1', subject: 'Other Event' };
+    const deleteEventSeries = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeContext({
+      calendarService: {
+        getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
+        getEvents: vi.fn().mockResolvedValue([seriesEvent1, seriesEvent2, singleEvent]),
+        createEvent: vi.fn(),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEventSeries,
+        moveEvent: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AppContextValue['calendarService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(screen.getByText('Standup')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Standup'));
+
+    await eventDetailModalCallbacks.onDeleteSeries!();
+
+    expect(deleteEventSeries).toHaveBeenCalledWith('master-1');
+    expect(NoticeSpy).toHaveBeenCalledWith('Series deleted');
+    await waitFor(() => {
+      expect(screen.queryByText('Standup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Standup Repeat')).not.toBeInTheDocument();
+      expect(screen.getByText('Other Event')).toBeInTheDocument();
+    });
   });
 
   it('passes the full calendars list to EventDetailModal when an event is clicked', async () => {

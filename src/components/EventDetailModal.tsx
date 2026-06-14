@@ -12,6 +12,7 @@ interface EventDetailFormProps {
   onSave: (patch: EventPatch, targetCalendarId: string) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
+  onDeleteSeries?: () => Promise<void>;
 }
 
 export const EventDetailForm: React.FC<EventDetailFormProps> = ({
@@ -20,6 +21,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   onSave,
   onCancel,
   onDelete,
+  onDeleteSeries,
 }) => {
   const startDate = new Date(event.start.dateTime);
   const endDate = new Date(event.end.dateTime);
@@ -37,11 +39,11 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   const [selectedCalendarId, setSelectedCalendarId] = useState(event.calendarId);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState<false | 'occurrence' | 'single'>(false);
   const [deleting, setDeleting] = useState(false);
 
   const eventCalendar = calendars.find((c) => c.id === event.calendarId);
-  const calendarDropdownDisabled = confirmingDelete || saving || !(eventCalendar?.canEdit ?? false);
+  const calendarDropdownDisabled = confirmingDelete !== false || saving || !(eventCalendar?.canEdit ?? false);
   const selectedCalendar = calendars.find((c) => c.id === selectedCalendarId);
 
   const handleAllDayChange = (checked: boolean) => {
@@ -66,11 +68,11 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (handler: () => Promise<void>) => {
     setDeleting(true);
     setError('');
     try {
-      await onDelete!();
+      await handler();
     } catch (e) {
       console.error('M365 Calendar:', e);
       setError(e instanceof Error ? e.message : 'Failed to delete event');
@@ -110,6 +112,42 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     }
   };
 
+  const isMaster = event.type === 'seriesMaster';
+
+  const renderConfirmActions = () => {
+    if (confirmingDelete === 'occurrence') {
+      return (
+        <div className="m365-form-actions">
+          <span>This will permanently delete this event.</span>
+          <button onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+            Cancel
+          </button>
+          <button className="mod-warning" onClick={() => void handleDelete(onDelete!)} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete this event'}
+          </button>
+          <button className="mod-warning" onClick={() => void handleDelete(onDeleteSeries!)} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete the series'}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="m365-form-actions">
+        <span>
+          {isMaster
+            ? 'This will permanently delete all events in this series.'
+            : 'This will permanently delete the event.'}
+        </span>
+        <button onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+          Cancel
+        </button>
+        <button className="mod-warning" onClick={() => void handleDelete(onDelete!)} disabled={deleting}>
+          {deleting ? 'Deleting…' : isMaster ? 'Delete all events' : 'Delete event'}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="m365-create-event-form">
       {error && <div className="m365-form-error">{error}</div>}
@@ -121,7 +159,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           autoFocus
-          disabled={confirmingDelete || saving}
+          disabled={confirmingDelete !== false || saving}
         />
       </div>
       {calendars.length > 0 && (
@@ -155,7 +193,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Add location"
-          disabled={confirmingDelete || saving}
+          disabled={confirmingDelete !== false || saving}
         />
       </div>
       <div className="m365-form-checkbox">
@@ -164,7 +202,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
             type="checkbox"
             checked={isAllDay}
             onChange={(e) => handleAllDayChange(e.target.checked)}
-            disabled={confirmingDelete || saving}
+            disabled={confirmingDelete !== false || saving}
           />
           All day
         </label>
@@ -176,7 +214,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
           onChange={(e) => setStartStr(e.target.value)}
-          disabled={confirmingDelete || saving}
+          disabled={confirmingDelete !== false || saving}
         />
       </div>
       <div className="m365-form-field">
@@ -186,7 +224,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           type={isAllDay ? 'date' : 'datetime-local'}
           value={endStr}
           onChange={(e) => setEndStr(e.target.value)}
-          disabled={confirmingDelete || saving}
+          disabled={confirmingDelete !== false || saving}
         />
       </div>
       <div className="m365-form-field">
@@ -196,26 +234,21 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          disabled={confirmingDelete || saving}
+          disabled={confirmingDelete !== false || saving}
         />
       </div>
-      {confirmingDelete ? (
-        <div className="m365-form-actions">
-          <span>This will permanently delete the event.</span>
-          <button onClick={() => setConfirmingDelete(false)} disabled={deleting}>
-            Cancel
-          </button>
-          <button className="mod-warning" onClick={() => void handleDelete()} disabled={deleting}>
-            {deleting ? 'Deleting…' : 'Delete event'}
-          </button>
-        </div>
+      {confirmingDelete !== false ? (
+        renderConfirmActions()
       ) : (
         <div className="m365-form-actions">
           <button onClick={onCancel} disabled={saving}>
             Cancel
           </button>
           {onDelete && (
-            <button onClick={() => setConfirmingDelete(true)} disabled={saving}>
+            <button
+              onClick={() => setConfirmingDelete(onDeleteSeries ? 'occurrence' : 'single')}
+              disabled={saving}
+            >
               Delete
             </button>
           )}
@@ -240,6 +273,7 @@ export class EventDetailModal extends Modal {
     private readonly onSaved: () => void,
     private readonly calendars: M365Calendar[],
     private readonly onDeleteCallback?: () => Promise<void>,
+    private readonly onDeleteSeriesCallback?: () => Promise<void>,
   ) {
     super(app);
   }
@@ -250,6 +284,12 @@ export class EventDetailModal extends Modal {
     const onDelete = this.onDeleteCallback
       ? async () => {
           await this.onDeleteCallback!();
+          this.close();
+        }
+      : undefined;
+    const onDeleteSeries = this.onDeleteSeriesCallback
+      ? async () => {
+          await this.onDeleteSeriesCallback!();
           this.close();
         }
       : undefined;
@@ -265,6 +305,7 @@ export class EventDetailModal extends Modal {
           }}
           onCancel={() => this.close()}
           onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
         />
       </StrictMode>,
     );
