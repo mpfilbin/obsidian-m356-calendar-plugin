@@ -237,7 +237,7 @@ describe('CalendarApp', () => {
     expect(screen.queryByText('Not authenticated')).not.toBeInTheDocument();
   });
 
-  it('injects created event into state from createEvent response without re-fetching', async () => {
+  it('re-fetches events after creating an event so recurring occurrences all appear', async () => {
     const newEvent = {
       id: 'evt-new',
       subject: 'New Meeting',
@@ -247,7 +247,10 @@ describe('CalendarApp', () => {
       isAllDay: false,
     };
     const createEvent = vi.fn().mockResolvedValue(newEvent);
-    const getEvents = vi.fn().mockResolvedValue([mockEvent]);
+    // Second getEvents call returns the new event (simulating the server having created it)
+    const getEvents = vi.fn()
+      .mockResolvedValueOnce([mockEvent])
+      .mockResolvedValueOnce([mockEvent, newEvent]);
     const ctx = makeContext({
       calendarService: {
         getCalendars: vi.fn().mockResolvedValue([mockCalendar]),
@@ -259,8 +262,7 @@ describe('CalendarApp', () => {
 
     renderCalendarApp(ctx);
     // Wait for the initial event to appear in the DOM — this guarantees fetchAll's
-    // setEvents has committed before we trigger event creation (stronger than
-    // checking getEvents call count, which doesn't wait for the state to settle).
+    // setEvents has committed before we trigger event creation.
     await screen.findByText('Standup');
 
     // Trigger create event modal via toolbar button
@@ -274,9 +276,9 @@ describe('CalendarApp', () => {
     });
 
     expect(createEvent).toHaveBeenCalledWith('cal-1', expect.objectContaining({ subject: 'New Meeting' }));
-    // getEvents must NOT be called again — new event comes from createEvent return value
-    expect(getEvents).toHaveBeenCalledTimes(1);
-    // The new event appears in the calendar
+    // getEvents is called again after creation so all recurrences are fetched from the server
+    await waitFor(() => expect(getEvents).toHaveBeenCalledTimes(2));
+    // The new event appears in the calendar (from the re-fetch)
     await waitFor(() => expect(screen.getByText('New Meeting')).toBeInTheDocument());
   });
 
