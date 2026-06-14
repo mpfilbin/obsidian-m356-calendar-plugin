@@ -511,7 +511,7 @@
 .m365-month-overflow-btn {
   display: block;
   width: 100%;
-  background: none;
+  background: var(--background-modifier-border);
   border: none;
   border-radius: 3px;
   padding: 1px 4px;
@@ -519,12 +519,24 @@
   cursor: pointer;
   font-size: 0.75em;
   color: var(--text-muted);
-  text-align: left;
+  text-align: center;
 }
 
 .m365-month-overflow-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
+}
+
+.m365-overflow-popup {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px;
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ─── Day View Timeline Grid ─────────────────────────────────────────────── */
