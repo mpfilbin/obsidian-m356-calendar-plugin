@@ -671,7 +671,7 @@ describe('CalendarService', () => {
       });
       const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
       expect(body.recurrence.pattern).toMatchObject({
-        type: 'relativeMonthly', daysOfWeek: ['monday'], index: 'third',
+        type: 'relativeMonthly', interval: 1, daysOfWeek: ['monday'], index: 'third',
       });
     });
 
