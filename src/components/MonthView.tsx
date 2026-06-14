@@ -66,9 +66,12 @@ export const MonthView: React.FC<MonthViewProps> = ({
           const isCurrentMonth = day.getMonth() === currentDate.getMonth();
           const isToday = day.toDateString() === today.toDateString();
           const cellDateStr = toDateOnly(day);
-          const dayEvents = events.filter(
-            (e) => e.start.dateTime.slice(0, 10) === cellDateStr,
-          );
+          const dayEvents = events
+            .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
+            .sort((a, b) => {
+              if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
+              return a.start.dateTime.localeCompare(b.start.dateTime);
+            });
           const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);
           const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
           const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
