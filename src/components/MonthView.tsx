@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList } from '../types';
 import { EventCard } from './EventCard';
 import { TodoCard } from './TodoCard';
 import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
 import { usePopoverContext } from '../PopoverContext';
+import { OverflowPopup } from './OverflowPopup';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -25,7 +26,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   calendars,
   onDayClick,
   onEventClick,
-  maxEventsPerDay = 6,
+  maxEventsPerDay = 4,
   weather,
   todos = [],
   todoLists = [],
@@ -37,6 +38,19 @@ export const MonthView: React.FC<MonthViewProps> = ({
   const todoListMap = new Map(todoLists.map((l) => [l.id, l]));
   const today = new Date();
   const { showPopover, hidePopover } = usePopoverContext();
+
+  const [overflowPopover, setOverflowPopover] = useState<{
+    events: M365Event[];
+    todos: M365TodoItem[];
+    anchorRect: DOMRect;
+  } | null>(null);
+  const overflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (overflowTimerRef.current !== null) clearTimeout(overflowTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="m365-calendar-month-view">
@@ -130,18 +144,46 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   type="button"
                   className="m365-month-overflow-btn"
                   aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
+                  onMouseEnter={(e) => {
+                    if (overflowTimerRef.current !== null) clearTimeout(overflowTimerRef.current);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    overflowTimerRef.current = setTimeout(() => {
+                      overflowTimerRef.current = null;
+                      setOverflowPopover({
+                        events: dayEvents.slice(eventSlots),
+                        todos: dayTodos.slice(todoSlots),
+                        anchorRect: rect,
+                      });
+                    }, 300);
+                  }}
+                  onMouseLeave={() => {
+                    if (overflowTimerRef.current !== null) {
+                      clearTimeout(overflowTimerRef.current);
+                      overflowTimerRef.current = null;
+                    }
+                    setOverflowPopover(null);
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDayClick(day);
                   }}
                 >
-                  + {totalItems - maxEventsPerDay} more
+                  (+{totalItems - maxEventsPerDay})
                 </button>
               )}
             </div>
           );
         })}
       </div>
+      {overflowPopover && (
+        <OverflowPopup
+          events={overflowPopover.events}
+          todos={overflowPopover.todos}
+          calendarMap={calendarMap}
+          todoListMap={todoListMap}
+          anchorRect={overflowPopover.anchorRect}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MonthView } from '../../src/components/MonthView';
 import { M365Event, M365Calendar, DailyWeather } from '../../src/types';
@@ -135,7 +135,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    expect(screen.queryByText(/more/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\(\+\d+\)$/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Event \d/)).toHaveLength(6);
   });
 
@@ -154,7 +154,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    expect(screen.getByText('+ 2 more')).toBeInTheDocument();
+    expect(screen.getByText('(+2)')).toBeInTheDocument();
   });
 
   it('clicking the overflow button calls onDayClick', async () => {
@@ -173,7 +173,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    await userEvent.click(screen.getByText('+ 2 more'));
+    await userEvent.click(screen.getByText('(+2)'));
     expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
   });
 
@@ -193,12 +193,12 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    await userEvent.click(screen.getByText('+ 2 more'));
+    await userEvent.click(screen.getByText('(+2)'));
     expect(onDayClick).toHaveBeenCalledTimes(1);
   });
 
-  it('uses default limit of 6 when maxEventsPerDay is not specified', () => {
-    const events = Array.from({ length: 7 }, (_, i) => ({
+  it('uses default limit of 4 when maxEventsPerDay is not specified', () => {
+    const events = Array.from({ length: 5 }, (_, i) => ({
       ...eventOnApril4,
       id: `evt${i}`,
       subject: `Event ${i}`,
@@ -211,7 +211,7 @@ describe('MonthView', () => {
         onDayClick={vi.fn()}
       />,
     );
-    expect(screen.getByText('+ 1 more')).toBeInTheDocument();
+    expect(screen.getByText('(+1)')).toBeInTheDocument();
   });
 
   const forecastWeather: DailyWeather = {
@@ -356,5 +356,91 @@ describe('MonthView — todos', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'View task: Buy milk' })).toBeDisabled();
+  });
+});
+
+describe('MonthView — overflow popup hover', () => {
+  const events8 = Array.from({ length: 8 }, (_, i) => ({
+    ...eventOnApril4,
+    id: `evt${i}`,
+    subject: `Event ${i}`,
+  }));
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('innerWidth', 1024);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('does not show overflow popup before 300ms of hover', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events8}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={6}
+      />,
+    );
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Show 2 more items' }));
+    act(() => { vi.advanceTimersByTime(299); });
+    expect(document.querySelector('.m365-overflow-popup')).toBeNull();
+  });
+
+  it('shows overflow popup with overflow events after 300ms of hover', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events8}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={6}
+      />,
+    );
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Show 2 more items' }));
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(document.querySelector('.m365-overflow-popup')).not.toBeNull();
+    expect(screen.getByText('Event 6')).toBeInTheDocument();
+    expect(screen.getByText('Event 7')).toBeInTheDocument();
+  });
+
+  it('hides overflow popup immediately on mouse leave', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events8}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={6}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: 'Show 2 more items' });
+    fireEvent.mouseEnter(btn);
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(document.querySelector('.m365-overflow-popup')).not.toBeNull();
+    fireEvent.mouseLeave(btn);
+    expect(document.querySelector('.m365-overflow-popup')).toBeNull();
+  });
+
+  it('mouse leave before 300ms cancels the popup', () => {
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events8}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={6}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: 'Show 2 more items' });
+    fireEvent.mouseEnter(btn);
+    act(() => { vi.advanceTimersByTime(299); });
+    fireEvent.mouseLeave(btn);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(document.querySelector('.m365-overflow-popup')).toBeNull();
   });
 });
