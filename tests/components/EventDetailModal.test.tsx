@@ -204,6 +204,160 @@ describe('EventDetailForm', () => {
     );
   });
 
+  describe('series master delete', () => {
+    it('shows series warning copy and single confirm button when Delete is clicked', async () => {
+      const seriesMasterEvent = { ...event, type: 'seriesMaster' as const };
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={seriesMasterEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      expect(screen.getByText('This will permanently delete all events in this series.')).toBeInTheDocument();
+      expect(screen.getByText('Delete all events')).toBeInTheDocument();
+      expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
+    });
+
+    it('calls onDelete when Delete all events is clicked', async () => {
+      const seriesMasterEvent = { ...event, type: 'seriesMaster' as const };
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={seriesMasterEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Delete all events'));
+      await waitFor(() => expect(onDelete).toHaveBeenCalled());
+    });
+
+    it('returns to normal state when Cancel is clicked in series master confirm mode', async () => {
+      const seriesMasterEvent = { ...event, type: 'seriesMaster' as const };
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={seriesMasterEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Cancel'));
+      expect(screen.queryByText('This will permanently delete all events in this series.')).not.toBeInTheDocument();
+      expect(screen.getByText('OK')).toBeInTheDocument();
+    });
+  });
+
+  describe('occurrence delete', () => {
+    const occurrenceEvent = { ...event, type: 'occurrence' as const, seriesMasterId: 'master-1' };
+
+    it('shows two delete buttons when onDeleteSeries is provided', async () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      expect(screen.getByText('Delete this event')).toBeInTheDocument();
+      expect(screen.getByText('Delete the series')).toBeInTheDocument();
+      expect(screen.getByText('This will permanently delete this event.')).toBeInTheDocument();
+    });
+
+    it('calls onDelete (not onDeleteSeries) when Delete this event is clicked', async () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Delete this event'));
+      await waitFor(() => expect(onDelete).toHaveBeenCalled());
+      expect(onDeleteSeries).not.toHaveBeenCalled();
+    });
+
+    it('calls onDeleteSeries (not onDelete) when Delete the series is clicked', async () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Delete the series'));
+      await waitFor(() => expect(onDeleteSeries).toHaveBeenCalled());
+      expect(onDelete).not.toHaveBeenCalled();
+    });
+
+    it('returns to normal state when Cancel is clicked in occurrence confirm mode', async () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Cancel'));
+      expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
+      expect(screen.getByText('OK')).toBeInTheDocument();
+    });
+
+    it('shows inline error and resets confirm state when onDeleteSeries rejects', async () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      const onDeleteSeries = vi.fn().mockRejectedValue(new Error('Series error'));
+      render(
+        <EventDetailForm
+          event={occurrenceEvent}
+          onSave={onSave}
+          onCancel={onCancel}
+          onDelete={onDelete}
+          onDeleteSeries={onDeleteSeries}
+          calendars={[]}
+        />,
+      );
+      await userEvent.click(screen.getByText('Delete'));
+      await userEvent.click(screen.getByText('Delete the series'));
+      await waitFor(() => expect(screen.getByText('Series error')).toBeInTheDocument());
+      expect(screen.queryByText('Delete this event')).not.toBeInTheDocument();
+    });
+  });
+
   // ── Calendar dropdown ──────────────────────────────────────────────────────
 
   it('does not render calendar field when calendars list is empty', () => {
