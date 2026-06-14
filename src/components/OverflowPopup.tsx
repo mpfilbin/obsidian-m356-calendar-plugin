@@ -30,7 +30,7 @@ export const OverflowPopup: React.FC<OverflowPopupProps> = ({
   return createPortal(
     <div
       className="m365-overflow-popup"
-      style={{ position: 'fixed', top: `${anchorRect.top}px`, left: `${left}px`, pointerEvents: 'none' }}
+      style={{ position: 'fixed', top: `${anchorRect.top}px`, left: `${left}px` }}
     >
       {events.map((event) => {
         const cal = calendarMap.get(event.calendarId);

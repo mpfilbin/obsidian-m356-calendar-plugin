@@ -534,7 +534,10 @@
   padding: 6px;
   z-index: 1000;
   width: 220px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  overflow: hidden;
+  pointer-events: none;
+  box-shadow: var(--shadow-l);
 }
 
 /* ─── Day View Timeline Grid ─────────────────────────────────────────────── */
