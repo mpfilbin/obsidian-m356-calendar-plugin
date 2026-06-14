@@ -25,7 +25,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   calendars,
   onDayClick,
   onEventClick,
-  maxEventsPerDay = 6,
+  maxEventsPerDay = 4,
   weather,
   todos = [],
   todoLists = [],
@@ -135,7 +135,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                     onDayClick(day);
                   }}
                 >
-                  + {totalItems - maxEventsPerDay} more
+                  (+{totalItems - maxEventsPerDay})
                 </button>
               )}
             </div>

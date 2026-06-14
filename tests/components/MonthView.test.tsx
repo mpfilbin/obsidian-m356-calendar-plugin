@@ -135,7 +135,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    expect(screen.queryByText(/more/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\(\+\d+\)$/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Event \d/)).toHaveLength(6);
   });
 
@@ -154,7 +154,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    expect(screen.getByText('+ 2 more')).toBeInTheDocument();
+    expect(screen.getByText('(+2)')).toBeInTheDocument();
   });
 
   it('clicking the overflow button calls onDayClick', async () => {
@@ -173,7 +173,7 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    await userEvent.click(screen.getByText('+ 2 more'));
+    await userEvent.click(screen.getByText('(+2)'));
     expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
   });
 
@@ -193,12 +193,12 @@ describe('MonthView', () => {
         maxEventsPerDay={6}
       />,
     );
-    await userEvent.click(screen.getByText('+ 2 more'));
+    await userEvent.click(screen.getByText('(+2)'));
     expect(onDayClick).toHaveBeenCalledTimes(1);
   });
 
-  it('uses default limit of 6 when maxEventsPerDay is not specified', () => {
-    const events = Array.from({ length: 7 }, (_, i) => ({
+  it('uses default limit of 4 when maxEventsPerDay is not specified', () => {
+    const events = Array.from({ length: 5 }, (_, i) => ({
       ...eventOnApril4,
       id: `evt${i}`,
       subject: `Event ${i}`,
@@ -211,7 +211,7 @@ describe('MonthView', () => {
         onDayClick={vi.fn()}
       />,
     );
-    expect(screen.getByText('+ 1 more')).toBeInTheDocument();
+    expect(screen.getByText('(+1)')).toBeInTheDocument();
   });
 
   const forecastWeather: DailyWeather = {
