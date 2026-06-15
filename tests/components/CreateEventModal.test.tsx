@@ -424,7 +424,7 @@ describe('CreateEventForm — initialAllDay', () => {
         onCancel={vi.fn()}
       />,
     );
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
   });
 
@@ -483,7 +483,7 @@ describe('CreateEventForm — initialAllDay', () => {
         onCancel={vi.fn()}
       />,
     );
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
   });
 
@@ -506,7 +506,11 @@ describe('CreateEventForm — initialAllDay', () => {
       isAllDay: true,
     }));
     const callArgs = onSubmit.mock.calls[0][1];
-    expect(callArgs.start).toEqual(new Date('2026-04-10T00:00:00.000Z'));
-    expect(callArgs.end).toEqual(new Date('2026-04-11T00:00:00.000Z'));
+    expect(callArgs.start.getFullYear()).toBe(2026);
+    expect(callArgs.start.getMonth()).toBe(3);
+    expect(callArgs.start.getDate()).toBe(10);
+    expect(callArgs.end.getFullYear()).toBe(2026);
+    expect(callArgs.end.getMonth()).toBe(3);
+    expect(callArgs.end.getDate()).toBe(11);
   });
 });

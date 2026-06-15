@@ -359,7 +359,6 @@ describe('MonthView — todos', () => {
   });
 });
 
-<<<<<<< HEAD
 describe('MonthView — overflow popup hover', () => {
   const events8 = Array.from({ length: 8 }, (_, i) => ({
     ...eventOnApril4,
