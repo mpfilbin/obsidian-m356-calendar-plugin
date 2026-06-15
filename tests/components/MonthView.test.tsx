@@ -267,6 +267,94 @@ describe('MonthView', () => {
     expect(document.querySelector('.m365-weather-icon')).toBeNull();
     expect(document.querySelector('.m365-weather-unknown')).toBeNull();
   });
+
+  it('renders high, low, and precip in imperial units', () => {
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+        weatherUnits="imperial"
+      />,
+    );
+    const details = document.querySelector('.m365-month-weather-details');
+    expect(details).not.toBeNull();
+    expect(details?.textContent).toContain('↑ 78°F');
+    expect(details?.textContent).toContain('↓ 61°F');
+    expect(details?.textContent).toContain('☂ 10%');
+  });
+
+  it('renders temperatures in °C when weatherUnits is metric', () => {
+    const metricWeather: DailyWeather = {
+      ...forecastWeather,
+      date: '2026-04-04',
+      tempHigh: 26,
+      tempLow: 16,
+    };
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', metricWeather]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+        weatherUnits="metric"
+      />,
+    );
+    const details = document.querySelector('.m365-month-weather-details');
+    expect(details?.textContent).toContain('↑ 26°C');
+    expect(details?.textContent).toContain('↓ 16°C');
+  });
+
+  it('omits individual detail fields when their data is null', () => {
+    const partialWeather: DailyWeather = {
+      ...forecastWeather,
+      date: '2026-04-04',
+      tempHigh: 78,
+      tempLow: null,
+      precipProbability: null,
+    };
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', partialWeather]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    const details = document.querySelector('.m365-month-weather-details');
+    expect(details?.textContent).toContain('↑ 78°F');
+    expect(details?.textContent).not.toContain('↓');
+    expect(details?.textContent).not.toContain('☂');
+  });
+
+  it('does not render the detail row when all temp and precip data is null', () => {
+    const noDetailWeather: DailyWeather = {
+      ...forecastWeather,
+      date: '2026-04-04',
+      tempHigh: null,
+      tempLow: null,
+      precipProbability: null,
+    };
+    const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', noDetailWeather]]);
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={[]}
+        calendars={[]}
+        onDayClick={vi.fn()}
+        weather={weatherMap}
+      />,
+    );
+    expect(document.querySelector('.m365-month-weather-details')).toBeNull();
+    expect(document.querySelector('.m365-weather-icon')).not.toBeNull();
+  });
 });
 
 const todoList: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };

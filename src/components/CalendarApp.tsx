@@ -412,6 +412,7 @@ export const CalendarApp: React.FC = () => {
               onTodoClick={handleTodoClick}
               completingTodoIds={completingTodoIds}
               weather={weather}
+              weatherUnits={settings.weatherUnits}
             />
           )}
           {view === 'week' && (
