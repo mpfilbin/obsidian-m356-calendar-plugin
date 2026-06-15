@@ -70,6 +70,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
             .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
             .sort((a, b) => {
               if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
+              if (a.isAllDay) return 0;
               return a.start.dateTime.localeCompare(b.start.dateTime);
             });
           const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);

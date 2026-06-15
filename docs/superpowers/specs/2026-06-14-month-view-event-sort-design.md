@@ -31,6 +31,7 @@ const dayEvents = events
   .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
   .sort((a, b) => {
     if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
+    if (a.isAllDay) return 0;
     return a.start.dateTime.localeCompare(b.start.dateTime);
   });
 ```
@@ -39,7 +40,7 @@ const dayEvents = events
 
 - The overflow popup (`OverflowPopup`) automatically gets the sorted tail because it slices from the same sorted `dayEvents` array — no separate change needed.
 - Week and day views are unaffected.
-- No new tests required for this change; existing month view tests cover the rendering path and the sort is a pure data transformation.
+- Two tests added to `tests/components/MonthView.test.tsx` verifying DOM render order: one for ascending timed-event order, one for all-day-before-timed.
 
 ## Non-Goals
 
