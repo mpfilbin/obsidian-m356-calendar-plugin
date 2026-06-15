@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import * as obsidianMock from '../../tests/__mocks__/obsidian';
@@ -10,7 +10,11 @@ import type { NewEventInput, EventPatch, M365Calendar } from '../../src/types';
 import { M365TodoList, M365TodoItem } from '../../src/types';
 
 // Capture the onSubmit callback passed to CreateEventModal so tests can invoke it directly.
-const modalCallbacks = vi.hoisted(() => ({ onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null }));
+const modalCallbacks = vi.hoisted(() => ({
+  onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null,
+  initialDate: null as Date | null,
+  initialAllDay: null as boolean | null,
+}));
 
 const eventDetailModalCallbacks = vi.hoisted(() => ({
   onDelete: undefined as (() => Promise<void>) | undefined,
@@ -67,10 +71,13 @@ vi.mock('../../src/components/CreateEventModal', () => ({
       _app: unknown,
       _calendars: unknown,
       _defaultCalendarId: unknown,
-      _initialDate: unknown,
+      initialDate: Date,
       onSubmit: (calendarId: string, event: NewEventInput) => Promise<void>,
+      initialAllDay: boolean = false,
     ) {
       modalCallbacks.onSubmit = onSubmit;
+      modalCallbacks.initialDate = initialDate;
+      modalCallbacks.initialAllDay = initialAllDay;
     }
     open() {}
   },
@@ -1022,5 +1029,122 @@ describe('CalendarApp — todo integration', () => {
         expect.objectContaining({ enabledTodoListIds: ['list1'] }),
       );
     });
+  });
+});
+
+describe('CalendarApp — context menu', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-04-15T12:00:00'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    modalCallbacks.initialDate = null;
+    modalCallbacks.initialAllDay = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('right-clicking a month day cell shows a menu with New event and New task', async () => {
+    let capturedMenu: InstanceType<typeof obsidianMock.Menu> | null = null;
+    vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent').mockImplementation(function (
+      this: InstanceType<typeof obsidianMock.Menu>,
+    ) {
+      capturedMenu = this;
+      return this;
+    });
+
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => screen.getByText('Standup'));
+
+    const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
+      (el) => el.textContent === '10',
+    )!;
+    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    fireEvent.contextMenu(dayCell);
+
+    expect(capturedMenu).not.toBeNull();
+    expect(capturedMenu!.items).toHaveLength(2);
+    expect(capturedMenu!.items[0].title).toBe('New event');
+    expect(capturedMenu!.items[1].title).toBe('New task');
+  });
+
+  it('"New event" from context menu opens CreateEventModal with initialAllDay=true', async () => {
+    let capturedMenu: InstanceType<typeof obsidianMock.Menu> | null = null;
+    vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent').mockImplementation(function (
+      this: InstanceType<typeof obsidianMock.Menu>,
+    ) {
+      capturedMenu = this;
+      return this;
+    });
+
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => screen.getByText('Standup'));
+
+    const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
+      (el) => el.textContent === '10',
+    )!;
+    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    fireEvent.contextMenu(dayCell);
+
+    expect(capturedMenu).not.toBeNull();
+    capturedMenu!.items[0].onClick();
+
+    expect(modalCallbacks.initialAllDay).toBe(true);
+    expect(modalCallbacks.initialDate).not.toBeNull();
+    expect(modalCallbacks.initialDate!.getFullYear()).toBe(2026);
+    expect(modalCallbacks.initialDate!.getMonth()).toBe(3); // April
+    expect(modalCallbacks.initialDate!.getDate()).toBe(10);
+  });
+
+  it('"New task" from context menu opens CreateTaskModal with the day date', async () => {
+    const mockTodoList = { id: 'list1', displayName: 'My Tasks', color: '#0000ff' };
+    let capturedMenu: InstanceType<typeof obsidianMock.Menu> | null = null;
+    vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent').mockImplementation(function (
+      this: InstanceType<typeof obsidianMock.Menu>,
+    ) {
+      capturedMenu = this;
+      return this;
+    });
+
+    const ctx = makeContext({
+      todoService: {
+        getLists: vi.fn().mockResolvedValue([mockTodoList]),
+        getTasks: vi.fn().mockResolvedValue([]),
+        completeTask: vi.fn().mockResolvedValue(undefined),
+        deleteTask: vi.fn().mockResolvedValue(undefined),
+        createTask: vi.fn().mockResolvedValue({ id: 'new-task-1', title: 'New task', listId: 'list1', dueDate: '2026-04-10', importance: 'normal' as const }),
+        createChecklistItem: vi.fn().mockResolvedValue({ id: 'ci1', displayName: 'Step', isChecked: false }),
+      } as unknown as AppContextValue['todoService'],
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => screen.getByText('Standup'));
+
+    const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
+      (el) => el.textContent === '10',
+    )!;
+    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    fireEvent.contextMenu(dayCell);
+
+    expect(capturedMenu).not.toBeNull();
+    capturedMenu!.items[1].onClick();
+
+    expect(createTaskModalCallbacks.onSubmit).not.toBeNull();
+  });
+
+  it('right-clicking an existing event button does not fire the context menu', async () => {
+    const showAtMouseEventSpy = vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent');
+
+    const ctx = makeContext();
+    renderCalendarApp(ctx);
+    await waitFor(() => screen.getByText('Standup'));
+
+    const eventBtn = screen.getByRole('button', { name: /Edit event: Standup/ });
+    fireEvent.contextMenu(eventBtn);
+
+    expect(showAtMouseEventSpy).not.toHaveBeenCalled();
   });
 });

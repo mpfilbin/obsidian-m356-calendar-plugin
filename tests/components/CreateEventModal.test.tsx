@@ -407,3 +407,110 @@ describe('buildRecurrence', () => {
     expect(result?.weekIndex).toBe('last');
   });
 });
+
+describe('CreateEventForm — initialAllDay', () => {
+  const calendars: M365Calendar[] = [
+    { id: 'cal1', name: 'Work', color: '#0078d4', isDefaultCalendar: true, canEdit: true },
+  ];
+
+  it('initializes with all-day checkbox checked when initialAllDay is true', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        initialAllDay={true}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('uses date-only input for start when initialAllDay is true', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        initialAllDay={true}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const startInput = document.getElementById('m365-create-start') as HTMLInputElement;
+    expect(startInput.type).toBe('date');
+  });
+
+  it('start date string matches initialDate when initialAllDay is true', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        initialAllDay={true}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const startInput = document.getElementById('m365-create-start') as HTMLInputElement;
+    expect(startInput.value).toBe('2026-04-10');
+  });
+
+  it('end date is the day after initialDate when initialAllDay is true', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        initialAllDay={true}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const endInput = document.getElementById('m365-create-end') as HTMLInputElement;
+    expect(endInput.value).toBe('2026-04-11');
+  });
+
+  it('all-day checkbox is unchecked by default (no initialAllDay prop)', () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const checkbox = screen.getByRole('checkbox', { name: /all day/i }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it('submits with isAllDay true and correct dates when initialAllDay is true and no interaction occurs', async () => {
+    const onSubmit = vi.fn();
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        initialAllDay={true}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await userEvent.type(screen.getByPlaceholderText('Event title'), 'Day Off');
+    await userEvent.click(screen.getByText('Create'));
+    expect(onSubmit).toHaveBeenCalledWith('cal1', expect.objectContaining({
+      subject: 'Day Off',
+      isAllDay: true,
+    }));
+    const callArgs = onSubmit.mock.calls[0][1];
+    expect(callArgs.start.getFullYear()).toBe(2026);
+    expect(callArgs.start.getMonth()).toBe(3);
+    expect(callArgs.start.getDate()).toBe(10);
+    expect(callArgs.end.getFullYear()).toBe(2026);
+    expect(callArgs.end.getMonth()).toBe(3);
+    expect(callArgs.end.getDate()).toBe(11);
+  });
+});
