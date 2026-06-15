@@ -444,3 +444,91 @@ describe('MonthView — overflow popup hover', () => {
     expect(document.querySelector('.m365-overflow-popup')).toBeNull();
   });
 });
+
+describe('MonthView — event sort order', () => {
+  const cal: M365Calendar = {
+    id: 'cal1',
+    name: 'Work',
+    color: '#0078d4',
+    isDefaultCalendar: true,
+    canEdit: true,
+  };
+
+  it('renders timed events in ascending start-time order regardless of input order', () => {
+    const events: M365Event[] = [
+      {
+        id: 'e3',
+        subject: '3 PM Meeting',
+        start: { dateTime: '2026-04-04T15:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-04T16:00:00', timeZone: 'UTC' },
+        calendarId: 'cal1',
+        isAllDay: false,
+      },
+      {
+        id: 'e1',
+        subject: '9 AM Meeting',
+        start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-04T10:00:00', timeZone: 'UTC' },
+        calendarId: 'cal1',
+        isAllDay: false,
+      },
+      {
+        id: 'e2',
+        subject: '12 PM Meeting',
+        start: { dateTime: '2026-04-04T12:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-04T13:00:00', timeZone: 'UTC' },
+        calendarId: 'cal1',
+        isAllDay: false,
+      },
+    ];
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events}
+        calendars={[cal]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={3}
+      />,
+    );
+    const buttons = Array.from(
+      document.querySelectorAll('.m365-event-click-btn[aria-label^="Edit event:"]'),
+    );
+    const subjects = buttons.map((b) => b.getAttribute('aria-label')?.replace('Edit event: ', ''));
+    expect(subjects).toEqual(['9 AM Meeting', '12 PM Meeting', '3 PM Meeting']);
+  });
+
+  it('renders all-day events before timed events', () => {
+    const events: M365Event[] = [
+      {
+        id: 'timed',
+        subject: '9 AM Meeting',
+        start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-04T10:00:00', timeZone: 'UTC' },
+        calendarId: 'cal1',
+        isAllDay: false,
+      },
+      {
+        id: 'allday',
+        subject: 'All Day Event',
+        start: { dateTime: '2026-04-04', timeZone: 'UTC' },
+        end: { dateTime: '2026-04-05', timeZone: 'UTC' },
+        calendarId: 'cal1',
+        isAllDay: true,
+      },
+    ];
+    render(
+      <MonthView
+        currentDate={new Date('2026-04-01')}
+        events={events}
+        calendars={[cal]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={3}
+      />,
+    );
+    const buttons = Array.from(
+      document.querySelectorAll('.m365-event-click-btn[aria-label^="Edit event:"]'),
+    );
+    const subjects = buttons.map((b) => b.getAttribute('aria-label')?.replace('Edit event: ', ''));
+    expect(subjects).toEqual(['All Day Event', '9 AM Meeting']);
+  });
+});
