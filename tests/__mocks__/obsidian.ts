@@ -90,17 +90,22 @@ export class Setting {
 }
 
 export class Menu {
+  items: Array<{ title: string; onClick: () => void }> = [];
+
   addItem(cb: (item: {
     setTitle: (t: string) => typeof item;
     setIcon: (i: string) => typeof item;
     onClick: (fn: () => void) => typeof item;
   }) => void) {
+    let title = '';
+    let fn: () => void = () => {};
     const item = {
-      setTitle: (_t: string) => item,
+      setTitle: (t: string) => { title = t; return item; },
       setIcon: (_i: string) => item,
-      onClick: (_fn: () => void) => item,
+      onClick: (f: () => void) => { fn = f; return item; },
     };
     cb(item);
+    this.items.push({ title, onClick: fn });
     return this;
   }
   showAtMouseEvent(_event: MouseEvent) { return this; }

@@ -172,6 +172,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       e.stopPropagation();
                       onEventClick?.(event);
                     }}
+                    onContextMenu={(e) => e.stopPropagation()}
                   >
                     <EventCard event={event} calendar={cal} />
                   </button>
@@ -191,6 +192,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       e.stopPropagation();
                       onTodoClick?.(todo);
                     }}
+                    onContextMenu={(e) => e.stopPropagation()}
                   >
                     <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
                   </button>

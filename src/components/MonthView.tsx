@@ -125,6 +125,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       e.stopPropagation();
                       onEventClick?.(event);
                     }}
+                    onContextMenu={(e) => e.stopPropagation()}
                   >
                     <EventCard event={event} calendar={cal} />
                   </button>
@@ -144,6 +145,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       e.stopPropagation();
                       onTodoClick?.(todo);
                     }}
+                    onContextMenu={(e) => e.stopPropagation()}
                   >
                     <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
                   </button>
@@ -154,6 +156,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   type="button"
                   className="m365-month-overflow-btn"
                   aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
+                  onContextMenu={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     if (overflowTimerRef.current !== null) clearTimeout(overflowTimerRef.current);
                     const rect = e.currentTarget.getBoundingClientRect();

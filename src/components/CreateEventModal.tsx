@@ -100,9 +100,10 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     defaultCalendarId || calendars[0]?.id || '',
   );
   const defaultStart = new Date(initialDate);
-  defaultStart.setHours(9, 0, 0, 0);
-  const defaultEnd = new Date(initialDate);
-  defaultEnd.setHours(10, 0, 0, 0);
+  if (defaultStart.getHours() === 0 && defaultStart.getMinutes() === 0) {
+    defaultStart.setHours(9, 0, 0, 0);
+  }
+  const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
 
   const [isAllDay, setIsAllDay] = useState(initialAllDay);
   const [startStr, setStartStr] = useState(() => {

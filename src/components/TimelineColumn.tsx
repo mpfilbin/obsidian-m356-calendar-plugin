@@ -186,6 +186,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
                 e.stopPropagation();
                 onEventClick?.(event);
               }}
+              onContextMenu={(e) => e.stopPropagation()}
             >
               <div className="m365-day-event-content">
                 <span className="m365-day-event-time" style={{ color: cal.color }}>
