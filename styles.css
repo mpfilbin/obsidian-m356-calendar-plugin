@@ -875,3 +875,64 @@
   border-radius: var(--radius-s);
   padding: var(--size-4-1) var(--size-4-3);
 }
+
+/* ─── Spanning Bar ─────────────────────────────────────────────────────────── */
+
+.m365-spanning-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-s);
+  padding: 1px var(--size-4-1);
+  margin: 1px 2px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  box-sizing: border-box;
+  width: calc(100% - 4px);
+  pointer-events: auto;
+}
+
+.m365-spanning-bar:hover {
+  filter: brightness(0.92);
+}
+
+.m365-spanning-bar.continues-left {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: 0;
+  width: calc(100% - 2px);
+}
+
+.m365-spanning-bar.continues-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: 0;
+  width: calc(100% - 2px);
+}
+
+.m365-spanning-bar.continues-left.continues-right {
+  width: 100%;
+}
+
+.m365-spanning-bar-title {
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.m365-spanning-bar-start-time {
+  font-size: var(--font-ui-smaller);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.m365-spanning-bar-end-time {
+  font-size: var(--font-ui-smaller);
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto;
+}
