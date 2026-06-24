@@ -758,7 +758,7 @@ describe('MonthView — spanning events', () => {
     expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
   });
 
-  it('shows a spanning overflow badge when spanning events exceed maxSpanningLanes', () => {
+  it('shows a day cell overflow button when spanning events exceed maxSpanningLanes', () => {
     // Three events all starting on the same Monday: only 2 lanes visible, 1 overflows
     const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
       id: `multi${i}`,
@@ -777,11 +777,12 @@ describe('MonthView — spanning events', () => {
         maxSpanningLanes={2}
       />,
     );
-    expect(document.querySelector('.m365-spanning-overflow-badge')).toBeInTheDocument();
+    // Overflow badge now renders inside each affected day cell as m365-month-overflow-btn
+    expect(document.querySelector('.m365-month-overflow-btn')).toBeInTheDocument();
     expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
   });
 
-  it('clicking the spanning overflow badge calls onDayClick', async () => {
+  it('clicking the spanning overflow button in a day cell calls onDayClick', async () => {
     const onDayClick = vi.fn();
     const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
       id: `multi${i}`,
@@ -800,7 +801,7 @@ describe('MonthView — spanning events', () => {
         maxSpanningLanes={2}
       />,
     );
-    await userEvent.click(document.querySelector('.m365-spanning-overflow-badge')!);
+    await userEvent.click(document.querySelector('.m365-month-overflow-btn')!);
     expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
   });
 

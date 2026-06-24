@@ -169,29 +169,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
                     />
                   );
                 })}
-                {overflowCounts.map((count, col) =>
-                  count > 0 ? (
-                    <button
-                      key={`overflow-${weekIdx}-${col}`}
-                      type="button"
-                      className="m365-spanning-overflow-badge"
-                      style={{
-                        gridColumn: col + 1,
-                        gridRow: maxSpanningLanes + 1,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDayClick(week[col]);
-                      }}
-                      onContextMenu={(e) => e.stopPropagation()}
-                    >
-                      +{count}
-                    </button>
-                  ) : null,
-                )}
               </div>
               <div className="m365-month-day-cells">
-                {week.map((day) => {
+                {week.map((day, colIdx) => {
                   const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                   const isToday = day.toDateString() === today.toDateString();
                   const cellDateStr = toDateOnly(day);
@@ -210,6 +190,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
                   const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
                   const totalItems = dayEvents.length + dayTodos.length;
+                  const spanningOverflow = overflowCounts[colIdx];
+                  const singleDayOverflow = Math.max(0, totalItems - maxEventsPerDay);
+                  const totalOverflow = spanningOverflow + singleDayOverflow;
                   return (
                     <div
                       key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
@@ -277,11 +260,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                           </button>
                         );
                       })}
-                      {totalItems > maxEventsPerDay && (
+                      {totalOverflow > 0 && (
                         <button
                           type="button"
                           className="m365-month-overflow-btn"
-                          aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
+                          aria-label={`Show ${totalOverflow} more items`}
                           onContextMenu={(e) => e.stopPropagation()}
                           onMouseEnter={(e) => {
                             if (overflowTimerRef.current !== null)
@@ -308,7 +291,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                             onDayClick(day);
                           }}
                         >
-                          (+{totalItems - maxEventsPerDay})
+                          (+{totalOverflow})
                         </button>
                       )}
                     </div>
