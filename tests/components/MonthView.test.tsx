@@ -26,7 +26,7 @@ describe('MonthView', () => {
   it('renders day-of-week headers', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -39,7 +39,7 @@ describe('MonthView', () => {
   it('renders 35 or 42 day cells (5 or 6 weeks)', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -52,7 +52,7 @@ describe('MonthView', () => {
   it('renders an event in the correct day cell', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -65,7 +65,7 @@ describe('MonthView', () => {
     const onDayClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={onDayClick}
@@ -93,7 +93,7 @@ describe('MonthView', () => {
     const onEventClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -109,7 +109,7 @@ describe('MonthView', () => {
     const onEventClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -128,7 +128,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -147,7 +147,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -166,7 +166,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -186,7 +186,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -205,7 +205,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -227,7 +227,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -244,7 +244,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', null]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -258,7 +258,7 @@ describe('MonthView', () => {
   it('renders no weather element when weather prop is absent', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -272,7 +272,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -297,7 +297,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', metricWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -321,7 +321,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', partialWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -345,7 +345,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', noDetailWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -370,7 +370,7 @@ describe('MonthView — todos', () => {
   it('renders a todo on its due date', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -382,25 +382,25 @@ describe('MonthView — todos', () => {
   });
 
   it('does not render a todo on the wrong date', () => {
-    const todoOnApril5: M365TodoItem = { ...todoOnApril4, dueDate: '2026-04-05' };
+    // April view ends on May 2; May 4 is outside the visible range
+    const todoOnMay4: M365TodoItem = { ...todoOnApril4, dueDate: '2026-05-04' };
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
-        todos={[todoOnApril5]}
+        todos={[todoOnMay4]}
         todoLists={[todoList]}
         onDayClick={vi.fn()}
       />,
     );
-    // April 4 date cell should not have any todo content
     expect(screen.queryByText('Buy milk')).not.toBeInTheDocument();
   });
 
   it('renders both events and todos in the same day cell', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         todos={[todoOnApril4]}
@@ -416,7 +416,7 @@ describe('MonthView — todos', () => {
     const onTodoClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -432,7 +432,7 @@ describe('MonthView — todos', () => {
   it('disables the todo button when the task is completing', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -465,7 +465,7 @@ describe('MonthView — overflow popup hover', () => {
   it('does not show overflow popup before 300ms of hover', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -480,7 +480,7 @@ describe('MonthView — overflow popup hover', () => {
   it('shows overflow popup with overflow events after 300ms of hover', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -497,7 +497,7 @@ describe('MonthView — overflow popup hover', () => {
   it('hides overflow popup immediately on mouse leave', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -515,7 +515,7 @@ describe('MonthView — overflow popup hover', () => {
   it('mouse leave before 300ms cancels the popup', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -569,7 +569,7 @@ describe('MonthView — event sort order', () => {
     ];
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[cal]}
         onDayClick={vi.fn()}
@@ -604,7 +604,7 @@ describe('MonthView — event sort order', () => {
     ];
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[cal]}
         onDayClick={vi.fn()}
@@ -624,7 +624,7 @@ describe('MonthView — context menu', () => {
     const onDayContextMenu = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -643,7 +643,7 @@ describe('MonthView — context menu', () => {
     const onDayClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={onDayClick}
@@ -657,7 +657,7 @@ describe('MonthView — context menu', () => {
 
   it('passes the correct date in the payload', () => {
     const onDayContextMenu = vi.fn();
-    const testDate = new Date('2026-04-15');
+    const testDate = new Date(2026, 3, 15);
     render(
       <MonthView
         currentDate={testDate}
@@ -684,7 +684,7 @@ describe('MonthView — context menu', () => {
   it('prevents the default browser context menu on right-click', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
