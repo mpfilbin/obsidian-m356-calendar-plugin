@@ -1,11 +1,11 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList, DayContextMenuPayload } from '../types';
-import { EventCard } from './EventCard';
+import { SpanningBar } from './SpanningBar';
 import { TodoCard } from './TodoCard';
 import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly, getWeekDays } from '../lib/datetime';
+import { computeWeekSpanningLayout } from '../lib/spanningLayout';
 import { useNow } from '../hooks/useNow';
-import { usePopoverContext } from '../PopoverContext';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -48,29 +48,45 @@ export const WeekView: React.FC<WeekViewProps> = ({
     }
     return map;
   }, [todos]);
-  const eventsByDate = useMemo(() => {
-    const map = new Map<string, { allDay: M365Event[]; timed: M365Event[] }>();
+
+  // All-day row layout: all-day events (single + multi) + cross-midnight timed events
+  const allDayLayout = useMemo(() => {
+    const allDayRowEvents = events.filter(
+      (e) =>
+        e.isAllDay ||
+        e.start.dateTime.slice(0, 10) !== e.end.dateTime.slice(0, 10),
+    );
+    return computeWeekSpanningLayout(allDayRowEvents, weekDays[0], {
+      includeAllAllDay: true,
+    });
+  }, [events, weekDays]);
+
+  // Timeline events: timed events that start and end on the same calendar day
+  const timedByDate = useMemo(() => {
+    const map = new Map<string, M365Event[]>();
     for (const event of events) {
+      if (event.isAllDay) continue;
+      if (event.start.dateTime.slice(0, 10) !== event.end.dateTime.slice(0, 10)) continue;
       const key = event.start.dateTime.slice(0, 10);
-      if (!map.has(key)) map.set(key, { allDay: [], timed: [] });
-      const bucket = map.get(key)!;
-      if (event.isAllDay) bucket.allDay.push(event);
-      else bucket.timed.push(event);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(event);
     }
     return map;
   }, [events]);
+
   const now = useNow();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const { showPopover, hidePopover } = usePopoverContext();
 
-  const isCurrentWeek = useMemo(() => {
-    return weekDays.some(
-      (d) =>
-        d.getFullYear() === now.getFullYear() &&
-        d.getMonth() === now.getMonth() &&
-        d.getDate() === now.getDate(),
-    );
-  }, [weekDays, now]);
+  const isCurrentWeek = useMemo(
+    () =>
+      weekDays.some(
+        (d) =>
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate(),
+      ),
+    [weekDays, now],
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -78,10 +94,15 @@ export const WeekView: React.FC<WeekViewProps> = ({
     if (!isCurrentWeek || !scrollRef.current) return;
     const container = scrollRef.current;
     const target = nowMinutes * PX_PER_MIN - container.clientHeight / 2;
-    container.scrollTop = Math.max(0, Math.min(target, container.scrollHeight - container.clientHeight));
-  }, []); // intentionally empty: fires once on mount. isCurrentWeek and nowMinutes are
-  // read from the initial render closure — scroll targets the current time when
-  // the view first opened, not on every tick.
+    container.scrollTop = Math.max(
+      0,
+      Math.min(target, container.scrollHeight - container.clientHeight),
+    );
+  }, []); // intentionally empty: fires once on mount
+
+  const hasTodos = weekDays.some(
+    (d) => (todosByDate.get(toDateOnly(d)) ?? []).length > 0,
+  );
 
   return (
     <div className="m365-calendar-week-view">
@@ -113,94 +134,124 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 >
                   {day.getDate()}
                 </span>
-                {weather !== undefined && (() => {
-                  const dateStr = toDateOnly(day);
-                  const w = weather.get(dateStr);
-                  if (w === undefined) return null;
-                  if (w === null) return null;
-                  return (
-                    <div className="m365-weather-strip m365-weather-week">
-                      <img
-                        className="m365-weather-icon"
-                        src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
-                        alt={w.condition.description}
-                        width={24}
-                        height={24}
-                      />
-                      <div className="m365-weather-temps">
-                        <span className="m365-weather-current">{w.tempCurrent !== null ? `${Math.round(w.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
-                        <span className="m365-weather-high">H: {w.tempHigh !== null ? `${Math.round(w.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
-                        <span className="m365-weather-low">L: {w.tempLow !== null ? `${Math.round(w.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}` : '—'}</span>
-                        <span className="m365-weather-precip">☂ {w.precipProbability !== null ? `${Math.round(w.precipProbability * 100)}%` : '—'}</span>
+                {weather !== undefined &&
+                  (() => {
+                    const dateStr = toDateOnly(day);
+                    const w = weather.get(dateStr);
+                    if (w === undefined || w === null) return null;
+                    return (
+                      <div className="m365-weather-strip m365-weather-week">
+                        <img
+                          className="m365-weather-icon"
+                          src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
+                          alt={w.condition.description}
+                          width={24}
+                          height={24}
+                        />
+                        <div className="m365-weather-temps">
+                          <span className="m365-weather-current">
+                            {w.tempCurrent !== null
+                              ? `${Math.round(w.tempCurrent)}°${weatherUnits === 'imperial' ? 'F' : 'C'}`
+                              : '—'}
+                          </span>
+                          <span className="m365-weather-high">
+                            H:{' '}
+                            {w.tempHigh !== null
+                              ? `${Math.round(w.tempHigh)}°${weatherUnits === 'imperial' ? 'F' : 'C'}`
+                              : '—'}
+                          </span>
+                          <span className="m365-weather-low">
+                            L:{' '}
+                            {w.tempLow !== null
+                              ? `${Math.round(w.tempLow)}°${weatherUnits === 'imperial' ? 'F' : 'C'}`
+                              : '—'}
+                          </span>
+                          <span className="m365-weather-precip">
+                            ☂{' '}
+                            {w.precipProbability !== null
+                              ? `${Math.round(w.precipProbability * 100)}%`
+                              : '—'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* All-day events row */}
+      {/* All-day row */}
       <div className="m365-week-allday-row">
         <div className="m365-week-allday-gutter" />
-        {weekDays.map((day) => {
-          const cellDateStr = toDateOnly(day);
-          const allDayEvents = eventsByDate.get(cellDateStr)?.allDay ?? [];
-          return (
-            <div
-              key={`allday-${cellDateStr}`}
-              className="m365-week-allday-cell"
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
-              }}
-            >
-              {allDayEvents.map((event) => {
-                const cal = calendarMap.get(event.calendarId);
-                if (!cal) return null;
+        <div className="m365-week-allday-main">
+          {/* Background columns: provide per-day context menu targets and vertical borders */}
+          <div className="m365-week-allday-columns">
+            {weekDays.map((day) => (
+              <div
+                key={`bg-${toDateOnly(day)}`}
+                className="m365-week-allday-cell"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+                }}
+              />
+            ))}
+          </div>
+          {/* Spanning events grid */}
+          <div className="m365-week-allday-grid">
+            {allDayLayout.segments.map((seg) => {
+              const cal = calendarMap.get(seg.event.calendarId);
+              if (!cal) return null;
+              return (
+                <SpanningBar
+                  key={seg.event.id}
+                  event={seg.event}
+                  calendar={cal}
+                  segment={seg}
+                  onEventClick={onEventClick}
+                />
+              );
+            })}
+          </div>
+          {/* Todos row — only rendered when at least one day has todos */}
+          {hasTodos && (
+            <div className="m365-week-todo-strip">
+              {weekDays.map((day) => {
+                const cellDateStr = toDateOnly(day);
                 return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    className="m365-event-click-btn"
-                    aria-label={`Edit event: ${event.subject}`}
-                    onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
-                    onMouseLeave={() => hidePopover()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick?.(event);
-                    }}
-                    onContextMenu={(e) => e.stopPropagation()}
-                  >
-                    <EventCard event={event} calendar={cal} />
-                  </button>
-                );
-              })}
-              {(todosByDate.get(cellDateStr) ?? []).map((todo) => {
-                const list = todoListMap.get(todo.listId);
-                if (!list) return null;
-                return (
-                  <button
-                    key={todo.id}
-                    type="button"
-                    className="m365-event-click-btn"
-                    aria-label={`View task: ${todo.title}`}
-                    disabled={completingTodoIds?.has(todo.id) ?? false}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTodoClick?.(todo);
-                    }}
-                    onContextMenu={(e) => e.stopPropagation()}
-                  >
-                    <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
-                  </button>
+                  <div key={cellDateStr} className="m365-week-todo-cell">
+                    {(todosByDate.get(cellDateStr) ?? []).map((todo) => {
+                      const list = todoListMap.get(todo.listId);
+                      if (!list) return null;
+                      return (
+                        <button
+                          key={todo.id}
+                          type="button"
+                          className="m365-event-click-btn"
+                          aria-label={`View task: ${todo.title}`}
+                          disabled={completingTodoIds?.has(todo.id) ?? false}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTodoClick?.(todo);
+                          }}
+                          onContextMenu={(e) => e.stopPropagation()}
+                        >
+                          <TodoCard
+                            todo={todo}
+                            todoList={list}
+                            isCompleting={completingTodoIds?.has(todo.id) ?? false}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
 
       {/* Timeline area */}
@@ -227,12 +278,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
         </div>
         {weekDays.map((day) => {
           const cellDateStr = toDateOnly(day);
-          const timedEvents = eventsByDate.get(cellDateStr)?.timed ?? [];
           return (
             <TimelineColumn
               key={`timeline-${cellDateStr}`}
               date={day}
-              events={timedEvents}
+              events={timedByDate.get(cellDateStr) ?? []}
               calendars={calendars}
               onTimeClick={onDayClick}
               onTimeContextMenu={(dateTime, e) =>

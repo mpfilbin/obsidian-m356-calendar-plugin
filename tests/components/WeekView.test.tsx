@@ -560,3 +560,111 @@ describe('WeekView — context menu', () => {
     expect(onDayClick).not.toHaveBeenCalled();
   });
 });
+
+// ─── Spanning events in week all-day row ─────────────────────────────────────
+
+const multiDayAllDay: M365Event = {
+  id: 'multi1',
+  subject: 'Three Day Conference',
+  start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+  end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' }, // Mon–Wed inclusive
+  calendarId: 'cal1',
+  isAllDay: true,
+};
+
+const crossMidnight: M365Event = {
+  id: 'cross1',
+  subject: 'Late Night Event',
+  start: { dateTime: '2026-04-06T22:00:00', timeZone: 'UTC' },
+  end: { dateTime: '2026-04-07T02:00:00', timeZone: 'UTC' },
+  calendarId: 'cal1',
+  isAllDay: false,
+};
+
+describe('WeekView — spanning events in all-day row', () => {
+  it('renders a multi-day all-day event as a spanning bar in the all-day grid', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[multiDayAllDay]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Three Day Conference')).toBeInTheDocument();
+    expect(document.querySelector('.m365-day-event-block')).not.toBeInTheDocument();
+  });
+
+  it('renders a timed cross-midnight event in the all-day grid, not in the timeline', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[crossMidnight]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Late Night Event')).toBeInTheDocument();
+    expect(document.querySelector('.m365-day-event-block')).not.toBeInTheDocument();
+  });
+
+  it('renders start and end time labels on a timed cross-midnight spanning bar', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[crossMidnight]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar-start-time')).toBeInTheDocument();
+    expect(document.querySelector('.m365-spanning-bar-end-time')).toBeInTheDocument();
+  });
+
+  it('renders a single-day all-day event as a spanning bar with colSpan 1', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[allDayEventOnMonday]} // existing fixture: single-day all-day
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const bar = document.querySelector('.m365-spanning-bar') as HTMLElement;
+    expect(bar).toBeInTheDocument();
+    expect(bar.style.gridColumn).toBe('2 / span 1'); // Monday = col 2 (startCol 1 + 1)
+  });
+
+  it('calls onEventClick when a spanning bar in the all-day row is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-06')}
+        events={[multiDayAllDay]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Edit event: Three Day Conference' }),
+    );
+    expect(onEventClick).toHaveBeenCalledWith(multiDayAllDay);
+  });
+
+  it('still renders todos in the week view when spanning events are present', () => {
+    render(
+      <WeekView
+        currentDate={new Date('2026-04-14')}
+        events={[multiDayAllDay]}
+        calendars={[calendar]}
+        todos={[todoOnApril14]}
+        todoLists={[todoList]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Buy milk')).toBeInTheDocument();
+  });
+});

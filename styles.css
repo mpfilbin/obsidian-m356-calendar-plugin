@@ -389,7 +389,6 @@
 .m365-week-allday-row {
   display: flex;
   flex-shrink: 0;
-  min-height: 24px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
@@ -400,9 +399,8 @@
 
 .m365-week-allday-cell {
   flex: 1;
-  padding: 2px var(--size-4-1);
   border-right: 1px solid var(--background-modifier-border);
-  overflow: hidden;
+  pointer-events: auto;
 }
 
 .m365-week-timeline-area {
@@ -976,4 +974,46 @@
   flex-shrink: 0;
   white-space: nowrap;
   margin-left: auto;
+}
+
+/* ─── Week View All-Day Grid ──────────────────────────────────────────────── */
+
+.m365-week-allday-main {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.m365-week-allday-columns {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.m365-week-allday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 22px;
+  min-height: 22px;
+  position: relative;
+  pointer-events: none;
+}
+
+.m365-week-todo-strip {
+  display: flex;
+  position: relative;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.m365-week-todo-cell {
+  flex: 1;
+  padding: 2px var(--size-4-1);
+  border-right: 1px solid var(--background-modifier-border);
+  overflow: hidden;
 }
