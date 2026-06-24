@@ -393,10 +393,8 @@ describe('MonthView — todos', () => {
         onDayClick={vi.fn()}
       />,
     );
-    // April 4 cell should not show this todo
-    const cells = document.querySelectorAll('.m365-calendar-day-cell');
-    const april4 = Array.from(cells).find((c) => c.textContent?.includes('4') && !c.textContent?.includes('14') && !c.textContent?.includes('24'));
-    expect(april4?.textContent).not.toContain('Buy milk');
+    // April 4 date cell should not have any todo content
+    expect(screen.queryByText('Buy milk')).not.toBeInTheDocument();
   });
 
   it('renders both events and todos in the same day cell', () => {
@@ -669,7 +667,7 @@ describe('MonthView — context menu', () => {
         onDayContextMenu={onDayContextMenu}
       />,
     );
-    const cells = Array.from(document.querySelectorAll('.m365-calendar-day-cell'));
+    const cells = Array.from(document.querySelectorAll('.m365-month-date-cell'));
     const april15 = cells.find((c) => {
       const span = c.querySelector('.m365-calendar-day-number');
       return span?.textContent === '15' && !c.className.includes('other-month');

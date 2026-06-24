@@ -293,6 +293,31 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.m365-month-date-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex-shrink: 0;
+}
+
+.m365-month-date-cell {
+  border-right: 1px solid var(--background-modifier-border);
+  padding: var(--size-4-1);
+  cursor: pointer;
+}
+
+.m365-month-date-cell:hover {
+  background: var(--background-modifier-hover);
+}
+
+.m365-month-date-cell.other-month .m365-calendar-day-number {
+  color: var(--text-faint);
+}
+
+.m365-month-date-cell.today .m365-calendar-day-number {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
 .m365-month-spanning-layer {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

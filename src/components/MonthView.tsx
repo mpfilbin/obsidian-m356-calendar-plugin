@@ -91,6 +91,70 @@ export const MonthView: React.FC<MonthViewProps> = ({
 
           return (
             <div key={weekIdx} className="m365-month-week-row">
+              <div className="m365-month-date-row">
+                {week.map((day) => {
+                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                  const isToday = day.toDateString() === today.toDateString();
+                  const cellDateStr = toDateOnly(day);
+                  return (
+                    <div
+                      key={`hdr-${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
+                      className={[
+                        'm365-month-date-cell',
+                        isCurrentMonth ? '' : 'other-month',
+                        isToday ? 'today' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => onDayClick(day)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+                      }}
+                    >
+                      <div className="m365-month-day-header-row">
+                        <span className="m365-calendar-day-number">{day.getDate()}</span>
+                        {weather !== undefined &&
+                          (() => {
+                            const w = weather.get(cellDateStr);
+                            if (!w) return null;
+                            const unit = weatherUnits === 'imperial' ? '°F' : '°C';
+                            const high =
+                              w.tempHigh !== null
+                                ? `↑ ${Math.round(w.tempHigh)}${unit}`
+                                : null;
+                            const low =
+                              w.tempLow !== null
+                                ? `↓ ${Math.round(w.tempLow)}${unit}`
+                                : null;
+                            const precip =
+                              w.precipProbability !== null
+                                ? `☂ ${Math.round(w.precipProbability * 100)}%`
+                                : null;
+                            return (
+                              <>
+                                <img
+                                  className="m365-weather-icon m365-weather-month"
+                                  src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
+                                  alt={w.condition.description}
+                                  width={24}
+                                  height={24}
+                                />
+                                {(high || low || precip) && (
+                                  <div className="m365-month-weather-details">
+                                    {high && <span>{high}</span>}
+                                    {low && <span>{low}</span>}
+                                    {precip && <span>{precip}</span>}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               <div className="m365-month-spanning-layer">
                 {visibleSegments.map((seg) => {
                   const cal = calendarMap.get(seg.event.calendarId);
@@ -162,45 +226,6 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
                       }}
                     >
-                      <div className="m365-month-day-header-row">
-                        <span className="m365-calendar-day-number">{day.getDate()}</span>
-                        {weather !== undefined &&
-                          (() => {
-                            const w = weather.get(cellDateStr);
-                            if (!w) return null;
-                            const unit = weatherUnits === 'imperial' ? '°F' : '°C';
-                            const high =
-                              w.tempHigh !== null
-                                ? `↑ ${Math.round(w.tempHigh)}${unit}`
-                                : null;
-                            const low =
-                              w.tempLow !== null
-                                ? `↓ ${Math.round(w.tempLow)}${unit}`
-                                : null;
-                            const precip =
-                              w.precipProbability !== null
-                                ? `☂ ${Math.round(w.precipProbability * 100)}%`
-                                : null;
-                            return (
-                              <>
-                                <img
-                                  className="m365-weather-icon m365-weather-month"
-                                  src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
-                                  alt={w.condition.description}
-                                  width={24}
-                                  height={24}
-                                />
-                                {(high || low || precip) && (
-                                  <div className="m365-month-weather-details">
-                                    {high && <span>{high}</span>}
-                                    {low && <span>{low}</span>}
-                                    {precip && <span>{precip}</span>}
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                      </div>
                       {dayEvents.slice(0, eventSlots).map((event) => {
                         const cal = calendarMap.get(event.calendarId);
                         if (!cal) return null;
