@@ -241,6 +241,14 @@
   padding: var(--size-4-1);
   cursor: pointer;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.m365-day-events-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .m365-calendar-day-cell:hover {
@@ -601,6 +609,7 @@
   font-size: 0.75em;
   color: var(--text-muted);
   text-align: center;
+  flex-shrink: 0;
 }
 
 .m365-month-overflow-btn:hover {

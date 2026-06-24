@@ -209,57 +209,59 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
                       }}
                     >
-                      {dayEvents.slice(0, eventSlots).map((event) => {
-                        const cal = calendarMap.get(event.calendarId);
-                        if (!cal) return null;
-                        return (
-                          <button
-                            key={event.id}
-                            type="button"
-                            className="m365-event-click-btn"
-                            aria-label={`Edit event: ${event.subject}`}
-                            onMouseEnter={(e) =>
-                              showPopover(
-                                event,
-                                cal,
-                                e.currentTarget.getBoundingClientRect(),
-                              )
-                            }
-                            onMouseLeave={() => hidePopover()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEventClick?.(event);
-                            }}
-                            onContextMenu={(e) => e.stopPropagation()}
-                          >
-                            <EventCard event={event} calendar={cal} />
-                          </button>
-                        );
-                      })}
-                      {dayTodos.slice(0, todoSlots).map((todo) => {
-                        const list = todoListMap.get(todo.listId);
-                        if (!list) return null;
-                        return (
-                          <button
-                            key={todo.id}
-                            type="button"
-                            className="m365-event-click-btn"
-                            aria-label={`View task: ${todo.title}`}
-                            disabled={completingTodoIds?.has(todo.id) ?? false}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTodoClick?.(todo);
-                            }}
-                            onContextMenu={(e) => e.stopPropagation()}
-                          >
-                            <TodoCard
-                              todo={todo}
-                              todoList={list}
-                              isCompleting={completingTodoIds?.has(todo.id) ?? false}
-                            />
-                          </button>
-                        );
-                      })}
+                      <div className="m365-day-events-list">
+                        {dayEvents.slice(0, eventSlots).map((event) => {
+                          const cal = calendarMap.get(event.calendarId);
+                          if (!cal) return null;
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              className="m365-event-click-btn"
+                              aria-label={`Edit event: ${event.subject}`}
+                              onMouseEnter={(e) =>
+                                showPopover(
+                                  event,
+                                  cal,
+                                  e.currentTarget.getBoundingClientRect(),
+                                )
+                              }
+                              onMouseLeave={() => hidePopover()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEventClick?.(event);
+                              }}
+                              onContextMenu={(e) => e.stopPropagation()}
+                            >
+                              <EventCard event={event} calendar={cal} />
+                            </button>
+                          );
+                        })}
+                        {dayTodos.slice(0, todoSlots).map((todo) => {
+                          const list = todoListMap.get(todo.listId);
+                          if (!list) return null;
+                          return (
+                            <button
+                              key={todo.id}
+                              type="button"
+                              className="m365-event-click-btn"
+                              aria-label={`View task: ${todo.title}`}
+                              disabled={completingTodoIds?.has(todo.id) ?? false}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTodoClick?.(todo);
+                              }}
+                              onContextMenu={(e) => e.stopPropagation()}
+                            >
+                              <TodoCard
+                                todo={todo}
+                                todoList={list}
+                                isCompleting={completingTodoIds?.has(todo.id) ?? false}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
                       {totalOverflow > 0 && (
                         <button
                           type="button"
