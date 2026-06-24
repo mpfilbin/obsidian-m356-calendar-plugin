@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList, DayContextMenuPayload } from '../types';
 import { EventCard } from './EventCard';
 import { TodoCard } from './TodoCard';
@@ -45,8 +45,8 @@ export const MonthView: React.FC<MonthViewProps> = ({
   const weeks = Array.from({ length: days.length / 7 }, (_, i) =>
     days.slice(i * 7, i * 7 + 7),
   );
-  const calendarMap = new Map(calendars.map((c) => [c.id, c]));
-  const todoListMap = new Map(todoLists.map((l) => [l.id, l]));
+  const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
+  const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
   const today = new Date();
   const { showPopover, hidePopover } = usePopoverContext();
 
