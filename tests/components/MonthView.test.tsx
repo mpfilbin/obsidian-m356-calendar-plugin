@@ -699,3 +699,138 @@ describe('MonthView — context menu', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 });
+
+// ─── Spanning events ──────────────────────────────────────────────────────────
+
+const multiDayEvent: M365Event = {
+  id: 'multi1',
+  subject: 'Long Conference',
+  start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+  end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' }, // Apr 6–8 inclusive, end exclusive
+  calendarId: 'cal1',
+  isAllDay: true,
+};
+
+describe('MonthView — spanning events', () => {
+  it('renders a multi-day event as a spanning bar', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Long Conference')).toBeInTheDocument();
+  });
+
+  it('does not render a spanning event inside a day cell event button', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const dayCellBtns = document.querySelectorAll('.m365-calendar-day-cell .m365-event-click-btn');
+    const subjects = Array.from(dayCellBtns).map((b) => b.textContent);
+    expect(subjects.every((t) => !t?.includes('Long Conference'))).toBe(true);
+  });
+
+  it('renders a cross-week spanning event as bars in both week rows', () => {
+    // Apr 4 (Sat, week 1) – Apr 8 (Wed, week 2)
+    const crossWeek: M365Event = {
+      id: 'cross1',
+      subject: 'Multi Week Event',
+      start: { dateTime: '2026-04-04T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    };
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[crossWeek]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
+  });
+
+  it('shows a spanning overflow badge when spanning events exceed maxSpanningLanes', () => {
+    // Three events all starting on the same Monday: only 2 lanes visible, 1 overflows
+    const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
+      id: `multi${i}`,
+      subject: `Conference ${i}`,
+      start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    }));
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={events}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxSpanningLanes={2}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-overflow-badge')).toBeInTheDocument();
+    expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
+  });
+
+  it('clicking the spanning overflow badge calls onDayClick', async () => {
+    const onDayClick = vi.fn();
+    const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
+      id: `multi${i}`,
+      subject: `Conference ${i}`,
+      start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    }));
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={events}
+        calendars={[calendar]}
+        onDayClick={onDayClick}
+        maxSpanningLanes={2}
+      />,
+    );
+    await userEvent.click(document.querySelector('.m365-spanning-overflow-badge')!);
+    expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
+  });
+
+  it('calls onEventClick when a spanning bar is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Edit event: Long Conference' }));
+    expect(onEventClick).toHaveBeenCalledWith(multiDayEvent);
+  });
+
+  it('still renders single-day events in day cells alongside spanning events', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent, eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Team Meeting')).toBeInTheDocument();
+  });
+});

@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { M365Event, M365Calendar, DailyWeather, M365TodoItem, M365TodoList, DayContextMenuPayload } from '../types';
 import { EventCard } from './EventCard';
 import { TodoCard } from './TodoCard';
+import { SpanningBar } from './SpanningBar';
 import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
+import { computeWeekSpanningLayout } from '../lib/spanningLayout';
 import { usePopoverContext } from '../PopoverContext';
 import { OverflowPopup } from './OverflowPopup';
 
@@ -14,6 +16,7 @@ interface MonthViewProps {
   onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   maxEventsPerDay?: number;
+  maxSpanningLanes?: number;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
   todos?: M365TodoItem[];
@@ -30,6 +33,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onDayContextMenu,
   onEventClick,
   maxEventsPerDay = 4,
+  maxSpanningLanes = 2,
   weather,
   weatherUnits = 'imperial',
   todos = [],
@@ -38,6 +42,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
   completingTodoIds,
 }) => {
   const days = getDaysInMonthView(currentDate);
+  const weeks = Array.from({ length: days.length / 7 }, (_, i) =>
+    days.slice(i * 7, i * 7 + 7),
+  );
   const calendarMap = new Map(calendars.map((c) => [c.id, c]));
   const todoListMap = new Map(todoLists.map((l) => [l.id, l]));
   const today = new Date();
@@ -66,140 +73,223 @@ export const MonthView: React.FC<MonthViewProps> = ({
         ))}
       </div>
       <div className="m365-calendar-month-grid">
-        {days.map((day) => {
-          const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-          const isToday = day.toDateString() === today.toDateString();
-          const cellDateStr = toDateOnly(day);
-          const dayEvents = events
-            .filter((e) => e.start.dateTime.slice(0, 10) === cellDateStr)
-            .sort((a, b) => {
-              if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
-              if (a.isAllDay) return 0;
-              return a.start.dateTime.localeCompare(b.start.dateTime);
-            });
-          const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);
-          const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
-          const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
-          const totalItems = dayEvents.length + dayTodos.length;
+        {weeks.map((week, weekIdx) => {
+          const weekStart = week[0];
+          const { segments } = computeWeekSpanningLayout(events, weekStart);
+          const visibleSegments = segments.filter((s) => s.lane < maxSpanningLanes);
+
+          const overflowCounts = new Array(7).fill(0) as number[];
+          for (const seg of segments) {
+            if (seg.lane >= maxSpanningLanes) {
+              for (let col = seg.startCol; col < seg.startCol + seg.colSpan; col++) {
+                overflowCounts[col]++;
+              }
+            }
+          }
+
+          const spanningIds = new Set(segments.map((s) => s.event.id));
+
           return (
-            <div
-              key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
-              className={[
-                'm365-calendar-day-cell',
-                isCurrentMonth ? '' : 'other-month',
-                isToday ? 'today' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => onDayClick(day)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
-              }}
-            >
-              <div className="m365-month-day-header-row">
-                <span className="m365-calendar-day-number">{day.getDate()}</span>
-                {weather !== undefined && (() => {
-                  const w = weather.get(cellDateStr);
-                  if (!w) return null;
-                  const unit = weatherUnits === 'imperial' ? '°F' : '°C';
-                  const high = w.tempHigh !== null ? `↑ ${Math.round(w.tempHigh)}${unit}` : null;
-                  const low = w.tempLow !== null ? `↓ ${Math.round(w.tempLow)}${unit}` : null;
-                  const precip = w.precipProbability !== null ? `☂ ${Math.round(w.precipProbability * 100)}%` : null;
+            <div key={weekIdx} className="m365-month-week-row">
+              <div className="m365-month-spanning-layer">
+                {visibleSegments.map((seg) => {
+                  const cal = calendarMap.get(seg.event.calendarId);
+                  if (!cal) return null;
                   return (
-                    <>
-                      <img
-                        className="m365-weather-icon m365-weather-month"
-                        src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
-                        alt={w.condition.description}
-                        width={24}
-                        height={24}
-                      />
-                      {(high || low || precip) && (
-                        <div className="m365-month-weather-details">
-                          {high && <span>{high}</span>}
-                          {low && <span>{low}</span>}
-                          {precip && <span>{precip}</span>}
-                        </div>
-                      )}
-                    </>
+                    <SpanningBar
+                      key={seg.event.id}
+                      event={seg.event}
+                      calendar={cal}
+                      segment={seg}
+                      onEventClick={onEventClick}
+                    />
                   );
-                })()}
+                })}
+                {overflowCounts.map((count, col) =>
+                  count > 0 ? (
+                    <button
+                      key={`overflow-${weekIdx}-${col}`}
+                      type="button"
+                      className="m365-spanning-overflow-badge"
+                      style={{
+                        gridColumn: col + 1,
+                        gridRow: maxSpanningLanes + 1,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDayClick(week[col]);
+                      }}
+                      onContextMenu={(e) => e.stopPropagation()}
+                    >
+                      +{count}
+                    </button>
+                  ) : null,
+                )}
               </div>
-              {dayEvents.slice(0, eventSlots).map((event) => {
-                const cal = calendarMap.get(event.calendarId);
-                if (!cal) return null;
-                return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    className="m365-event-click-btn"
-                    aria-label={`Edit event: ${event.subject}`}
-                    onMouseEnter={(e) => showPopover(event, cal, e.currentTarget.getBoundingClientRect())}
-                    onMouseLeave={() => hidePopover()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick?.(event);
-                    }}
-                    onContextMenu={(e) => e.stopPropagation()}
-                  >
-                    <EventCard event={event} calendar={cal} />
-                  </button>
-                );
-              })}
-              {dayTodos.slice(0, todoSlots).map((todo) => {
-                const list = todoListMap.get(todo.listId);
-                if (!list) return null;
-                return (
-                  <button
-                    key={todo.id}
-                    type="button"
-                    className="m365-event-click-btn"
-                    aria-label={`View task: ${todo.title}`}
-                    disabled={completingTodoIds?.has(todo.id) ?? false}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTodoClick?.(todo);
-                    }}
-                    onContextMenu={(e) => e.stopPropagation()}
-                  >
-                    <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
-                  </button>
-                );
-              })}
-              {totalItems > maxEventsPerDay && (
-                <button
-                  type="button"
-                  className="m365-month-overflow-btn"
-                  aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
-                  onContextMenu={(e) => e.stopPropagation()}
-                  onMouseEnter={(e) => {
-                    if (overflowTimerRef.current !== null) clearTimeout(overflowTimerRef.current);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    overflowTimerRef.current = setTimeout(() => {
-                      overflowTimerRef.current = null;
-                      setOverflowPopover({
-                        events: dayEvents.slice(eventSlots),
-                        todos: dayTodos.slice(todoSlots),
-                        anchorRect: rect,
-                      });
-                    }, 300);
-                  }}
-                  onMouseLeave={() => {
-                    if (overflowTimerRef.current !== null) {
-                      clearTimeout(overflowTimerRef.current);
-                      overflowTimerRef.current = null;
-                    }
-                    setOverflowPopover(null);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDayClick(day);
-                  }}
-                >
-                  (+{totalItems - maxEventsPerDay})
-                </button>
-              )}
+              <div className="m365-month-day-cells">
+                {week.map((day) => {
+                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                  const isToday = day.toDateString() === today.toDateString();
+                  const cellDateStr = toDateOnly(day);
+                  const dayEvents = events
+                    .filter(
+                      (e) =>
+                        !spanningIds.has(e.id) &&
+                        e.start.dateTime.slice(0, 10) === cellDateStr,
+                    )
+                    .sort((a, b) => {
+                      if (a.isAllDay !== b.isAllDay) return a.isAllDay ? -1 : 1;
+                      if (a.isAllDay) return 0;
+                      return a.start.dateTime.localeCompare(b.start.dateTime);
+                    });
+                  const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);
+                  const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
+                  const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
+                  const totalItems = dayEvents.length + dayTodos.length;
+                  return (
+                    <div
+                      key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
+                      className={[
+                        'm365-calendar-day-cell',
+                        isCurrentMonth ? '' : 'other-month',
+                        isToday ? 'today' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => onDayClick(day)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
+                      }}
+                    >
+                      <div className="m365-month-day-header-row">
+                        <span className="m365-calendar-day-number">{day.getDate()}</span>
+                        {weather !== undefined &&
+                          (() => {
+                            const w = weather.get(cellDateStr);
+                            if (!w) return null;
+                            const unit = weatherUnits === 'imperial' ? '°F' : '°C';
+                            const high =
+                              w.tempHigh !== null
+                                ? `↑ ${Math.round(w.tempHigh)}${unit}`
+                                : null;
+                            const low =
+                              w.tempLow !== null
+                                ? `↓ ${Math.round(w.tempLow)}${unit}`
+                                : null;
+                            const precip =
+                              w.precipProbability !== null
+                                ? `☂ ${Math.round(w.precipProbability * 100)}%`
+                                : null;
+                            return (
+                              <>
+                                <img
+                                  className="m365-weather-icon m365-weather-month"
+                                  src={`https://openweathermap.org/img/wn/${w.condition.iconCode}.png`}
+                                  alt={w.condition.description}
+                                  width={24}
+                                  height={24}
+                                />
+                                {(high || low || precip) && (
+                                  <div className="m365-month-weather-details">
+                                    {high && <span>{high}</span>}
+                                    {low && <span>{low}</span>}
+                                    {precip && <span>{precip}</span>}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                      </div>
+                      {dayEvents.slice(0, eventSlots).map((event) => {
+                        const cal = calendarMap.get(event.calendarId);
+                        if (!cal) return null;
+                        return (
+                          <button
+                            key={event.id}
+                            type="button"
+                            className="m365-event-click-btn"
+                            aria-label={`Edit event: ${event.subject}`}
+                            onMouseEnter={(e) =>
+                              showPopover(
+                                event,
+                                cal,
+                                e.currentTarget.getBoundingClientRect(),
+                              )
+                            }
+                            onMouseLeave={() => hidePopover()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEventClick?.(event);
+                            }}
+                            onContextMenu={(e) => e.stopPropagation()}
+                          >
+                            <EventCard event={event} calendar={cal} />
+                          </button>
+                        );
+                      })}
+                      {dayTodos.slice(0, todoSlots).map((todo) => {
+                        const list = todoListMap.get(todo.listId);
+                        if (!list) return null;
+                        return (
+                          <button
+                            key={todo.id}
+                            type="button"
+                            className="m365-event-click-btn"
+                            aria-label={`View task: ${todo.title}`}
+                            disabled={completingTodoIds?.has(todo.id) ?? false}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTodoClick?.(todo);
+                            }}
+                            onContextMenu={(e) => e.stopPropagation()}
+                          >
+                            <TodoCard
+                              todo={todo}
+                              todoList={list}
+                              isCompleting={completingTodoIds?.has(todo.id) ?? false}
+                            />
+                          </button>
+                        );
+                      })}
+                      {totalItems > maxEventsPerDay && (
+                        <button
+                          type="button"
+                          className="m365-month-overflow-btn"
+                          aria-label={`Show ${totalItems - maxEventsPerDay} more items`}
+                          onContextMenu={(e) => e.stopPropagation()}
+                          onMouseEnter={(e) => {
+                            if (overflowTimerRef.current !== null)
+                              clearTimeout(overflowTimerRef.current);
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            overflowTimerRef.current = setTimeout(() => {
+                              overflowTimerRef.current = null;
+                              setOverflowPopover({
+                                events: dayEvents.slice(eventSlots),
+                                todos: dayTodos.slice(todoSlots),
+                                anchorRect: rect,
+                              });
+                            }, 300);
+                          }}
+                          onMouseLeave={() => {
+                            if (overflowTimerRef.current !== null) {
+                              clearTimeout(overflowTimerRef.current);
+                              overflowTimerRef.current = null;
+                            }
+                            setOverflowPopover(null);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDayClick(day);
+                          }}
+                        >
+                          (+{totalItems - maxEventsPerDay})
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
