@@ -758,8 +758,9 @@ describe('MonthView — spanning events', () => {
     expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
   });
 
-  it('shows a day cell overflow button when spanning events exceed maxSpanningLanes', () => {
-    // Three events all starting on the same Monday: only 2 lanes visible, 1 overflows
+  it('shows no overflow badge when only spanning events exceed maxSpanningLanes (no single-day overflow)', () => {
+    // Three spanning events on the same Mon–Wed: only 2 lanes visible, 1 overflows.
+    // The day-cell badge only reflects single-day event overflow, so no badge should appear.
     const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
       id: `multi${i}`,
       subject: `Conference ${i}`,
@@ -777,32 +778,42 @@ describe('MonthView — spanning events', () => {
         maxSpanningLanes={2}
       />,
     );
-    // Overflow badge now renders inside each affected day cell as m365-month-overflow-btn
-    expect(document.querySelector('.m365-month-overflow-btn')).toBeInTheDocument();
+    expect(document.querySelector('.m365-month-overflow-btn')).not.toBeInTheDocument();
     expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
   });
 
-  it('clicking the spanning overflow button in a day cell calls onDayClick', async () => {
-    const onDayClick = vi.fn();
-    const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
-      id: `multi${i}`,
-      subject: `Conference ${i}`,
+  it('reduces visible event slots by occupied spanning lanes and shows badge for single-day overflow', () => {
+    // 1 spanning event occupies lane 0 → lanesUsed=1, effectiveMax=3.
+    // 4 single-day events on the same day → 3 shown, (+1) badge.
+    const spanningEvent: M365Event = {
+      id: 'span0',
+      subject: 'Conference',
       start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
       end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
       calendarId: 'cal1',
       isAllDay: true,
+    };
+    const singleDayEvents: M365Event[] = Array.from({ length: 4 }, (_, i) => ({
+      id: `single${i}`,
+      subject: `Single Event ${i}`,
+      start: { dateTime: '2026-04-06T09:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-06T10:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: false,
     }));
     render(
       <MonthView
         currentDate={new Date(2026, 3, 1)}
-        events={events}
+        events={[spanningEvent, ...singleDayEvents]}
         calendars={[calendar]}
-        onDayClick={onDayClick}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={4}
         maxSpanningLanes={2}
       />,
     );
-    await userEvent.click(document.querySelector('.m365-month-overflow-btn')!);
-    expect(onDayClick).toHaveBeenCalledWith(expect.any(Date));
+    const badge = document.querySelector('.m365-month-overflow-btn');
+    expect(badge).toBeInTheDocument();
+    expect(badge?.textContent).toBe('(+1)');
   });
 
   it('calls onEventClick when a spanning bar is clicked', async () => {

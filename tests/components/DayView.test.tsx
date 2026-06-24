@@ -122,7 +122,7 @@ describe('DayView', () => {
   it('renders all-day events in the all-day banner', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[allDayEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -135,7 +135,7 @@ describe('DayView', () => {
   it('does not render the all-day banner when there are no all-day events', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -147,7 +147,7 @@ describe('DayView', () => {
   it('renders timed events in the timeline', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -159,7 +159,7 @@ describe('DayView', () => {
   it('does not render events with no matching calendar', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[]}
         onTimeClick={vi.fn()}
@@ -172,7 +172,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[]}
         calendars={[]}
         onTimeClick={onTimeClick}
@@ -186,7 +186,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[]}
         calendars={[]}
         onTimeClick={onTimeClick}
@@ -204,7 +204,7 @@ describe('DayView', () => {
     const onEventClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -217,7 +217,7 @@ describe('DayView', () => {
 
   it('clamps click at bottom of timeline to 23:45', () => {
     const onTimeClick = vi.fn();
-    const currentDate = new Date('2026-04-09');
+    const currentDate = new Date(2026, 3, 9);
     render(
       <DayView
         currentDate={currentDate}
@@ -238,7 +238,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={onTimeClick}

@@ -77,16 +77,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
           const weekStart = week[0];
           const { segments } = computeWeekSpanningLayout(events, weekStart);
           const visibleSegments = segments.filter((s) => s.lane < maxSpanningLanes);
-
-          const overflowCounts = new Array(7).fill(0) as number[];
-          for (const seg of segments) {
-            if (seg.lane >= maxSpanningLanes) {
-              for (let col = seg.startCol; col < seg.startCol + seg.colSpan; col++) {
-                overflowCounts[col]++;
-              }
-            }
-          }
-
+          // Each visible spanning lane takes ~22px from the day cell height (same as one event row).
+          // Reduce the visible event cap so rendered events match available space.
+          const lanesUsed = visibleSegments.reduce((max, s) => Math.max(max, s.lane + 1), 0);
+          const effectiveMax = Math.max(1, maxEventsPerDay - lanesUsed);
           const spanningIds = new Set(segments.map((s) => s.event.id));
 
           return (
@@ -171,7 +165,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                 })}
               </div>
               <div className="m365-month-day-cells">
-                {week.map((day, colIdx) => {
+                {week.map((day) => {
                   const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                   const isToday = day.toDateString() === today.toDateString();
                   const cellDateStr = toDateOnly(day);
@@ -187,12 +181,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       return a.start.dateTime.localeCompare(b.start.dateTime);
                     });
                   const dayTodos = todos.filter((t) => t.dueDate === cellDateStr);
-                  const eventSlots = Math.min(dayEvents.length, maxEventsPerDay);
-                  const todoSlots = Math.min(dayTodos.length, maxEventsPerDay - eventSlots);
+                  const eventSlots = Math.min(dayEvents.length, effectiveMax);
+                  const todoSlots = Math.min(dayTodos.length, effectiveMax - eventSlots);
                   const totalItems = dayEvents.length + dayTodos.length;
-                  const spanningOverflow = overflowCounts[colIdx];
-                  const singleDayOverflow = Math.max(0, totalItems - maxEventsPerDay);
-                  const totalOverflow = spanningOverflow + singleDayOverflow;
+                  const totalOverflow = Math.max(0, totalItems - effectiveMax);
                   return (
                     <div
                       key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
