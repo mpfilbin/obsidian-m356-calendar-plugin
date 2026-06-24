@@ -156,6 +156,29 @@ describe('DayView', () => {
     expect(screen.getByText('Standup')).toBeInTheDocument();
   });
 
+  it('clamps cross-midnight event height to end of timeline', () => {
+    const crossMidnightEvent: M365Event = {
+      id: 'overnight',
+      subject: 'Overnight Trip',
+      start: { dateTime: '2026-04-09T19:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-10T11:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: false,
+    };
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 9)}
+        events={[crossMidnightEvent]}
+        calendars={[calendar]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    const eventBlock = document.querySelector('.m365-day-event-block') as HTMLElement;
+    expect(eventBlock).not.toBeNull();
+    // startMin = 19*60 = 1140; maxDuration = 1440-1140 = 300; height = 300*PX_PER_MIN = 300px
+    expect(eventBlock.style.height).toBe('300px');
+  });
+
   it('does not render events with no matching calendar', () => {
     render(
       <DayView
