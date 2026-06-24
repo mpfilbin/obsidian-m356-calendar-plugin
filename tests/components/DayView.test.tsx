@@ -122,7 +122,7 @@ describe('DayView', () => {
   it('renders all-day events in the all-day banner', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[allDayEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -135,7 +135,7 @@ describe('DayView', () => {
   it('does not render the all-day banner when there are no all-day events', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -147,7 +147,7 @@ describe('DayView', () => {
   it('renders timed events in the timeline', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -156,10 +156,57 @@ describe('DayView', () => {
     expect(screen.getByText('Standup')).toBeInTheDocument();
   });
 
+  it('clamps cross-midnight event height to end of timeline', () => {
+    const crossMidnightEvent: M365Event = {
+      id: 'overnight',
+      subject: 'Overnight Trip',
+      start: { dateTime: '2026-04-09T19:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-10T11:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: false,
+    };
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 9)}
+        events={[crossMidnightEvent]}
+        calendars={[calendar]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    const eventBlock = document.querySelector('.m365-day-event-block') as HTMLElement;
+    expect(eventBlock).not.toBeNull();
+    // startMin = 19*60 = 1140; maxDuration = 1440-1140 = 300; height = 300*PX_PER_MIN = 300px
+    expect(eventBlock.style.height).toBe('300px');
+  });
+
+  it('clamps height for very-late-start event so MIN_EVENT_HEIGHT does not overflow the timeline', () => {
+    // starts at 23:59 — only 1 minute remaining; MIN_EVENT_HEIGHT would otherwise push past midnight
+    const lateEvent: M365Event = {
+      id: 'late',
+      subject: 'Late Start',
+      start: { dateTime: '2026-04-09T23:59:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T23:59:30', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: false,
+    };
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 9)}
+        events={[lateEvent]}
+        calendars={[calendar]}
+        onTimeClick={vi.fn()}
+      />,
+    );
+    const eventBlock = document.querySelector('.m365-day-event-block') as HTMLElement;
+    expect(eventBlock).not.toBeNull();
+    // startMin = 23*60+59 = 1439; maxRemaining = 1440-1439 = 1; height capped at 1px
+    expect(eventBlock.style.height).toBe('1px');
+  });
+
   it('does not render events with no matching calendar', () => {
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[]}
         onTimeClick={vi.fn()}
@@ -172,7 +219,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[]}
         calendars={[]}
         onTimeClick={onTimeClick}
@@ -186,7 +233,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[]}
         calendars={[]}
         onTimeClick={onTimeClick}
@@ -204,7 +251,7 @@ describe('DayView', () => {
     const onEventClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={vi.fn()}
@@ -217,7 +264,7 @@ describe('DayView', () => {
 
   it('clamps click at bottom of timeline to 23:45', () => {
     const onTimeClick = vi.fn();
-    const currentDate = new Date('2026-04-09');
+    const currentDate = new Date(2026, 3, 9);
     render(
       <DayView
         currentDate={currentDate}
@@ -238,7 +285,7 @@ describe('DayView', () => {
     const onTimeClick = vi.fn();
     render(
       <DayView
-        currentDate={new Date('2026-04-09')}
+        currentDate={new Date(2026, 3, 9)}
         events={[timedEvent]}
         calendars={[calendar]}
         onTimeClick={onTimeClick}

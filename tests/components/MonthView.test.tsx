@@ -26,7 +26,7 @@ describe('MonthView', () => {
   it('renders day-of-week headers', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -39,7 +39,7 @@ describe('MonthView', () => {
   it('renders 35 or 42 day cells (5 or 6 weeks)', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -52,7 +52,7 @@ describe('MonthView', () => {
   it('renders an event in the correct day cell', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -65,7 +65,7 @@ describe('MonthView', () => {
     const onDayClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={onDayClick}
@@ -93,7 +93,7 @@ describe('MonthView', () => {
     const onEventClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -109,7 +109,7 @@ describe('MonthView', () => {
     const onEventClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -128,7 +128,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -147,7 +147,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -166,7 +166,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -186,7 +186,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={onDayClick}
@@ -205,7 +205,7 @@ describe('MonthView', () => {
     }));
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -227,7 +227,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -244,7 +244,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', null]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -258,7 +258,7 @@ describe('MonthView', () => {
   it('renders no weather element when weather prop is absent', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -272,7 +272,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', forecastWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -297,7 +297,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', metricWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -321,7 +321,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', partialWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -345,7 +345,7 @@ describe('MonthView', () => {
     const weatherMap = new Map<string, DailyWeather | null>([['2026-04-04', noDetailWeather]]);
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -370,7 +370,7 @@ describe('MonthView — todos', () => {
   it('renders a todo on its due date', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -382,27 +382,25 @@ describe('MonthView — todos', () => {
   });
 
   it('does not render a todo on the wrong date', () => {
-    const todoOnApril5: M365TodoItem = { ...todoOnApril4, dueDate: '2026-04-05' };
+    // April view ends on May 2; May 4 is outside the visible range
+    const todoOnMay4: M365TodoItem = { ...todoOnApril4, dueDate: '2026-05-04' };
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
-        todos={[todoOnApril5]}
+        todos={[todoOnMay4]}
         todoLists={[todoList]}
         onDayClick={vi.fn()}
       />,
     );
-    // April 4 cell should not show this todo
-    const cells = document.querySelectorAll('.m365-calendar-day-cell');
-    const april4 = Array.from(cells).find((c) => c.textContent?.includes('4') && !c.textContent?.includes('14') && !c.textContent?.includes('24'));
-    expect(april4?.textContent).not.toContain('Buy milk');
+    expect(screen.queryByText('Buy milk')).not.toBeInTheDocument();
   });
 
   it('renders both events and todos in the same day cell', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[eventOnApril4]}
         calendars={[calendar]}
         todos={[todoOnApril4]}
@@ -418,7 +416,7 @@ describe('MonthView — todos', () => {
     const onTodoClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -434,7 +432,7 @@ describe('MonthView — todos', () => {
   it('disables the todo button when the task is completing', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         todos={[todoOnApril4]}
@@ -467,7 +465,7 @@ describe('MonthView — overflow popup hover', () => {
   it('does not show overflow popup before 300ms of hover', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -482,7 +480,7 @@ describe('MonthView — overflow popup hover', () => {
   it('shows overflow popup with overflow events after 300ms of hover', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -499,7 +497,7 @@ describe('MonthView — overflow popup hover', () => {
   it('hides overflow popup immediately on mouse leave', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -517,7 +515,7 @@ describe('MonthView — overflow popup hover', () => {
   it('mouse leave before 300ms cancels the popup', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events8}
         calendars={[calendar]}
         onDayClick={vi.fn()}
@@ -571,7 +569,7 @@ describe('MonthView — event sort order', () => {
     ];
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[cal]}
         onDayClick={vi.fn()}
@@ -606,7 +604,7 @@ describe('MonthView — event sort order', () => {
     ];
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={events}
         calendars={[cal]}
         onDayClick={vi.fn()}
@@ -626,7 +624,7 @@ describe('MonthView — context menu', () => {
     const onDayContextMenu = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -645,7 +643,7 @@ describe('MonthView — context menu', () => {
     const onDayClick = vi.fn();
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={onDayClick}
@@ -659,7 +657,7 @@ describe('MonthView — context menu', () => {
 
   it('passes the correct date in the payload', () => {
     const onDayContextMenu = vi.fn();
-    const testDate = new Date('2026-04-15');
+    const testDate = new Date(2026, 3, 15);
     render(
       <MonthView
         currentDate={testDate}
@@ -669,7 +667,7 @@ describe('MonthView — context menu', () => {
         onDayContextMenu={onDayContextMenu}
       />,
     );
-    const cells = Array.from(document.querySelectorAll('.m365-calendar-day-cell'));
+    const cells = Array.from(document.querySelectorAll('.m365-month-date-cell'));
     const april15 = cells.find((c) => {
       const span = c.querySelector('.m365-calendar-day-number');
       return span?.textContent === '15' && !c.className.includes('other-month');
@@ -686,7 +684,7 @@ describe('MonthView — context menu', () => {
   it('prevents the default browser context menu on right-click', () => {
     render(
       <MonthView
-        currentDate={new Date('2026-04-01')}
+        currentDate={new Date(2026, 3, 1)}
         events={[]}
         calendars={[]}
         onDayClick={vi.fn()}
@@ -697,5 +695,152 @@ describe('MonthView — context menu', () => {
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
     cells[0].dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+// ─── Spanning events ──────────────────────────────────────────────────────────
+
+const multiDayEvent: M365Event = {
+  id: 'multi1',
+  subject: 'Long Conference',
+  start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+  end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' }, // Apr 6–8 inclusive, end exclusive
+  calendarId: 'cal1',
+  isAllDay: true,
+};
+
+describe('MonthView — spanning events', () => {
+  it('renders a multi-day event as a spanning bar', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Long Conference')).toBeInTheDocument();
+  });
+
+  it('does not render a spanning event inside a day cell event button', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    const dayCellBtns = document.querySelectorAll('.m365-calendar-day-cell .m365-event-click-btn');
+    const subjects = Array.from(dayCellBtns).map((b) => b.textContent);
+    expect(subjects.every((t) => !t?.includes('Long Conference'))).toBe(true);
+  });
+
+  it('renders a cross-week spanning event as bars in both week rows', () => {
+    // Apr 4 (Sat, week 1) – Apr 8 (Wed, week 2)
+    const crossWeek: M365Event = {
+      id: 'cross1',
+      subject: 'Multi Week Event',
+      start: { dateTime: '2026-04-04T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    };
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[crossWeek]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
+  });
+
+  it('shows no overflow badge when only spanning events exceed maxSpanningLanes (no single-day overflow)', () => {
+    // Three spanning events on the same Mon–Wed: only 2 lanes visible, 1 overflows.
+    // The day-cell badge only reflects single-day event overflow, so no badge should appear.
+    const events: M365Event[] = Array.from({ length: 3 }, (_, i) => ({
+      id: `multi${i}`,
+      subject: `Conference ${i}`,
+      start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    }));
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={events}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxSpanningLanes={2}
+      />,
+    );
+    expect(document.querySelector('.m365-month-overflow-btn')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.m365-spanning-bar').length).toBe(2);
+  });
+
+  it('reduces visible event slots by occupied spanning lanes and shows badge for single-day overflow', () => {
+    // 1 spanning event occupies lane 0 → lanesUsed=1, effectiveMax=3.
+    // 4 single-day events on the same day → 3 shown, (+1) badge.
+    const spanningEvent: M365Event = {
+      id: 'span0',
+      subject: 'Conference',
+      start: { dateTime: '2026-04-06T00:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-09T00:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: true,
+    };
+    const singleDayEvents: M365Event[] = Array.from({ length: 4 }, (_, i) => ({
+      id: `single${i}`,
+      subject: `Single Event ${i}`,
+      start: { dateTime: '2026-04-06T09:00:00', timeZone: 'UTC' },
+      end: { dateTime: '2026-04-06T10:00:00', timeZone: 'UTC' },
+      calendarId: 'cal1',
+      isAllDay: false,
+    }));
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[spanningEvent, ...singleDayEvents]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        maxEventsPerDay={4}
+        maxSpanningLanes={2}
+      />,
+    );
+    const badge = document.querySelector('.m365-month-overflow-btn');
+    expect(badge).toBeInTheDocument();
+    expect(badge?.textContent).toBe('(+1)');
+  });
+
+  it('calls onEventClick when a spanning bar is clicked', async () => {
+    const onEventClick = vi.fn();
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+        onEventClick={onEventClick}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Edit event: Long Conference' }));
+    expect(onEventClick).toHaveBeenCalledWith(multiDayEvent);
+  });
+
+  it('still renders single-day events in day cells alongside spanning events', () => {
+    render(
+      <MonthView
+        currentDate={new Date(2026, 3, 1)}
+        events={[multiDayEvent, eventOnApril4]}
+        calendars={[calendar]}
+        onDayClick={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.m365-spanning-bar')).toBeInTheDocument();
+    expect(screen.getByText('Team Meeting')).toBeInTheDocument();
   });
 });

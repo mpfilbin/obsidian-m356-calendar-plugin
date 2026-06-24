@@ -52,8 +52,14 @@ export const DayView: React.FC<DayViewProps> = ({
     () => todos.filter((t) => t.dueDate === todayStr),
     [todos, todayStr],
   );
-  const allDayEvents = useMemo(() => events.filter((e) => e.isAllDay), [events]);
-  const timedEvents = useMemo(() => events.filter((e) => !e.isAllDay), [events]);
+  const allDayEvents = useMemo(
+    () => events.filter((e) => e.isAllDay && e.start.dateTime.slice(0, 10) <= todayStr && e.end.dateTime.slice(0, 10) > todayStr),
+    [events, todayStr],
+  );
+  const timedEvents = useMemo(
+    () => events.filter((e) => !e.isAllDay && e.start.dateTime.slice(0, 10) === todayStr),
+    [events, todayStr],
+  );
 
   const { showPopover, hidePopover } = usePopoverContext();
 

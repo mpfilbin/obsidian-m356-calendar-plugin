@@ -1062,7 +1062,7 @@ describe('CalendarApp — context menu', () => {
     const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
       (el) => el.textContent === '10',
     )!;
-    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    const dayCell = dayNumberEl.closest('.m365-month-date-cell')!;
     fireEvent.contextMenu(dayCell);
 
     expect(capturedMenu).not.toBeNull();
@@ -1087,7 +1087,7 @@ describe('CalendarApp — context menu', () => {
     const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
       (el) => el.textContent === '10',
     )!;
-    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    const dayCell = dayNumberEl.closest('.m365-month-date-cell')!;
     fireEvent.contextMenu(dayCell);
 
     expect(capturedMenu).not.toBeNull();
@@ -1126,7 +1126,7 @@ describe('CalendarApp — context menu', () => {
     const dayNumberEl = Array.from(document.querySelectorAll('.m365-calendar-day-number')).find(
       (el) => el.textContent === '10',
     )!;
-    const dayCell = dayNumberEl.closest('.m365-calendar-day-cell')!;
+    const dayCell = dayNumberEl.closest('.m365-month-date-cell')!;
     fireEvent.contextMenu(dayCell);
 
     expect(capturedMenu).not.toBeNull();
