@@ -47,8 +47,8 @@ Before using the plugin you must register an application in Azure Active Directo
 2. Paste your **Client ID** from the Azure app registration
 3. Leave **Tenant ID** as `common` (supports personal + work accounts) or enter your specific tenant ID for work-only accounts
 4. Click **Sign in** — your system browser will open for Microsoft login. After authenticating, your browser will redirect back to Obsidian automatically.
-6. Open the calendar view via the ribbon icon (calendar icon) or **Command Palette → M365 Calendar: Open calendar**
-7. Enable the calendars you want to display using the sidebar toggles
+5. Open the calendar view via the ribbon icon (calendar icon) or **Command Palette → M365 Calendar: Open calendar**
+6. Enable the calendars you want to display using the sidebar toggles
 
 ## Usage
 
