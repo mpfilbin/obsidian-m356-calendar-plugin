@@ -32,19 +32,25 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
   return arrayBufferToBase64Url(hash);
 }
 
+function generateState(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return arrayBufferToBase64Url(bytes.buffer);
+}
+
 export class AuthService {
   constructor(
     private readonly getClientId: () => string,
     private readonly getTenantId: () => string,
     private readonly getSecret: (name: string) => string | null,
     private readonly setSecret: (name: string, value: string) => Promise<void>,
-    private readonly openUrl: (url: string) => void,
+    private readonly openUrl: (url: string) => Promise<void>,
     private readonly logger: Logger = new NullLogger(),
   ) {}
 
   private pendingSignIn: {
     resolve: (code: string) => void;
     reject: (err: Error) => void;
+    state: string;
   } | null = null;
 
   async isAuthenticated(): Promise<boolean> {
@@ -72,6 +78,7 @@ export class AuthService {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     const redirectUri = 'obsidian://m365-callback';
+    const state = generateState();
 
     const code = await new Promise<string>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
@@ -82,11 +89,16 @@ export class AuthService {
       this.pendingSignIn = {
         resolve: (c) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; resolve(c); },
         reject: (err) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; reject(err); },
+        state,
       };
 
-      const authUrl = this.buildAuthUrl(redirectUri, codeChallenge);
+      const authUrl = this.buildAuthUrl(redirectUri, codeChallenge, state);
       this.logger.log('[M365 Auth] Opening auth URL:', authUrl);
-      this.openUrl(authUrl);
+      this.openUrl(authUrl).catch((err: unknown) => {
+        clearTimeout(timeoutHandle);
+        this.pendingSignIn = null;
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
     });
 
     const tokens = await this.exchangeCode(code, redirectUri, codeVerifier);
@@ -113,19 +125,29 @@ export class AuthService {
 
   handleOAuthCallback(params: Record<string, string>): void {
     if (!this.pendingSignIn) return;
+
+    if (params['state'] !== this.pendingSignIn.state) {
+      this.logger.log('[M365 Auth] OAuth callback rejected: state mismatch');
+      this.pendingSignIn.reject(new Error('Authentication failed: state mismatch'));
+      return;
+    }
+
     const code = params['code'];
     const error = params['error'];
     if (code) {
       this.logger.log('[M365 Auth] OAuth callback received: code present');
       this.pendingSignIn.resolve(code);
-    } else {
-      const message = params['error_description'] ?? error ?? 'Unknown error';
+    } else if (error) {
+      const message = params['error_description'] ?? error;
       this.logger.log('[M365 Auth] OAuth callback received: error:', error, 'description:', params['error_description']);
       this.pendingSignIn.reject(new Error(`Authentication failed: ${message}`));
+    } else {
+      this.logger.log('[M365 Auth] OAuth callback received: missing code and error parameters');
+      this.pendingSignIn.reject(new Error('No authorization code received'));
     }
   }
 
-  private buildAuthUrl(redirectUri: string, codeChallenge: string): string {
+  private buildAuthUrl(redirectUri: string, codeChallenge: string, state: string): string {
     const params = new URLSearchParams({
       client_id: this.getClientId(),
       response_type: 'code',
@@ -134,6 +156,7 @@ export class AuthService {
       response_mode: 'query',
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      state,
     });
     return `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/authorize?${params}`;
   }

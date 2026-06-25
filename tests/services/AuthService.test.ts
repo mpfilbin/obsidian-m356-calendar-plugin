@@ -25,7 +25,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    openUrl = vi.fn();
+    openUrl = vi.fn().mockResolvedValue(undefined);
     auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl);
   });
 
@@ -152,8 +152,10 @@ describe('AuthService', () => {
       vi.mocked(requestUrl).mockResolvedValue(
         makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
       );
-      openUrl.mockImplementation(() => {
-        auth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code' });
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code', state });
+        return Promise.resolve();
       });
       await auth.signIn();
       expect(setSecret).toHaveBeenCalled();
@@ -161,19 +163,44 @@ describe('AuthService', () => {
     });
 
     it('rejects pending signIn when params contain an error', async () => {
-      openUrl.mockImplementation(() => {
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
         auth.handleOAuthCallback({
           action: 'm365-callback',
           error: 'access_denied',
           error_description: 'User denied access',
+          state,
         });
+        return Promise.resolve();
       });
       await expect(auth.signIn()).rejects.toThrow('User denied access');
     });
 
+    it('rejects pending signIn with "No authorization code received" when neither code nor error present', async () => {
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        auth.handleOAuthCallback({ action: 'm365-callback', state });
+        return Promise.resolve();
+      });
+      await expect(auth.signIn()).rejects.toThrow('No authorization code received');
+    });
+
+    it('rejects pending signIn when state does not match', async () => {
+      openUrl.mockImplementation(() => {
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code', state: 'wrong-state' });
+        return Promise.resolve();
+      });
+      await expect(auth.signIn()).rejects.toThrow('state mismatch');
+    });
+
+    it('rejects pending signIn immediately when openUrl rejects', async () => {
+      openUrl.mockRejectedValue(new Error('Failed to open browser'));
+      await expect(auth.signIn()).rejects.toThrow('Failed to open browser');
+    });
+
     it('does nothing when no sign-in is pending', () => {
       expect(() =>
-        auth.handleOAuthCallback({ action: 'm365-callback', code: 'stale-code' }),
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'stale-code', state: 'any' }),
       ).not.toThrow();
     });
   });

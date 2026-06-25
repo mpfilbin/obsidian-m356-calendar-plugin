@@ -64,14 +64,12 @@ export default class M365CalendarPlugin extends Plugin {
     );
 
     const openUrl = Platform.isDesktopApp
-      ? (url: string) => {
+      ? async (url: string) => {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { shell } = require('electron') as { shell: { openExternal: (url: string) => Promise<void> } };
-          shell.openExternal(url).catch((err: unknown) => {
-            this.logger.error('[M365 Auth] Failed to open auth URL:', err);
-          });
+          await shell.openExternal(url);
         }
-      : (url: string) => { window.open(url, '_blank'); };
+      : async (url: string) => { window.open(url, '_blank'); };
 
     this.authService = new AuthService(
       () => this.settings.clientId,
