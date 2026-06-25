@@ -13,7 +13,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 
 ## Prerequisites
 
-- Obsidian **desktop** (Windows, macOS, Linux) — not currently supported on mobile
+- Obsidian desktop (Windows, macOS, Linux) or Obsidian Mobile (iOS, Android)
 - A Microsoft 365 account (personal, work, or school)
 - An Azure AD app registration (see setup below)
 
@@ -32,7 +32,7 @@ Before using the plugin you must register an application in Azure Active Directo
 3. Set the following:
    - **Name:** `Obsidian M365 Calendar` (or any name you prefer)
    - **Supported account types:** `Accounts in any organizational directory and personal Microsoft accounts`
-   - **Redirect URI:** Select `Mobile and desktop applications` and enter `http://localhost` — the plugin will dynamically append the port at runtime
+   - **Redirect URI:** Select `Mobile and desktop applications` and enter `obsidian://m365-callback`
 4. Click **Register**
 5. On the app overview page, copy the **Application (client) ID**
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
@@ -46,8 +46,7 @@ Before using the plugin you must register an application in Azure Active Directo
 1. Open **Settings → M365 Calendar**
 2. Paste your **Client ID** from the Azure app registration
 3. Leave **Tenant ID** as `common` (supports personal + work accounts) or enter your specific tenant ID for work-only accounts
-4. Click **Sign In** — your browser will open for Microsoft login
-5. After signing in, close the browser tab and return to Obsidian
+4. Click **Sign in** — your system browser will open for Microsoft login. After authenticating, your browser will redirect back to Obsidian automatically.
 6. Open the calendar view via the ribbon icon (calendar icon) or **Command Palette → M365 Calendar: Open calendar**
 7. Enable the calendars you want to display using the sidebar toggles
 
@@ -82,10 +81,10 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 ## Troubleshooting
 
 **The sign-in window opens but nothing happens after I log in**  
-Make sure `http://localhost` is listed as a redirect URI under the **Mobile and desktop applications** platform in your Azure app registration. Do not use the Single-page application platform — it issues short-lived refresh tokens and will require daily re-authentication.
+Make sure `obsidian://m365-callback` is listed as a redirect URI under the **Mobile and desktop applications** platform in your Azure app registration. Do not use the Single-page application platform — it issues short-lived refresh tokens and will require daily re-authentication.
 
 **I get an error saying the token was issued to a Single-page application and the refresh token has expired**  
-Your Azure app registration is using the wrong platform type. In Azure Portal → your app → Authentication, remove the Single-page application redirect URI and add a Mobile and desktop applications platform with `http://localhost` as the redirect URI. Sign out and sign back in once to get a new token.
+Your Azure app registration is using the wrong platform type. In Azure Portal → your app → Authentication, remove the Single-page application redirect URI and add a Mobile and desktop applications platform with `obsidian://m365-callback` as the redirect URI. Sign out and sign back in once to get a new token.
 
 **I see "Failed to fetch calendars" after signing in**  
 Ensure your Azure app has the `Calendars.ReadWrite.Shared` and `User.Read` permissions, and that consent has been granted.

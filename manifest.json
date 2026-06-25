@@ -6,5 +6,5 @@
 	"description": "Microsoft 365 calendar view for Obsidian",
 	"author": "Michael Filbin",
 	"authorUrl": "https://mike.filb.in",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }
