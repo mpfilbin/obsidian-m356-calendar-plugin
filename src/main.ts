@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf } from 'obsidian';
+import { Platform, Plugin, WorkspaceLeaf } from 'obsidian';
 import { SwitchableLogger } from './lib/logger';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
@@ -63,14 +63,28 @@ export default class M365CalendarPlugin extends Plugin {
       this.weatherCacheService,
     );
 
+    const openUrl = Platform.isDesktopApp
+      ? (url: string) => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { shell } = require('electron') as { shell: { openExternal: (url: string) => Promise<void> } };
+          shell.openExternal(url).catch((err: unknown) => {
+            this.logger.error('[M365 Auth] Failed to open auth URL:', err);
+          });
+        }
+      : (url: string) => { window.open(url, '_blank'); };
+
     this.authService = new AuthService(
       () => this.settings.clientId,
       () => this.settings.tenantId,
       (name) => this.app.secretStorage.getSecret(name),
       async (name, value) => { await this.app.secretStorage.setSecret(name, value); },
-      (url) => { window.open(url, '_blank'); },
+      openUrl,
       this.logger,
     );
+
+    this.registerObsidianProtocolHandler('m365-callback', (params) => {
+      this.authService.handleOAuthCallback(params);
+    });
 
     this.calendarService = new CalendarService(this.authService, this.cacheService, this.logger);
 
