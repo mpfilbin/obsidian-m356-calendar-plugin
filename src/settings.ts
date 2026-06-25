@@ -29,6 +29,15 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName('Microsoft 365 authentication').setHeading();
 
+    const redirectInfo = containerEl.createEl('div', { cls: 'm365-auth-info' });
+    redirectInfo.createEl('p', {
+      text: 'Your Azure AD app must have the following redirect URI registered under Mobile and desktop applications:', // eslint-disable-line obsidianmd/ui/sentence-case
+    });
+    redirectInfo.createEl('code', { text: 'obsidian://m365-callback' }); // eslint-disable-line obsidianmd/ui/sentence-case
+    redirectInfo.createEl('p', {
+      text: 'If you previously used this plugin, update your Azure AD app registration and sign out, then sign back in.', // eslint-disable-line obsidianmd/ui/sentence-case
+    });
+
     new Setting(containerEl)
       .setDesc('After changing the Client ID or Tenant ID, sign out and sign in again to apply the new credentials.'); // eslint-disable-line obsidianmd/ui/sentence-case
 
@@ -198,7 +207,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Debug logging')
-      .setDesc('Log HTTP requests and responses to the developer console (Ctrl+Shift+I). Disable when not needed.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Log HTTP requests and responses to the developer console (Ctrl+Shift+I). Disable when not needed.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.debugLogging)

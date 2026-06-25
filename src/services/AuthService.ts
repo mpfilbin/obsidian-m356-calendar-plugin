@@ -1,10 +1,17 @@
-import * as crypto from 'crypto';
-import * as http from 'http';
 import { requestUrl } from 'obsidian';
 import { StoredTokens } from '../types';
 import { type Logger, NullLogger } from '../lib/logger';
 
 export const TOKEN_SECRET_NAME = 'm365-calendar-token';
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
 
 const GRAPH_SCOPES = [
   'Calendars.ReadWrite.Shared',
@@ -14,11 +21,20 @@ const GRAPH_SCOPES = [
 ];
 
 export function generateCodeVerifier(): string {
-  return crypto.randomBytes(32).toString('base64url');
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return arrayBufferToBase64Url(bytes.buffer);
 }
 
-export function generateCodeChallenge(verifier: string): string {
-  return crypto.createHash('sha256').update(verifier).digest('base64url');
+export async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return arrayBufferToBase64Url(hash);
+}
+
+function generateState(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return arrayBufferToBase64Url(bytes.buffer);
 }
 
 export class AuthService {
@@ -27,8 +43,15 @@ export class AuthService {
     private readonly getTenantId: () => string,
     private readonly getSecret: (name: string) => string | null,
     private readonly setSecret: (name: string, value: string) => Promise<void>,
+    private readonly openUrl: (url: string) => Promise<void>,
     private readonly logger: Logger = new NullLogger(),
   ) {}
+
+  private pendingSignIn: {
+    resolve: (code: string) => void;
+    reject: (err: Error) => void;
+    state: string;
+  } | null = null;
 
   async isAuthenticated(): Promise<boolean> {
     try {
@@ -53,8 +76,31 @@ export class AuthService {
 
   async signIn(): Promise<void> {
     const codeVerifier = generateCodeVerifier();
-    const codeChallenge = generateCodeChallenge(codeVerifier);
-    const { code, redirectUri } = await this.startLocalServer(codeChallenge);
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    const redirectUri = 'obsidian://m365-callback';
+    const state = generateState();
+
+    const code = await new Promise<string>((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        this.pendingSignIn = null;
+        reject(new Error('Authentication timed out after 120 seconds'));
+      }, 120_000);
+
+      this.pendingSignIn = {
+        resolve: (c) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; resolve(c); },
+        reject: (err) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; reject(err); },
+        state,
+      };
+
+      const authUrl = this.buildAuthUrl(redirectUri, codeChallenge, state);
+      this.logger.log('[M365 Auth] Opening auth URL:', authUrl);
+      this.openUrl(authUrl).catch((err: unknown) => {
+        clearTimeout(timeoutHandle);
+        this.pendingSignIn = null;
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+
     const tokens = await this.exchangeCode(code, redirectUri, codeVerifier);
     await this.storeTokens(tokens);
   }
@@ -77,82 +123,31 @@ export class AuthService {
     await this.setSecret(TOKEN_SECRET_NAME, JSON.stringify(tokens));
   }
 
-  private async startLocalServer(codeChallenge: string): Promise<{ code: string; redirectUri: string }> {
-    return new Promise((resolve, reject) => {
-      let redirectUri = '';
+  handleOAuthCallback(params: Record<string, string>): void {
+    if (!this.pendingSignIn) return;
 
-      const server = http.createServer((req, res) => {
-        if (!req.url) {
-          res.writeHead(400);
-          res.end();
-          return;
-        }
+    if (params['state'] !== this.pendingSignIn.state) {
+      this.logger.log('[M365 Auth] OAuth callback rejected: state mismatch');
+      this.pendingSignIn.reject(new Error('Authentication failed: state mismatch'));
+      return;
+    }
 
-        const url = new URL(req.url, 'http://localhost');
-        this.logger.log('[M365 Auth] Server received request:', req.method, url.pathname);
-
-        // Ignore browser-initiated requests that aren't the OAuth callback
-        // (e.g. favicon.ico, preflight). Only the root path carries OAuth params.
-        if (url.pathname !== '/') {
-          this.logger.log('[M365 Auth] Ignoring non-root request:', url.pathname);
-          res.writeHead(204);
-          res.end();
-          return;
-        }
-
-        const code = url.searchParams.get('code');
-        const error = url.searchParams.get('error');
-        const errorDescription = url.searchParams.get('error_description');
-
-        clearTimeout(timeoutHandle);
-        server.close();
-
-        if (code) {
-          this.logger.log('[M365 Auth] OAuth callback received: code present, redirectUri:', redirectUri);
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<html lang="en"><body><h1>Authentication complete.</h1><script>window.close()</script></body></html>');
-          resolve({ code, redirectUri });
-        } else if (error) {
-          const message = errorDescription ?? error;
-          this.logger.log('[M365 Auth] OAuth callback received: error:', error, 'description:', errorDescription);
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html lang="en"><body><h1>Authentication failed.</h1><p>You may close this window and try again.</p></body></html>');
-          reject(new Error(`Authentication failed: ${message}`));
-        } else {
-          this.logger.log('[M365 Auth] OAuth callback received: no code and no error');
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html lang="en"><body><h1>Authentication failed</h1><p>No authorization code received.</p></body></html>');
-          reject(new Error('No authorization code received'));
-        }
-      });
-
-      server.on('error', (err) => {
-        this.logger.error('[M365 Auth] Server error:', err);
-        reject(err);
-      });
-
-      server.listen(0, '127.0.0.1', () => {
-        const port = (server.address() as { port: number }).port;
-        redirectUri = `http://localhost:${port}`;
-        this.logger.log('[M365 Auth] Local callback server listening on:', redirectUri);
-        const authUrl = this.buildAuthUrl(redirectUri, codeChallenge);
-        this.logger.log('[M365 Auth] Opening auth URL:', authUrl);
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { shell } = require('electron') as { shell: { openExternal: (url: string) => Promise<void> } };
-        shell.openExternal(authUrl).catch((err: unknown) => {
-          this.logger.error('[M365 Auth] Failed to open auth URL:', err);
-          reject(err instanceof Error ? err : new Error(String(err)));
-        });
-      });
-
-      const timeoutHandle = setTimeout(() => {
-        server.close();
-        reject(new Error('Authentication timed out after 120 seconds'));
-      }, 120_000);
-    });
+    const code = params['code'];
+    const error = params['error'];
+    if (code) {
+      this.logger.log('[M365 Auth] OAuth callback received: code present');
+      this.pendingSignIn.resolve(code);
+    } else if (error) {
+      const message = params['error_description'] ?? error;
+      this.logger.log('[M365 Auth] OAuth callback received: error:', error, 'description:', params['error_description']);
+      this.pendingSignIn.reject(new Error(`Authentication failed: ${message}`));
+    } else {
+      this.logger.log('[M365 Auth] OAuth callback received: missing code and error parameters');
+      this.pendingSignIn.reject(new Error('No authorization code received'));
+    }
   }
 
-  private buildAuthUrl(redirectUri: string, codeChallenge: string): string {
+  private buildAuthUrl(redirectUri: string, codeChallenge: string, state: string): string {
     const params = new URLSearchParams({
       client_id: this.getClientId(),
       response_type: 'code',
@@ -161,6 +156,7 @@ export class AuthService {
       response_mode: 'query',
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      state,
     });
     return `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/authorize?${params}`;
   }

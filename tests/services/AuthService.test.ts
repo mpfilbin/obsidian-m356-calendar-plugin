@@ -19,12 +19,14 @@ function makeTokens(expiresInMs: number): StoredTokens {
 describe('AuthService', () => {
   let getSecret: ReturnType<typeof vi.fn>;
   let setSecret: ReturnType<typeof vi.fn>;
+  let openUrl: ReturnType<typeof vi.fn>;
   let auth: AuthService;
 
   beforeEach(() => {
     getSecret = vi.fn();
     setSecret = vi.fn().mockResolvedValue(undefined);
-    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret);
+    openUrl = vi.fn().mockResolvedValue(undefined);
+    auth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl);
   });
 
   afterEach(() => {
@@ -95,18 +97,18 @@ describe('AuthService', () => {
       expect(verifier.length).toBe(43);
     });
 
-    it('generateCodeChallenge returns SHA-256 of the verifier in base64url', () => {
+    it('generateCodeChallenge returns SHA-256 of the verifier in base64url', async () => {
       const verifier = generateCodeVerifier();
-      const challenge = generateCodeChallenge(verifier);
+      const challenge = await generateCodeChallenge(verifier);
       // Independently compute expected value
       const expected = crypto.createHash('sha256').update(verifier).digest('base64url');
       expect(challenge).toBe(expected);
     });
 
-    it('different verifiers produce different challenges', () => {
+    it('different verifiers produce different challenges', async () => {
       const a = generateCodeVerifier();
       const b = generateCodeVerifier();
-      expect(generateCodeChallenge(a)).not.toBe(generateCodeChallenge(b));
+      expect(await generateCodeChallenge(a)).not.toBe(await generateCodeChallenge(b));
     });
   });
 
@@ -117,7 +119,7 @@ describe('AuthService', () => {
         makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
       );
 
-      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret);
+      const dynamicAuth = new AuthService(() => clientId, () => 'common', getSecret, setSecret, vi.fn());
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       clientId = 'updated-client';
@@ -134,7 +136,7 @@ describe('AuthService', () => {
         makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
       );
 
-      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret);
+      const dynamicAuth = new AuthService(() => 'client-id', () => tenantId, getSecret, setSecret, vi.fn());
       getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
 
       tenantId = 'updated-tenant';
@@ -142,6 +144,64 @@ describe('AuthService', () => {
 
       const opts = vi.mocked(requestUrl).mock.calls[0][0] as { url: string };
       expect(opts.url).toContain('/updated-tenant/');
+    });
+  });
+
+  describe('handleOAuthCallback', () => {
+    it('resolves pending signIn when code is present in params', async () => {
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code', state });
+        return Promise.resolve();
+      });
+      await auth.signIn();
+      expect(setSecret).toHaveBeenCalled();
+      expect(openUrl).toHaveBeenCalledWith(expect.stringContaining('login.microsoftonline.com'));
+    });
+
+    it('rejects pending signIn when params contain an error', async () => {
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        auth.handleOAuthCallback({
+          action: 'm365-callback',
+          error: 'access_denied',
+          error_description: 'User denied access',
+          state,
+        });
+        return Promise.resolve();
+      });
+      await expect(auth.signIn()).rejects.toThrow('User denied access');
+    });
+
+    it('rejects pending signIn with "No authorization code received" when neither code nor error present', async () => {
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        auth.handleOAuthCallback({ action: 'm365-callback', state });
+        return Promise.resolve();
+      });
+      await expect(auth.signIn()).rejects.toThrow('No authorization code received');
+    });
+
+    it('rejects pending signIn when state does not match', async () => {
+      openUrl.mockImplementation(() => {
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code', state: 'wrong-state' });
+        return Promise.resolve();
+      });
+      await expect(auth.signIn()).rejects.toThrow('state mismatch');
+    });
+
+    it('rejects pending signIn immediately when openUrl rejects', async () => {
+      openUrl.mockRejectedValue(new Error('Failed to open browser'));
+      await expect(auth.signIn()).rejects.toThrow('Failed to open browser');
+    });
+
+    it('does nothing when no sign-in is pending', () => {
+      expect(() =>
+        auth.handleOAuthCallback({ action: 'm365-callback', code: 'stale-code', state: 'any' }),
+      ).not.toThrow();
     });
   });
 });

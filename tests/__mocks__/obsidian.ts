@@ -28,10 +28,18 @@ export class Modal {
 export class App {}
 export class Plugin {}
 
+function createElementWithCreateElMethod(tag: string): HTMLElement {
+  const el = document.createElement(tag);
+  (el as unknown as { createEl: (tag: string, options?: unknown) => HTMLElement }).createEl = (tag: string) => {
+    return createElementWithCreateElMethod(tag);
+  };
+  return el;
+}
+
 export class PluginSettingTab {
   containerEl: HTMLElement;
   constructor(_app: unknown, _plugin: unknown) {
-    const el = document.createElement('div');
+    const el = createElementWithCreateElMethod('div');
     (el as unknown as { empty: () => void }).empty = vi.fn();
     this.containerEl = el;
   }
