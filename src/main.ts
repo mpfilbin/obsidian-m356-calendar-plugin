@@ -69,7 +69,7 @@ export default class M365CalendarPlugin extends Plugin {
           const { shell } = require('electron') as { shell: { openExternal: (url: string) => Promise<void> } };
           await shell.openExternal(url);
         }
-      : async (url: string) => { window.open(url, '_blank'); };
+      : async (url: string) => { window.location.href = url; };
 
     this.authService = new AuthService(
       () => this.settings.clientId,
