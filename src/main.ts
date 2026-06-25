@@ -68,6 +68,7 @@ export default class M365CalendarPlugin extends Plugin {
       () => this.settings.tenantId,
       (name) => this.app.secretStorage.getSecret(name),
       async (name, value) => { await this.app.secretStorage.setSecret(name, value); },
+      (url) => { window.open(url, '_blank'); },
       this.logger,
     );
 
