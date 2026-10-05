@@ -15,6 +15,7 @@
 | `services/CacheService.ts`, `WeatherCacheService.ts` | Persisted event and weather caches |
 | `hooks/useEventsData.ts`, `useTodosData.ts`, `useWeather.ts` | Data loading per concern; each ignores responses superseded by newer requests |
 | `hooks/useCalendarActions.ts` | Modals, context menu, and event/task mutations |
+| `hooks/useReschedule.ts`, `hooks/useDragDrop.ts`, `DragContext.tsx`, `lib/reschedule.ts` | Drag-and-drop: optimistic move + rollback, drag sources/drop zones, and the pure date/time maths |
 | `components/` | React views (`CalendarApp` composes the hooks) and Obsidian-modal wrappers |
 | `lib/` | Pure helpers (dates, layout, retry, logging) |
 

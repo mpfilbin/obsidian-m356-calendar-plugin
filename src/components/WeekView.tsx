@@ -6,6 +6,7 @@ import { TimelineColumn, HOURS_IN_DAY, PX_PER_MIN } from './TimelineColumn';
 import { toDateOnly, getWeekDays } from '../lib/datetime';
 import { computeWeekSpanningLayout } from '../lib/spanningLayout';
 import { useNow } from '../hooks/useNow';
+import { useDragSource, useDropZones, dayColumnResolver, dateAttributeResolver } from '../hooks/useDragDrop';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -37,6 +38,8 @@ export const WeekView: React.FC<WeekViewProps> = ({
   completingTodoIds,
 }) => {
   const weekDays = getWeekDays(currentDate);
+  const dragSource = useDragSource();
+  const { hover, bind } = useDropZones();
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
   const todosByDate = useMemo(() => {
@@ -107,14 +110,15 @@ export const WeekView: React.FC<WeekViewProps> = ({
   return (
     <div className="m365-calendar-week-view">
       {/* Day header row */}
-      <div className="m365-week-column-headers">
+      <div className="m365-week-column-headers" {...bind('headers', dateAttributeResolver())}>
         <div className="m365-week-gutter-spacer" />
         {weekDays.map((day) => {
           const isToday = day.toDateString() === now.toDateString();
           return (
             <div
               key={`header-${toDateOnly(day)}`}
-              className={['m365-calendar-week-day', isToday ? 'today' : '']
+              data-drop-date={toDateOnly(day)}
+              className={['m365-calendar-week-day', isToday ? 'today' : '', hover?.target.date === toDateOnly(day) ? 'm365-drop-hover' : '']
                 .filter(Boolean)
                 .join(' ')}
               onClick={() => onDayClick(day)}
@@ -185,13 +189,13 @@ export const WeekView: React.FC<WeekViewProps> = ({
       {/* All-day row */}
       <div className="m365-week-allday-row">
         <div className="m365-week-allday-gutter" />
-        <div className="m365-week-allday-main">
+        <div className="m365-week-allday-main" {...bind('allday', dayColumnResolver(weekDays))}>
           {/* Background columns: provide per-day context menu targets and vertical borders */}
           <div className="m365-week-allday-columns">
             {weekDays.map((day) => (
               <div
                 key={`bg-${toDateOnly(day)}`}
-                className="m365-week-allday-cell"
+                className={`m365-week-allday-cell${hover?.zone === 'allday' && hover.target.date === toDateOnly(day) ? ' m365-drop-hover' : ''}`}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   onDayContextMenu?.({ kind: 'allday', date: day }, e.nativeEvent);
@@ -210,6 +214,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                   event={seg.event}
                   calendar={cal}
                   segment={seg}
+                  weekStart={weekDays[0]}
                   onEventClick={onEventClick}
                 />
               );
@@ -232,6 +237,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                           className="m365-event-click-btn"
                           aria-label={`View task: ${todo.title}`}
                           disabled={completingTodoIds?.has(todo.id) ?? false}
+                          {...dragSource({ kind: 'todo', todo })}
                           onClick={(e) => {
                             e.stopPropagation();
                             onTodoClick?.(todo);

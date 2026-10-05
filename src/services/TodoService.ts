@@ -98,6 +98,13 @@ export class TodoService {
     });
   }
 
+  /** Changes only the due date of a task ("YYYY-MM-DD"). */
+  async updateTaskDueDate(listId: string, taskId: string, dueDate: string): Promise<void> {
+    await this.graph.send('PATCH', TodoService.taskPath(listId, taskId), 'reschedule task', {
+      body: { dueDateTime: { dateTime: `${dueDate}T00:00:00`, timeZone: 'UTC' } },
+    });
+  }
+
   async deleteTask(listId: string, taskId: string): Promise<void> {
     await this.graph.send('DELETE', TodoService.taskPath(listId, taskId), 'delete task');
   }

@@ -10,6 +10,8 @@ import { useEventsData } from '../hooks/useEventsData';
 import { useTodosData } from '../hooks/useTodosData';
 import { useWeather } from '../hooks/useWeather';
 import { useCalendarActions } from '../hooks/useCalendarActions';
+import { useReschedule } from '../hooks/useReschedule';
+import { DragProvider } from '../DragContext';
 
 export const CalendarApp: React.FC = () => {
   const { settings: initialSettings, saveSettings, subscribeSettings } = useAppContext();
@@ -30,6 +32,11 @@ export const CalendarApp: React.FC = () => {
   const actions = useCalendarActions({
     currentDate, view, calendars, enabledIds, setEvents,
     todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds,
+    refreshEvents: () => fetchAll(),
+  });
+
+  const reschedule = useReschedule({
+    calendars, setEvents, setTodos, completingTodoIds, setCompletingTodoIds,
     refreshEvents: () => fetchAll(),
   });
 
@@ -103,55 +110,57 @@ export const CalendarApp: React.FC = () => {
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => void handleToggleSidebar()}
         />
-        <div className="m365-calendar-main">
-          {view === 'month' && (
-            <MonthView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onDayClick={handleDayClick}
-              onDayContextMenu={actions.handleDayContextMenu}
-              onEventClick={actions.handleEventClick}
-              onTodoClick={actions.handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-          {view === 'week' && (
-            <WeekView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onDayClick={handleDayClick}
-              onDayContextMenu={actions.handleDayContextMenu}
-              onEventClick={actions.handleEventClick}
-              onTodoClick={actions.handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-          {view === 'day' && (
-            <DayView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onTimeClick={actions.openCreateEventModal}
-              onEventClick={actions.handleEventClick}
-              onTodoClick={actions.handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-        </div>
+        <DragProvider canDrag={reschedule.canDrag} isPending={reschedule.isPending} onDrop={reschedule.onDrop}>
+          <div className="m365-calendar-main">
+            {view === 'month' && (
+              <MonthView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onDayClick={handleDayClick}
+                onDayContextMenu={actions.handleDayContextMenu}
+                onEventClick={actions.handleEventClick}
+                onTodoClick={actions.handleTodoClick}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+            {view === 'week' && (
+              <WeekView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onDayClick={handleDayClick}
+                onDayContextMenu={actions.handleDayContextMenu}
+                onEventClick={actions.handleEventClick}
+                onTodoClick={actions.handleTodoClick}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+            {view === 'day' && (
+              <DayView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onTimeClick={actions.openCreateEventModal}
+                onEventClick={actions.handleEventClick}
+                onTodoClick={actions.handleTodoClick}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+          </div>
+        </DragProvider>
       </div>
     </div>
   );

@@ -1069,3 +1069,49 @@
   border-right: 1px solid var(--background-modifier-border);
   overflow: hidden;
 }
+
+/* ─── Drag and drop ───────────────────────────────────────────────────────── */
+
+[draggable="true"].m365-event-click-btn,
+[draggable="true"].m365-spanning-bar {
+  cursor: grab;
+}
+
+/* The item being dragged. */
+.m365-dragging {
+  opacity: 0.4;
+}
+
+/* An item whose move is still being saved. */
+.m365-drag-pending {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* A day (or timeline column) that would receive the drop. */
+.m365-drop-hover {
+  background-color: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+}
+
+/* Snapped start time shown while dragging an event over a timeline. */
+.m365-drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--interactive-accent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.m365-drop-indicator-label {
+  position: absolute;
+  top: -9px;
+  left: 2px;
+  padding: 0 var(--size-4-1);
+  border-radius: var(--radius-s);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, createEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import * as obsidianMock from '../../tests/__mocks__/obsidian';
@@ -950,6 +950,149 @@ describe('CalendarApp', () => {
       });
       const card = document.querySelector('.m365-todo-card') as HTMLElement;
       expect(card.style.opacity).not.toBe('0.4');
+    });
+  });
+
+  describe('drag-and-drop rescheduling', () => {
+    const dayCells = () => Array.from(document.querySelectorAll('.m365-calendar-day-cell'));
+    const cellIndexOf = (el: HTMLElement) => dayCells().indexOf(el.closest('.m365-calendar-day-cell') as Element);
+
+    /** jsdom has no DragEvent, so define pointer coordinates ourselves. */
+    function fire(type: 'dragStart' | 'drop', el: Element, clientX = 0) {
+      const event = createEvent[type](el, { dataTransfer: { setData: vi.fn(), effectAllowed: '', dropEffect: '' } });
+      Object.defineProperty(event, 'clientX', { value: clientX, configurable: true });
+      return fireEvent(el, event);
+    }
+
+    /** Drops `element` on column `col` (0 = Sunday) of the week row it is in. */
+    function dragToColumn(element: HTMLElement, col: number) {
+      const row = element.closest('.m365-month-week-row') as HTMLElement;
+      vi.spyOn(row, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 700, top: 0, height: 100 } as DOMRect);
+      fire('dragStart', element);
+      fire('drop', row, col * 100 + 50);
+    }
+
+    // The mock event is on Sat Apr 4 (last column of the Mar 29 – Apr 4 row).
+    it('moves an event to the day it is dropped on and saves it', async () => {
+      const ctx = makeContext();
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+
+      dragToColumn(chip, 2); // Tue Mar 31
+
+      await waitFor(() => {
+        expect(ctx.calendarService.updateEvent).toHaveBeenCalledWith('evt-1', {
+          start: { dateTime: '2026-03-31T09:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-03-31T09:30:00', timeZone: 'UTC' },
+        });
+      });
+      // refetched from the server after the save
+      await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(2));
+    });
+
+    it('shows the move immediately and dims the event until the save finishes', async () => {
+      let finish!: () => void;
+      const ctx = makeContext();
+      (ctx.calendarService.updateEvent as ReturnType<typeof vi.fn>).mockReturnValue(
+        new Promise<void>((resolve) => { finish = resolve; }),
+      );
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      const before = cellIndexOf(chip);
+
+      dragToColumn(chip, 2);
+
+      await waitFor(() => {
+        const moved = screen.getByLabelText('Edit event: Standup');
+        expect(cellIndexOf(moved)).toBe(before - 4);
+        expect(moved).toHaveClass('m365-drag-pending');
+        expect(moved).not.toHaveAttribute('draggable');
+      });
+
+      finish();
+      await waitFor(() => expect(screen.getByLabelText('Edit event: Standup')).not.toHaveClass('m365-drag-pending'));
+    });
+
+    it('puts the event back and shows a notice when saving fails', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.updateEvent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Failed to update event: Forbidden'));
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      const before = cellIndexOf(chip);
+
+      dragToColumn(chip, 2);
+
+      await waitFor(() => {
+        expect(obsidianMock.Notice).toHaveBeenCalledWith(expect.stringContaining('Failed to update event: Forbidden'));
+      });
+      await waitFor(() => {
+        const restored = screen.getByLabelText('Edit event: Standup');
+        expect(cellIndexOf(restored)).toBe(before);
+        expect(restored).not.toHaveClass('m365-drag-pending');
+      });
+    });
+
+    it('does not save when an event is dropped back on its own day', async () => {
+      const ctx = makeContext();
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      dragToColumn(chip, 6);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(ctx.calendarService.updateEvent).not.toHaveBeenCalled();
+    });
+
+    it('does not let events in read-only calendars be dragged', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.getCalendars as ReturnType<typeof vi.fn>).mockResolvedValue([{ ...mockCalendar, canEdit: false }]);
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      expect(chip).not.toHaveAttribute('draggable');
+    });
+
+    it('does not let a series master be dragged', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mockResolvedValue([{ ...mockEvent, type: 'seriesMaster' }]);
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      expect(chip).not.toHaveAttribute('draggable');
+    });
+
+    describe('tasks', () => {
+      const task: M365TodoItem = { id: 'task1', title: 'Pay rent', listId: 'list1', dueDate: '2026-04-15', importance: 'normal' };
+      function makeTaskContext(updateTaskDueDate = vi.fn().mockResolvedValue(undefined)) {
+        return makeContext({
+          todoService: {
+            getLists: vi.fn().mockResolvedValue([mockTodoList]),
+            getTasks: vi.fn().mockResolvedValue([task]),
+            updateTaskDueDate,
+          } as unknown as AppContextValue['todoService'],
+          settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], enabledTodoListIds: ['list1'] },
+        });
+      }
+
+      it('changes a task\'s due date to the day it is dropped on', async () => {
+        const ctx = makeTaskContext();
+        renderCalendarApp(ctx);
+        const chip = await screen.findByLabelText('View task: Pay rent'); // Wed Apr 15 → column 3
+        const before = cellIndexOf(chip);
+        dragToColumn(chip, 5); // Fri Apr 17
+        await waitFor(() => expect(ctx.todoService.updateTaskDueDate).toHaveBeenCalledWith('list1', 'task1', '2026-04-17'));
+        await waitFor(() => {
+          expect(cellIndexOf(screen.getByLabelText('View task: Pay rent'))).toBe(before + 2);
+        });
+      });
+
+      it('puts the task back and shows a notice when saving fails', async () => {
+        const ctx = makeTaskContext(vi.fn().mockRejectedValue(new Error('Failed to reschedule task: Forbidden')));
+        renderCalendarApp(ctx);
+        const chip = await screen.findByLabelText('View task: Pay rent');
+        const before = cellIndexOf(chip);
+        dragToColumn(chip, 5);
+        await waitFor(() => {
+          expect(obsidianMock.Notice).toHaveBeenCalledWith(expect.stringContaining('Failed to reschedule task: Forbidden'));
+        });
+        await waitFor(() => expect(cellIndexOf(screen.getByLabelText('View task: Pay rent'))).toBe(before));
+      });
     });
   });
 
