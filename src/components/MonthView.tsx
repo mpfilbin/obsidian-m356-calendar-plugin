@@ -17,6 +17,7 @@ interface MonthViewProps {
   onDayClick: (date: Date) => void;
   onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   maxEventsPerDay?: number;
   maxSpanningLanes?: number;
   weather?: Map<string, DailyWeather | null>;
@@ -24,6 +25,7 @@ interface MonthViewProps {
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  onTodoContextMenu?: (todo: M365TodoItem, e: MouseEvent) => void;
   completingTodoIds?: Set<string>;
 }
 
@@ -34,6 +36,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onDayClick,
   onDayContextMenu,
   onEventClick,
+  onEventContextMenu,
   maxEventsPerDay = 4,
   maxSpanningLanes = 2,
   weather,
@@ -41,6 +44,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   todos = [],
   todoLists = [],
   onTodoClick,
+  onTodoContextMenu,
   completingTodoIds,
 }) => {
   const days = getDaysInMonthView(currentDate);
@@ -171,6 +175,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       segment={seg}
                       weekStart={weekStart}
                       onEventClick={onEventClick}
+                      onEventContextMenu={onEventContextMenu}
                     />
                   );
                 })}
@@ -236,7 +241,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                                 e.stopPropagation();
                                 onEventClick?.(event);
                               }}
-                              onContextMenu={(e) => e.stopPropagation()}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onEventContextMenu?.(event, e.nativeEvent);
+                              }}
                             >
                               <EventCard event={event} calendar={cal} />
                             </button>
@@ -257,7 +266,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                                 e.stopPropagation();
                                 onTodoClick?.(todo);
                               }}
-                              onContextMenu={(e) => e.stopPropagation()}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onTodoContextMenu?.(todo, e.nativeEvent);
+                              }}
                             >
                               <TodoCard
                                 todo={todo}

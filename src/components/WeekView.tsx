@@ -15,11 +15,13 @@ interface WeekViewProps {
   onDayClick: (date: Date) => void;
   onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  onTodoContextMenu?: (todo: M365TodoItem, e: MouseEvent) => void;
   completingTodoIds?: Set<string>;
 }
 
@@ -30,11 +32,13 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onDayClick,
   onDayContextMenu,
   onEventClick,
+  onEventContextMenu,
   weather,
   weatherUnits = 'imperial',
   todos = [],
   todoLists = [],
   onTodoClick,
+  onTodoContextMenu,
   completingTodoIds,
 }) => {
   const weekDays = getWeekDays(currentDate);
@@ -216,6 +220,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                   segment={seg}
                   weekStart={weekDays[0]}
                   onEventClick={onEventClick}
+                  onEventContextMenu={onEventContextMenu}
                 />
               );
             })}
@@ -242,7 +247,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
                             e.stopPropagation();
                             onTodoClick?.(todo);
                           }}
-                          onContextMenu={(e) => e.stopPropagation()}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onTodoContextMenu?.(todo, e.nativeEvent);
+                          }}
                         >
                           <TodoCard
                             todo={todo}
@@ -295,6 +304,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 onDayContextMenu?.({ kind: 'timed', dateTime }, e)
               }
               onEventClick={onEventClick}
+              onEventContextMenu={onEventContextMenu}
               data-testid={`m365-week-timeline-${cellDateStr}`}
             />
           );

@@ -7,6 +7,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Month and week views** of your M365 calendar events
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
 - **Create events** — click any day to create a new event without leaving Obsidian
+- **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
 - **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
 - **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
 - **Local caching** — renders instantly from cache, refreshes in the background

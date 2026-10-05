@@ -5,7 +5,9 @@ import { CreateEventModal } from '../components/CreateEventModal';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { EventDetailModal } from '../components/EventDetailModal';
 import { TodoDetailModal } from '../components/TodoDetailModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useAppContext } from '../context';
+import { usePopoverContext } from '../PopoverContext';
 import { getDateRange, toDateOnly } from '../lib/datetime';
 import { notifyError } from '../lib/notify';
 
@@ -26,6 +28,7 @@ export interface CalendarActionsDeps {
 /** User-initiated actions that open modals / menus and mutate events and tasks. */
 export function useCalendarActions(deps: CalendarActionsDeps) {
   const { app, calendarService, todoService, settings } = useAppContext();
+  const { hidePopover } = usePopoverContext();
   const {
     currentDate, view, calendars, enabledIds, setEvents,
     todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds, refreshEvents,
@@ -111,29 +114,35 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
     menu.showAtMouseEvent(event);
   };
 
-  const handleEventClick = (event: M365Event) => {
-    const calendar = calendars.find((c) => c.id === event.calendarId);
-    const isSeries = event.type === 'occurrence' || event.type === 'exception';
-    const isMaster = event.type === 'seriesMaster';
-    const onDelete = calendar?.canEdit
-      ? async () => {
-          await calendarService.deleteEvent(event.id);
-          setEvents((prev) => prev.filter(
-            (e) => e.id !== event.id && e.seriesMasterId !== event.id,
-          ));
-          new Notice(isMaster ? 'Series deleted' : 'Event deleted');
-        }
-      : undefined;
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  const deleteEventNow = async (event: M365Event) => {
+    await calendarService.deleteEvent(event.id);
+    setEvents((prev) => prev.filter((e) => e.id !== event.id && e.seriesMasterId !== event.id));
+    new Notice(event.type === 'seriesMaster' ? 'Series deleted' : 'Event deleted');
+  };
+
+  const deleteSeriesNow = async (seriesMasterId: string) => {
+    await calendarService.deleteEventSeries(seriesMasterId);
+    setEvents((prev) => prev.filter((e) => e.seriesMasterId !== seriesMasterId && e.id !== seriesMasterId));
+    new Notice('Series deleted');
+  };
+
+  /** What may be deleted for this event: undefined means "not offered" (e.g. read-only calendar). */
+  const eventDeleteActions = (event: M365Event) => {
+    const canEdit = calendars.find((c) => c.id === event.calendarId)?.canEdit ?? false;
+    const isOccurrence = event.type === 'occurrence' || event.type === 'exception';
     const { seriesMasterId } = event;
-    const onDeleteSeries = isSeries && calendar?.canEdit && seriesMasterId
-      ? async () => {
-          await calendarService.deleteEventSeries(seriesMasterId);
-          setEvents((prev) => prev.filter(
-            (e) => e.seriesMasterId !== seriesMasterId && e.id !== seriesMasterId,
-          ));
-          new Notice('Series deleted');
-        }
-      : undefined;
+    return {
+      canEdit,
+      isOccurrence,
+      onDelete: canEdit ? () => deleteEventNow(event) : undefined,
+      onDeleteSeries: isOccurrence && canEdit && seriesMasterId ? () => deleteSeriesNow(seriesMasterId) : undefined,
+    };
+  };
+
+  const handleEventClick = (event: M365Event) => {
+    const { onDelete, onDeleteSeries } = eventDeleteActions(event);
     new EventDetailModal(
       app,
       event,
@@ -158,16 +167,79 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
     ).open();
   };
 
-  const handleTodoClick = (todo: M365TodoItem) => {
-    const list = todoLists.find((l) => l.id === todo.listId);
-    if (!list) {
-      console.warn('M365 Calendar: todo list not found for task', todo.id);
-      return;
+  /** Opens a confirmation dialog; failures are reported and keep the dialog open. */
+  const confirmDelete = (title: string, message: string, confirmLabel: string, action: () => Promise<void>) => {
+    new ConfirmModal(app, title, message, confirmLabel, 'Deleting…', async () => {
+      try {
+        await action();
+      } catch (e) {
+        notifyError(e);
+        throw e;
+      }
+    }).open();
+  };
+
+  const handleEventContextMenu = (event: M365Event, mouseEvent: MouseEvent) => {
+    hidePopover(); // the hover details would otherwise stay on screen behind the menu
+    const { canEdit, isOccurrence, onDelete, onDeleteSeries } = eventDeleteActions(event);
+    const menu = new Menu();
+    menu.addItem((item) =>
+      item.setTitle('Edit event').setIcon('pencil').onClick(() => handleEventClick(event)),
+    );
+    if (canEdit && onDelete) {
+      menu.addSeparator();
+      if (isOccurrence) {
+        menu.addItem((item) =>
+          item.setTitle('Delete this occurrence').setIcon('trash').setWarning(true).onClick(() =>
+            confirmDelete(
+              'Delete occurrence',
+              `Delete "${event.subject}" on this date only? The rest of the series is kept.`,
+              'Delete occurrence',
+              onDelete,
+            ),
+          ),
+        );
+        if (onDeleteSeries) {
+          menu.addItem((item) =>
+            item.setTitle('Delete entire series').setIcon('trash').setWarning(true).onClick(() =>
+              confirmDelete(
+                'Delete series',
+                `Delete every occurrence of "${event.subject}"? This cannot be undone.`,
+                'Delete series',
+                onDeleteSeries,
+              ),
+            ),
+          );
+        }
+      } else {
+        const isMaster = event.type === 'seriesMaster';
+        menu.addItem((item) =>
+          item.setTitle(isMaster ? 'Delete series' : 'Delete event').setIcon('trash').setWarning(true).onClick(() =>
+            confirmDelete(
+              isMaster ? 'Delete series' : 'Delete event',
+              isMaster
+                ? `Delete every occurrence of "${event.subject}"? This cannot be undone.`
+                : `Delete "${event.subject}"? This cannot be undone.`,
+              isMaster ? 'Delete series' : 'Delete event',
+              onDelete,
+            ),
+          ),
+        );
+      }
     }
-    // Mark the task as in-flight while the request runs, then drop it from the list on success.
-    // The returned promise lets the detail dialog stay open (disabled) until the request settles;
-    // failures are reported here and rethrown so the dialog can show them inline.
-    const runTodoAction = async (action: () => Promise<void>) => {
+    menu.showAtMouseEvent(mouseEvent);
+  };
+
+  // ── Tasks ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Complete / delete actions for a task. Each marks the task as in-flight while the request runs,
+   * then drops it from the list on success. The returned promise lets a dialog stay open
+   * (disabled) until the request settles; failures are reported here and rethrown so the dialog
+   * can show them inline.
+   */
+  const todoActions = (todo: M365TodoItem) => {
+    const run = async (action: () => Promise<void>) => {
       setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
       try {
         await action();
@@ -179,10 +251,43 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
         setCompletingTodoIds((prev) => { const next = new Set(prev); next.delete(todo.id); return next; });
       }
     };
-    const onComplete = () => runTodoAction(() => todoService.completeTask(todo.listId, todo.id));
-    const onDelete = () => runTodoAction(() => todoService.deleteTask(todo.listId, todo.id));
+    return {
+      onComplete: () => run(() => todoService.completeTask(todo.listId, todo.id)),
+      onDelete: () => run(() => todoService.deleteTask(todo.listId, todo.id)),
+    };
+  };
+
+  const handleTodoClick = (todo: M365TodoItem) => {
+    const list = todoLists.find((l) => l.id === todo.listId);
+    if (!list) {
+      console.warn('M365 Calendar: todo list not found for task', todo.id);
+      return;
+    }
+    const { onComplete, onDelete } = todoActions(todo);
     new TodoDetailModal(app, todo, list, todoService, onComplete, onDelete).open();
   };
 
-  return { openCreateEventModal, openCreateTaskModal, handleDayContextMenu, handleEventClick, handleTodoClick };
+  const handleTodoContextMenu = (todo: M365TodoItem, mouseEvent: MouseEvent) => {
+    const { onComplete, onDelete } = todoActions(todo);
+    const menu = new Menu();
+    menu.addItem((item) =>
+      item.setTitle('Edit task').setIcon('pencil').onClick(() => handleTodoClick(todo)),
+    );
+    menu.addItem((item) =>
+      // runTodoAction has already shown the error notice; nothing more to do on failure.
+      item.setTitle('Mark complete').setIcon('check').onClick(() => { void onComplete().catch(() => {}); }),
+    );
+    menu.addSeparator();
+    menu.addItem((item) =>
+      item.setTitle('Delete task').setIcon('trash').setWarning(true).onClick(() =>
+        confirmDelete('Delete task', `Delete "${todo.title}"? This cannot be undone.`, 'Delete task', onDelete),
+      ),
+    );
+    menu.showAtMouseEvent(mouseEvent);
+  };
+
+  return {
+    openCreateEventModal, openCreateTaskModal, handleDayContextMenu,
+    handleEventClick, handleTodoClick, handleEventContextMenu, handleTodoContextMenu,
+  };
 }

@@ -98,25 +98,35 @@ export class Setting {
   }
 }
 
+export interface MockMenuItem {
+  title: string;
+  icon: string;
+  warning: boolean;
+  onClick: () => void;
+}
+
 export class Menu {
-  items: Array<{ title: string; onClick: () => void }> = [];
+  items: MockMenuItem[] = [];
+  separators = 0;
 
   addItem(cb: (item: {
-    setTitle: (t: string) => typeof item;
-    setIcon: (i: string) => typeof item;
-    onClick: (fn: () => void) => typeof item;
+    setTitle: (t: string) => unknown;
+    setIcon: (i: string) => unknown;
+    setWarning: (w: boolean) => unknown;
+    onClick: (fn: () => void) => unknown;
   }) => void) {
-    let title = '';
-    let fn: () => void = () => {};
+    const entry: MockMenuItem = { title: '', icon: '', warning: false, onClick: () => {} };
     const item = {
-      setTitle: (t: string) => { title = t; return item; },
-      setIcon: (_i: string) => item,
-      onClick: (f: () => void) => { fn = f; return item; },
+      setTitle: (t: string) => { entry.title = t; return item; },
+      setIcon: (i: string) => { entry.icon = i; return item; },
+      setWarning: (w: boolean) => { entry.warning = w; return item; },
+      onClick: (f: () => void) => { entry.onClick = f; return item; },
     };
     cb(item);
-    this.items.push({ title, onClick: fn });
+    this.items.push(entry);
     return this;
   }
+  addSeparator() { this.separators++; return this; }
   showAtMouseEvent(_event: MouseEvent) { return this; }
 }
 

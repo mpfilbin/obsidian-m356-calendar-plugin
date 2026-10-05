@@ -88,6 +88,21 @@ const createTaskModalCallbacks = vi.hoisted(() => ({
   onSubmit: null as ((listId: string, input: import('../../src/types').NewTaskInput, steps: string[]) => Promise<void>) | null,
 }));
 
+const confirmModalCalls = vi.hoisted(() => ({
+  last: null as null | {
+    title: string; message: string; confirmLabel: string; pendingLabel: string; onConfirm: () => Promise<void>;
+  },
+}));
+
+vi.mock('../../src/components/ConfirmModal', () => ({
+  ConfirmModal: class {
+    constructor(_app: unknown, title: string, message: string, confirmLabel: string, pendingLabel: string, onConfirm: () => Promise<void>) {
+      confirmModalCalls.last = { title, message, confirmLabel, pendingLabel, onConfirm };
+    }
+    open() {}
+  },
+}));
+
 vi.mock('../../src/components/CreateTaskModal', () => ({
   CreateTaskModal: class {
     constructor(
@@ -1346,16 +1361,180 @@ describe('CalendarApp — context menu', () => {
     expect(createTaskModalCallbacks.onSubmit).not.toBeNull();
   });
 
-  it('right-clicking an existing event button does not fire the context menu', async () => {
-    const showAtMouseEventSpy = vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent');
+  describe('event and task context menus', () => {
+    let menu: InstanceType<typeof obsidianMock.Menu> | null;
+    const titles = () => menu!.items.map((i) => i.title);
+    const item = (title: string) => menu!.items.find((i) => i.title === title)!;
 
-    const ctx = makeContext();
-    renderCalendarApp(ctx);
-    await waitFor(() => screen.getByText('Standup'));
+    beforeEach(() => {
+      menu = null;
+      confirmModalCalls.last = null;
+      eventDetailModalCallbacks.onSave = null;
+      todoDetailModalCallbacks.onComplete = null;
+      vi.spyOn(obsidianMock.Menu.prototype, 'showAtMouseEvent').mockImplementation(function (
+        this: InstanceType<typeof obsidianMock.Menu>,
+      ) {
+        menu = this;
+        return this;
+      });
+    });
 
-    const eventBtn = screen.getByRole('button', { name: /Edit event: Standup/ });
-    fireEvent.contextMenu(eventBtn);
+    const rightClick = (label: string) => fireEvent.contextMenu(screen.getByLabelText(label));
 
-    expect(showAtMouseEventSpy).not.toHaveBeenCalled();
+    it('offers Edit and Delete for an event (not the New event / New task menu)', async () => {
+      renderCalendarApp(makeContext());
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      expect(titles()).toEqual(['Edit event', 'Delete event']);
+      expect(item('Delete event').warning).toBe(true);
+    });
+
+    it('opens the event editor from "Edit event"', async () => {
+      renderCalendarApp(makeContext());
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      item('Edit event').onClick();
+      expect(eventDetailModalCallbacks.onSave).not.toBeNull();
+    });
+
+    it('asks for confirmation, then deletes the event and removes it from the calendar', async () => {
+      const ctx = makeContext();
+      renderCalendarApp(ctx);
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      item('Delete event').onClick();
+
+      expect(ctx.calendarService.deleteEvent).not.toHaveBeenCalled(); // nothing until confirmed
+      expect(confirmModalCalls.last).toMatchObject({ title: 'Delete event', confirmLabel: 'Delete event', pendingLabel: 'Deleting…' });
+      expect(confirmModalCalls.last!.message).toContain('Standup');
+
+      await act(async () => { await confirmModalCalls.last!.onConfirm(); });
+      expect(ctx.calendarService.deleteEvent).toHaveBeenCalledWith('evt-1');
+      expect(obsidianMock.Notice).toHaveBeenCalledWith('Event deleted');
+      await waitFor(() => expect(screen.queryByLabelText('Edit event: Standup')).not.toBeInTheDocument());
+    });
+
+    it('keeps the event and reports the error when deleting fails', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.deleteEvent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Failed to delete event: Forbidden'));
+      renderCalendarApp(ctx);
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      item('Delete event').onClick();
+
+      await act(async () => {
+        await expect(confirmModalCalls.last!.onConfirm()).rejects.toThrow('Forbidden');
+      });
+      expect(obsidianMock.Notice).toHaveBeenCalledWith(expect.stringContaining('Forbidden'));
+      expect(screen.getByLabelText('Edit event: Standup')).toBeInTheDocument();
+    });
+
+    it('only offers Edit for events in read-only calendars', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.getCalendars as ReturnType<typeof vi.fn>).mockResolvedValue([{ ...mockCalendar, canEdit: false }]);
+      renderCalendarApp(ctx);
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      expect(titles()).toEqual(['Edit event']);
+    });
+
+    it('offers to delete just one occurrence or the whole series for recurring events', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { ...mockEvent, type: 'occurrence', seriesMasterId: 'master-1' },
+      ]);
+      renderCalendarApp(ctx);
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      expect(titles()).toEqual(['Edit event', 'Delete this occurrence', 'Delete entire series']);
+
+      item('Delete entire series').onClick();
+      expect(confirmModalCalls.last!.message).toContain('every occurrence');
+      await act(async () => { await confirmModalCalls.last!.onConfirm(); });
+      expect(ctx.calendarService.deleteEventSeries).toHaveBeenCalledWith('master-1');
+    });
+
+    it('deletes only the occurrence for "Delete this occurrence"', async () => {
+      const ctx = makeContext();
+      (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { ...mockEvent, type: 'occurrence', seriesMasterId: 'master-1' },
+      ]);
+      renderCalendarApp(ctx);
+      await screen.findByLabelText('Edit event: Standup');
+      rightClick('Edit event: Standup');
+      item('Delete this occurrence').onClick();
+      await act(async () => { await confirmModalCalls.last!.onConfirm(); });
+      expect(ctx.calendarService.deleteEvent).toHaveBeenCalledWith('evt-1');
+      expect(ctx.calendarService.deleteEventSeries).not.toHaveBeenCalled();
+    });
+
+    describe('tasks', () => {
+      const list: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+      const task: M365TodoItem = { id: 'task1', title: 'Pay rent', listId: 'list1', dueDate: '2026-04-15', importance: 'normal' };
+      const makeTaskContext = () => makeContext({
+        todoService: {
+          getLists: vi.fn().mockResolvedValue([list]),
+          getTasks: vi.fn().mockResolvedValue([task]),
+          completeTask: vi.fn().mockResolvedValue(undefined),
+          deleteTask: vi.fn().mockResolvedValue(undefined),
+        } as unknown as AppContextValue['todoService'],
+        settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], enabledTodoListIds: ['list1'] },
+      });
+
+      it('offers Edit, Mark complete and Delete for a task', async () => {
+        renderCalendarApp(makeTaskContext());
+        await screen.findByLabelText('View task: Pay rent');
+        rightClick('View task: Pay rent');
+        expect(titles()).toEqual(['Edit task', 'Mark complete', 'Delete task']);
+        expect(item('Delete task').warning).toBe(true);
+      });
+
+      it('opens the task details from "Edit task"', async () => {
+        renderCalendarApp(makeTaskContext());
+        await screen.findByLabelText('View task: Pay rent');
+        rightClick('View task: Pay rent');
+        item('Edit task').onClick();
+        expect(todoDetailModalCallbacks.onComplete).not.toBeNull();
+      });
+
+      it('completes the task straight from the menu', async () => {
+        const ctx = makeTaskContext();
+        renderCalendarApp(ctx);
+        await screen.findByLabelText('View task: Pay rent');
+        rightClick('View task: Pay rent');
+        item('Mark complete').onClick();
+        await waitFor(() => expect(ctx.todoService.completeTask).toHaveBeenCalledWith('list1', 'task1'));
+        await waitFor(() => expect(screen.queryByLabelText('View task: Pay rent')).not.toBeInTheDocument());
+      });
+
+      it('asks for confirmation before deleting a task', async () => {
+        const ctx = makeTaskContext();
+        renderCalendarApp(ctx);
+        await screen.findByLabelText('View task: Pay rent');
+        rightClick('View task: Pay rent');
+        item('Delete task').onClick();
+
+        expect(ctx.todoService.deleteTask).not.toHaveBeenCalled();
+        expect(confirmModalCalls.last!.message).toContain('Pay rent');
+        await act(async () => { await confirmModalCalls.last!.onConfirm(); });
+        expect(ctx.todoService.deleteTask).toHaveBeenCalledWith('list1', 'task1');
+        await waitFor(() => expect(screen.queryByLabelText('View task: Pay rent')).not.toBeInTheDocument());
+      });
+
+      it('keeps the task and reports the error when deleting fails', async () => {
+        const ctx = makeTaskContext();
+        (ctx.todoService.deleteTask as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Failed to delete task: Forbidden'));
+        renderCalendarApp(ctx);
+        await screen.findByLabelText('View task: Pay rent');
+        rightClick('View task: Pay rent');
+        item('Delete task').onClick();
+        await act(async () => {
+          await expect(confirmModalCalls.last!.onConfirm()).rejects.toThrow('Forbidden');
+        });
+        expect(obsidianMock.Notice).toHaveBeenCalledWith(expect.stringContaining('Forbidden'));
+        expect(screen.getByLabelText('View task: Pay rent')).toBeInTheDocument();
+      });
+    });
   });
+
 });

@@ -76,6 +76,7 @@ interface TimelineColumnProps {
   onTimeClick: (date: Date) => void;
   onTimeContextMenu?: (dateTime: Date, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   showLabels?: boolean;
   showNowLine?: boolean;
   'data-testid'?: string;
@@ -88,6 +89,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   onTimeClick,
   onTimeContextMenu,
   onEventClick,
+  onEventContextMenu,
   showLabels = false,
   showNowLine = false,
   'data-testid': testId,
@@ -217,7 +219,11 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
                 e.stopPropagation();
                 onEventClick?.(event);
               }}
-              onContextMenu={(e) => e.stopPropagation()}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEventContextMenu?.(event, e.nativeEvent);
+              }}
             >
               <div className="m365-day-event-content">
                 <span className="m365-day-event-time" style={{ color: cal.color }}>

@@ -14,6 +14,7 @@ interface SpanningBarProps {
   /** First day (Sunday) of the week row this bar is drawn in; needed to know which day was grabbed. */
   weekStart?: Date;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
 }
 
 export const SpanningBar: React.FC<SpanningBarProps> = ({
@@ -22,6 +23,7 @@ export const SpanningBar: React.FC<SpanningBarProps> = ({
   segment,
   weekStart,
   onEventClick,
+  onEventContextMenu,
 }) => {
   const { showPopover, hidePopover } = usePopoverContext();
   const { color } = calendar;
@@ -74,7 +76,11 @@ export const SpanningBar: React.FC<SpanningBarProps> = ({
         e.stopPropagation();
         onEventClick?.(event);
       }}
-      onContextMenu={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onEventContextMenu?.(event, e.nativeEvent);
+      }}
     >
       {!event.isAllDay && (
         <span className="m365-spanning-bar-start-time">

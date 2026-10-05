@@ -122,7 +122,9 @@ export const CalendarApp: React.FC = () => {
                 onDayClick={handleDayClick}
                 onDayContextMenu={actions.handleDayContextMenu}
                 onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
                 onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
                 completingTodoIds={completingTodoIds}
                 weather={weather}
                 weatherUnits={settings.weatherUnits}
@@ -138,7 +140,9 @@ export const CalendarApp: React.FC = () => {
                 onDayClick={handleDayClick}
                 onDayContextMenu={actions.handleDayContextMenu}
                 onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
                 onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
                 completingTodoIds={completingTodoIds}
                 weather={weather}
                 weatherUnits={settings.weatherUnits}
@@ -153,7 +157,9 @@ export const CalendarApp: React.FC = () => {
                 todoLists={todoLists}
                 onTimeClick={actions.openCreateEventModal}
                 onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
                 onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
                 completingTodoIds={completingTodoIds}
                 weather={weather}
                 weatherUnits={settings.weatherUnits}
