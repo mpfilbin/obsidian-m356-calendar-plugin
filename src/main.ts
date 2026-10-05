@@ -1,4 +1,4 @@
-import { Platform, Plugin, WorkspaceLeaf } from 'obsidian';
+import { Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
 import { SwitchableLogger } from './lib/logger';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
@@ -63,6 +63,8 @@ export default class M365CalendarPlugin extends Plugin {
       () => this.settings.weatherLocation,
       () => this.settings.weatherUnits,
       this.weatherCacheService,
+      this.logger,
+      (message) => new Notice(`M365 Calendar weather: ${message}`, 10_000),
     );
 
     const openUrl = Platform.isDesktopApp

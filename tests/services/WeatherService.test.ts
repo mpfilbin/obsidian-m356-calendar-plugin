@@ -109,6 +109,72 @@ describe('WeatherService', () => {
     expect(result.get(TODAY)).not.toBeNull();
   });
 
+  describe('problem reporting', () => {
+    let onProblem: ReturnType<typeof vi.fn>;
+    beforeEach(() => {
+      onProblem = vi.fn();
+      service = new WeatherService(
+        () => 'secret-key', () => LOCATION, () => 'imperial', cache as WeatherCacheService,
+        undefined, onProblem,
+      );
+    });
+
+    it('explains a 401 from the forecast endpoint without leaking the API key', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({ cod: 401, message: 'Invalid API key' }) }),
+      );
+      const result = await service.getWeatherForDates([TODAY]);
+      expect(result.get(TODAY)).toBeNull();
+      expect(onProblem).toHaveBeenCalledTimes(1);
+      expect(onProblem.mock.calls[0][0]).toMatch(/rejected the API key.*One Call by Call/);
+      expect(onProblem.mock.calls[0][0]).not.toContain('secret-key');
+    });
+
+    it('reports an unknown location', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem.mock.calls[0][0]).toContain(`"${LOCATION}"`);
+    });
+
+    it('reports a geocoding HTTP failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({ message: 'Invalid API key' }) }));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem.mock.calls[0][0]).toContain('API key');
+    });
+
+    it('reports a network failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not repeat the same problem on every refresh', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
+      await service.getWeatherForDates([TODAY]);
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('uses the weather location timezone offset to pick the calendar date', async () => {
+    // 12:00 in Auckland (UTC+13) on TOMORROW is 23:00 UTC the previous day.
+    const noonAuckland = Math.floor(new Date(`${TOMORROW}T12:00:00Z`).getTime() / 1000) - 13 * 3600;
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          timezone_offset: 13 * 3600,
+          current: { temp: 60, weather: [{ id: 800, description: 'clear', icon: '01d' }] },
+          daily: [{ dt: noonAuckland, temp: { day: 60, min: 50, max: 70 }, pop: 0, weather: [{ id: 800, description: 'clear', icon: '01d' }] }],
+        }),
+      }),
+    );
+    const result = await service.getWeatherForDates([TOMORROW]);
+    expect(result.get(TOMORROW)?.date).toBe(TOMORROW);
+  });
+
   it('caches forecast results via cache.set', async () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
