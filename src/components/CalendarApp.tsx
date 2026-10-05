@@ -22,7 +22,7 @@ export const CalendarApp: React.FC = () => {
   useEffect(() => subscribeSettings(setSettings), [subscribeSettings]);
 
   const eventsData = useEventsData(currentDate, view);
-  const { calendars, events, setEvents, enabledIds, syncing, error, setError, fetchAll } = eventsData;
+  const { calendars, events, setEvents, enabledIds, syncing, error, setError, authError, fetchAll } = eventsData;
   const todosData = useTodosData(currentDate, view, setError);
   const { todoLists, todos, setTodos, enabledTodoListIds, fetchTodos } = todosData;
   const { weather, fetchWeather } = useWeather(settings, currentDate, view);
@@ -77,7 +77,7 @@ export const CalendarApp: React.FC = () => {
 
   return (
     <div className="m365-calendar">
-      {error && <div className="m365-calendar-error">{error}</div>}
+      {(error ?? authError) && <div className="m365-calendar-error">{error ?? authError}</div>}
       <Toolbar
         currentDate={currentDate}
         view={view}

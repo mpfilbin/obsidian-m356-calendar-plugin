@@ -62,7 +62,8 @@ export class ButtonComponent {
 export class Setting {
   readonly buttons: ButtonComponent[] = [];
   constructor(_containerEl?: unknown) { _instances.push(this); }
-  setName(_: string) { return this; }
+  name = '';
+  setName(name: string) { this.name = name; return this; }
   setDesc(_: string) { return this; }
   setHeading() { return this; }
   addButton(cb: (btn: ButtonComponent) => void) {

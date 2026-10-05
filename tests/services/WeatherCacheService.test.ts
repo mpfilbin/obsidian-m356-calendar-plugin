@@ -61,7 +61,6 @@ describe('WeatherCacheService', () => {
       vi.fn().mockResolvedValue(undefined),
     );
     // Don't call init so we bypass purge — test get() TTL directly
-    // @ts-expect-error accessing private store for test setup
     c['store'] = expiredStore;
     expect(c.get(FORECAST_DATE, LOCATION, UNITS)).toBeNull();
   });
@@ -74,7 +73,6 @@ describe('WeatherCacheService', () => {
       },
     };
     const c = new WeatherCacheService(vi.fn().mockResolvedValue(expiredStore), vi.fn().mockResolvedValue(undefined));
-    // @ts-expect-error accessing private store for test setup
     c['store'] = expiredStore;
     expect(c.get(HISTORICAL_DATE, LOCATION, UNITS)).toBeNull();
   });
@@ -193,7 +191,6 @@ describe('WeatherCacheService', () => {
       },
     };
     const c = new WeatherCacheService(vi.fn().mockResolvedValue(expiredForForecast), vi.fn().mockResolvedValue(undefined));
-    // @ts-expect-error accessing private store for test setup
     c['store'] = expiredForForecast;
     expect(c.get(today, LOCATION, UNITS)).toBeNull(); // expired under 1-hour forecast TTL
   });

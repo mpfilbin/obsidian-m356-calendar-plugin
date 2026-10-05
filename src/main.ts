@@ -3,7 +3,7 @@ import { SwitchableLogger } from './lib/logger';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
-import { WeatherService } from './services/WeatherService';
+import { WeatherService, type WeatherTestResult } from './services/WeatherService';
 import { WeatherCacheService, WEATHER_CACHE_KEY } from './services/WeatherCacheService';
 import { TodoService } from './services/TodoService';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from './settings';
@@ -131,6 +131,10 @@ export default class M365CalendarPlugin extends Plugin {
     if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
     this.settingsListeners.clear();
     this.weatherRefreshHandlers.clear();
+  }
+
+  testWeatherConnection(): Promise<WeatherTestResult> {
+    return this.weatherService.testConnection();
   }
 
   async clearWeatherCache(): Promise<void> {

@@ -157,6 +157,57 @@ describe('WeatherService', () => {
     });
   });
 
+  describe('testConnection', () => {
+    const forecastOk = { ok: true, json: () => Promise.resolve({ current: { temp: 60 } }) };
+
+    it('asks for a key or location before making any request', async () => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+      const noKey = new WeatherService(() => ' ', () => LOCATION, () => 'imperial', cache as WeatherCacheService);
+      expect((await noKey.testConnection()).message).toMatch(/API key/);
+      const noLoc = new WeatherService(() => 'k', () => '', () => 'imperial', cache as WeatherCacheService);
+      expect((await noLoc.testConnection()).message).toMatch(/location/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('reports the resolved place on success and bypasses the cache', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([{ lat: 1, lon: 2, name: 'Springfield', state: 'Illinois', country: 'US' }]) })
+        .mockResolvedValueOnce(forecastOk),
+      );
+      const result = await service.testConnection();
+      expect(result).toEqual({ ok: true, message: 'Connected. Weather will be shown for Springfield, Illinois, US.' });
+      expect(cache.get).not.toHaveBeenCalled();
+      expect(cache.set).not.toHaveBeenCalled();
+    });
+
+    it('reports an unknown location', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }));
+      const result = await service.testConnection();
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(`"${LOCATION}"`);
+    });
+
+    it('reports a rejected key from the forecast endpoint without leaking it', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+        .mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({ message: 'Invalid API key' }) }),
+      );
+      const result = await service.testConnection();
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/One Call by Call/);
+      expect(result.message).not.toContain('test-api-key');
+    });
+
+    it('reports a network failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      vi.useFakeTimers();
+      const promise = service.testConnection();
+      await vi.runAllTimersAsync();
+      expect((await promise).message).toMatch(/Could not reach OpenWeather/);
+    });
+  });
+
   it('uses the weather location timezone offset to pick the calendar date', async () => {
     // 12:00 in Auckland (UTC+13) on TOMORROW is 23:00 UTC the previous day.
     const noonAuckland = Math.floor(new Date(`${TOMORROW}T12:00:00Z`).getTime() / 1000) - 13 * 3600;

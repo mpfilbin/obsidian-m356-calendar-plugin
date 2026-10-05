@@ -6,6 +6,7 @@ import * as obsidianMock from '../../tests/__mocks__/obsidian';
 import { CalendarApp } from '../../src/components/CalendarApp';
 import { AppContext, AppContextValue } from '../../src/context';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { AuthError } from '../../src/services/AuthService';
 import type { NewEventInput, EventPatch, M365Calendar } from '../../src/types';
 import { M365TodoList, M365TodoItem } from '../../src/types';
 
@@ -413,7 +414,7 @@ describe('CalendarApp', () => {
   });
 
   it('removes deleted event from state without re-fetching when onDelete resolves', async () => {
-    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as never);
     const deleteEvent = vi.fn().mockResolvedValue(undefined);
     const getEvents = vi.fn().mockResolvedValue([mockEvent]);
     const ctx = makeContext({
@@ -439,7 +440,7 @@ describe('CalendarApp', () => {
   });
 
   it('onDelete of a seriesMaster removes the master and all its occurrences from state', async () => {
-    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as never);
     const seriesMasterEvent = {
       ...mockEvent,
       id: 'master-1',
@@ -581,7 +582,7 @@ describe('CalendarApp', () => {
   });
 
   it('onDeleteSeries calls deleteEventSeries and removes all series occurrences from state', async () => {
-    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as unknown as typeof obsidianMock.Notice);
+    const NoticeSpy = vi.spyOn(obsidianMock, 'Notice').mockImplementation(function () {} as never);
     const seriesEvent1 = {
       ...mockEvent,
       id: 'occ-1',
@@ -759,6 +760,16 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalledTimes(1));
     act(() => refresh());
     await waitFor(() => expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows a sign-in banner (without the generic failure notice) when the session has expired', async () => {
+    const ctx = makeContext();
+    (ctx.calendarService.getCalendars as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new AuthError('session-expired', 'Your Microsoft 365 session has expired. Sign in from Settings → M365 Calendar.'),
+    );
+    renderCalendarApp(ctx);
+    expect(await screen.findByText(/session has expired/)).toBeInTheDocument();
+    expect(screen.getByText(/session has expired/)).toHaveClass('m365-calendar-error');
   });
 
   it('sidebar starts collapsed when settings.sidebarCollapsed is true', async () => {

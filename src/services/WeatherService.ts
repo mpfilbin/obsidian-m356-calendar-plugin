@@ -10,6 +10,12 @@ const OWM_BASE = 'https://api.openweathermap.org/data/3.0/onecall';
 
 interface Coords { lat: number; lon: number }
 
+export interface WeatherTestResult { ok: boolean; message: string }
+
+function unknownLocationMessage(location: string): string {
+  return `OpenWeather could not find the location "${location}". Try "City, Country code", e.g. "London, GB".`;
+}
+
 function parseLocalDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day); // local midnight — avoids UTC-parse offset bug
@@ -90,7 +96,7 @@ export class WeatherService {
       return result;
     }
     if (!coords) {
-      this.reportProblem(`OpenWeather could not find the location "${location}". Try "City, Country code", e.g. "London, GB".`);
+      this.reportProblem(unknownLocationMessage(location));
       for (const date of uncached) result.set(date, null);
       return result;
     }
@@ -119,6 +125,37 @@ export class WeatherService {
     }
 
     return result;
+  }
+
+  /**
+   * Checks the configured key and location end to end (bypassing caches) and returns a
+   * message suitable for showing to the user, including which place the location resolved to.
+   */
+  async testConnection(): Promise<WeatherTestResult> {
+    const apiKey = this.getApiKey().trim();
+    const location = this.getLocation().trim();
+    if (!apiKey) return { ok: false, message: 'Enter an OpenWeather API key first.' };
+    if (!location) return { ok: false, message: 'Enter a location first.' };
+    try {
+      const geoResponse = await fetchWithRetry(
+        `${GEO_BASE}?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`, {},
+      );
+      if (!geoResponse.ok) return { ok: false, message: await this.describeFailure('location lookup', geoResponse) };
+      const places = await geoResponse.json() as Array<{ lat: number; lon: number; name: string; state?: string; country?: string }>;
+      if (!places.length) return { ok: false, message: unknownLocationMessage(location) };
+      const place = places[0];
+
+      const forecastUrl = `${OWM_BASE}?lat=${place.lat}&lon=${place.lon}&exclude=minutely,hourly,daily,alerts&appid=${apiKey}`;
+      const forecastResponse = await fetchWithRetry(forecastUrl, {});
+      if (!forecastResponse.ok) {
+        return { ok: false, message: await this.describeFailure('forecast request', forecastResponse) };
+      }
+      const resolved = [place.name, place.state, place.country].filter(Boolean).join(', ');
+      return { ok: true, message: `Connected. Weather will be shown for ${resolved}.` };
+    } catch (e) {
+      this.logger.log('[M365 Weather] connection test failed:', e instanceof Error ? e.message : String(e));
+      return { ok: false, message: 'Could not reach OpenWeather. Check your internet connection.' };
+    }
   }
 
   private async getCoordinates(apiKey: string, location: string): Promise<Coords | null> {

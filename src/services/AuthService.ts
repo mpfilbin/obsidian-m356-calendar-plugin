@@ -4,6 +4,26 @@ import { type Logger, NullLogger } from '../lib/logger';
 
 export const TOKEN_SECRET_NAME = 'm365-calendar-token';
 
+export type AuthErrorKind = 'not-signed-in' | 'session-expired';
+
+/** The user must sign in again; retrying will not help. Messages are safe to show in the UI. */
+export class AuthError extends Error {
+  constructor(readonly kind: AuthErrorKind, message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+export function isAuthError(e: unknown): e is AuthError {
+  return e instanceof AuthError;
+}
+
+const SIGN_IN_HINT = 'Sign in from Settings → M365 Calendar.';
+
+// Entra error codes meaning the refresh token is no longer usable (revoked, expired,
+// password changed, conditional access requires interaction, ...).
+const REAUTH_ERRORS = new Set(['invalid_grant', 'interaction_required', 'consent_required', 'login_required']);
+
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -66,7 +86,7 @@ export class AuthService {
 
   async getValidToken(): Promise<string> {
     const stored = this.getStoredTokens();
-    if (!stored) throw new Error('Not authenticated');
+    if (!stored) throw new AuthError('not-signed-in', `Not authenticated. ${SIGN_IN_HINT}`);
 
     // If token expires in more than 60s, return it directly
     if (Date.now() < stored.expiresAt - 60_000) {
@@ -237,6 +257,17 @@ export class AuthService {
     if (response.status >= 400) {
       const detail = response.json != null ? JSON.stringify(response.json) : response.text;
       this.logger.log('[M365 Auth] refreshAccessToken error:', detail);
+      const code = (response.json as { error?: string } | null)?.error;
+      if (response.status === 401 || (code !== undefined && REAUTH_ERRORS.has(code))) {
+        // The refresh token is dead. Drop it so we stop retrying on every fetch and
+        // the settings tab offers "Sign in" again.
+        try {
+          await this.setSecret(TOKEN_SECRET_NAME, '');
+        } catch (e) {
+          this.logger.error('[M365 Auth] failed to clear rejected tokens', e);
+        }
+        throw new AuthError('session-expired', `Your Microsoft 365 session has expired. ${SIGN_IN_HINT}`);
+      }
       throw new Error(`Token refresh failed (${response.status}): ${detail}`);
     }
     const data = response.json;

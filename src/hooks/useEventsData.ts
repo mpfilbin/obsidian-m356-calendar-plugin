@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Notice } from 'obsidian';
 import { M365Calendar, M365Event, ViewType } from '../types';
 import { useAppContext } from '../context';
 import { getDateRange } from '../lib/datetime';
 import { notifyError } from '../lib/notify';
+import { isAuthError } from '../services/AuthService';
 
 /**
  * Owns the calendar list, the enabled-calendar selection and the events for the
@@ -16,6 +18,8 @@ export function useEventsData(currentDate: Date, view: ViewType) {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  // Set when the user must sign in again; shown even for background refreshes, which are otherwise quiet.
+  const [authError, setAuthError] = useState<string | null>(null);
   const calendarsLoadedRef = useRef(false);
   // A response is applied only if no newer request has started, so rapid navigation
   // can't let a slow older response overwrite newer data.
@@ -52,10 +56,14 @@ export function useEventsData(currentDate: Date, view: ViewType) {
         setEvents([]);
       }
       if (options.userInitiated) setError(null);
+      setAuthError(null);
     } catch (e) {
       if (calendarsFetchAttempted) calendarsLoadedRef.current = false;
       if (isStale()) return;
-      if (options.userInitiated) {
+      if (isAuthError(e)) {
+        setAuthError(e.message);
+        if (options.userInitiated) new Notice(`M365 Calendar: ${e.message}`);
+      } else if (options.userInitiated) {
         notifyError(e);
         setError(e instanceof Error ? e.message : 'Failed to load calendar data');
       } else {
@@ -86,7 +94,7 @@ export function useEventsData(currentDate: Date, view: ViewType) {
 
   return {
     calendars, events, setEvents, enabledIds,
-    syncing, error, setError, refreshFailed,
+    syncing, error, setError, authError, refreshFailed,
     fetchAll, toggleCalendar,
   };
 }
