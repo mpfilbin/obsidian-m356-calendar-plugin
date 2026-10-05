@@ -1,11 +1,9 @@
 import { AuthService } from './AuthService';
 import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput, TaskRecurrence } from '../types';
-import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { GraphClient } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
-
-const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 const TODO_LIST_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#84cc16',
@@ -23,23 +21,24 @@ function hashListColor(id: string): string {
 
 export class TodoService {
   private readonly semaphore = new Semaphore(2);
+  private readonly graph: GraphClient;
 
   constructor(
-    private readonly auth: AuthService,
-    private readonly logger: Logger = new NullLogger(),
-  ) {}
+    auth: AuthService,
+    logger: Logger = new NullLogger(),
+  ) {
+    this.graph = new GraphClient(auth, logger);
+  }
 
-  private fetch(url: string, options: RequestInit = {}): Promise<Response> {
-    return fetchWithRetry(url, options, this.logger);
+  private static taskPath(listId: string, taskId?: string): string {
+    const base = `/me/todo/lists/${encodeURIComponent(listId)}/tasks`;
+    return taskId === undefined ? base : `${base}/${encodeURIComponent(taskId)}`;
   }
 
   async getLists(): Promise<M365TodoList[]> {
-    const token = await this.auth.getValidToken();
-    const response = await this.fetch(`${GRAPH_BASE}/me/todo/lists`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error(`Failed to fetch todo lists: ${response.statusText}`);
-    const data = await response.json() as { value: Record<string, unknown>[] };
+    const data = await this.graph.json<{ value: Record<string, unknown>[] }>(
+      'GET', '/me/todo/lists', 'fetch todo lists',
+    );
     return data.value.map((list) => ({
       id: list.id as string,
       displayName: list.displayName as string,
@@ -58,20 +57,19 @@ export class TodoService {
   }
 
   private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    let url: string | null = `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks`;
-    const allTasks: Record<string, unknown>[] = [];
+    // Completed tasks are never shown, so let Graph drop them server-side. The due-date
+    // range is still filtered locally because dueDateTime isn't reliably filterable.
+    const params = new URLSearchParams({
+      $filter: "status ne 'completed'",
+      $select: 'id,title,status,importance,dueDateTime,body',
+    });
 
     await this.semaphore.acquire();
+    let allTasks: Record<string, unknown>[];
     try {
-      while (url) {
-        const response = await this.fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
-        const data = await response.json() as { value: Record<string, unknown>[]; '@odata.nextLink'?: string };
-        allTasks.push(...data.value);
-        url = data['@odata.nextLink'] ?? null;
-      }
+      allTasks = await this.graph.getAll<Record<string, unknown>>(
+        `${TodoService.taskPath(listId)}?${params}`, 'fetch tasks',
+      );
     } finally {
       this.semaphore.release();
     }
@@ -95,47 +93,19 @@ export class TodoService {
   }
 
   async completeTask(listId: string, taskId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'completed' }),
-      },
-    );
-    if (!response.ok) throw new Error(`Failed to complete task: ${response.statusText}`);
+    await this.graph.send('PATCH', TodoService.taskPath(listId, taskId), 'complete task', {
+      body: { status: 'completed' },
+    });
   }
 
   async deleteTask(listId: string, taskId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}`,
-      {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    if (!response.ok) throw new Error(`Failed to delete task: ${response.statusText}`);
+    await this.graph.send('DELETE', TodoService.taskPath(listId, taskId), 'delete task');
   }
 
   async getChecklistItems(listId: string, taskId: string): Promise<M365ChecklistItem[]> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
-      { headers: { Authorization: `Bearer ${token}` } },
+    const data = await this.graph.json<{ value: Record<string, unknown>[] }>(
+      'GET', `${TodoService.taskPath(listId, taskId)}/checklistItems`, 'fetch checklist items',
     );
-    if (!response.ok) throw new Error(`Failed to fetch checklist items: ${response.statusText}`);
-    const data = await response.json() as { value: Record<string, unknown>[] };
     return data.value.map((item) => ({
       id: item.id as string,
       displayName: item.displayName as string,
@@ -144,22 +114,10 @@ export class TodoService {
   }
 
   async createChecklistItem(listId: string, taskId: string, displayName: string): Promise<M365ChecklistItem> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ displayName }),
-      },
+    const data = await this.graph.json<Record<string, unknown>>(
+      'POST', `${TodoService.taskPath(listId, taskId)}/checklistItems`, 'create checklist item',
+      { body: { displayName } },
     );
-    if (!response.ok) throw new Error(`Failed to create checklist item: ${response.statusText}`);
-    const data = await response.json() as Record<string, unknown>;
     return {
       id: data.id as string,
       displayName: data.displayName as string,
@@ -173,43 +131,23 @@ export class TodoService {
     itemId: string,
     patch: Partial<Pick<M365ChecklistItem, 'isChecked' | 'displayName'>>,
   ): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const encodedItemId = encodeURIComponent(itemId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(patch),
-      },
+    await this.graph.send(
+      'PATCH',
+      `${TodoService.taskPath(listId, taskId)}/checklistItems/${encodeURIComponent(itemId)}`,
+      'update checklist item',
+      { body: patch },
     );
-    if (!response.ok) throw new Error(`Failed to update checklist item: ${response.statusText}`);
   }
 
   async deleteChecklistItem(listId: string, taskId: string, itemId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-    const encodedTaskId = encodeURIComponent(taskId);
-    const encodedItemId = encodeURIComponent(itemId);
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks/${encodedTaskId}/checklistItems/${encodedItemId}`,
-      {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      },
+    await this.graph.send(
+      'DELETE',
+      `${TodoService.taskPath(listId, taskId)}/checklistItems/${encodeURIComponent(itemId)}`,
+      'delete checklist item',
     );
-    if (!response.ok) throw new Error(`Failed to delete checklist item: ${response.statusText}`);
   }
 
   async createTask(listId: string, input: NewTaskInput): Promise<M365TodoItem> {
-    const token = await this.auth.getValidToken();
-    const encodedListId = encodeURIComponent(listId);
-
     const body: Record<string, unknown> = {
       title: input.title,
       dueDateTime: {
@@ -230,19 +168,9 @@ export class TodoService {
       };
     }
 
-    const response = await this.fetch(
-      `${GRAPH_BASE}/me/todo/lists/${encodedListId}/tasks`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      },
+    const data = await this.graph.json<Record<string, unknown>>(
+      'POST', TodoService.taskPath(listId), 'create task', { body },
     );
-    if (!response.ok) throw new Error(`Failed to create task: ${response.statusText}`);
-    const data = await response.json() as Record<string, unknown>;
     return {
       id: data.id as string,
       title: data.title as string,
