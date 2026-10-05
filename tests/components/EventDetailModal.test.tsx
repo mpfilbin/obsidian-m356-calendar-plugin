@@ -525,3 +525,37 @@ describe('EventDetailForm', () => {
     expect(swatch!.style.backgroundColor).not.toBe('');
   });
 });
+
+describe('EventDetailForm — in-flight requests', () => {
+  it('disables every control and shows "Saving…" while the save is in flight', async () => {
+    let finish!: () => void;
+    const onSave = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={vi.fn()} onDelete={vi.fn()} calendars={calendars} />);
+    await userEvent.click(screen.getByText('OK'));
+
+    expect(await screen.findByText('Saving…')).toBeDisabled();
+    expect(screen.getByLabelText('Title')).toBeDisabled();
+    expect(screen.getByLabelText('Location')).toBeDisabled();
+    expect(screen.getByLabelText('Start')).toBeDisabled();
+    expect(screen.getByLabelText('End')).toBeDisabled();
+    expect(screen.getByLabelText('Description')).toBeDisabled();
+    expect(screen.getByLabelText('Calendar')).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: /all day/i })).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+    expect(screen.getByText('Delete')).toBeDisabled();
+
+    finish();
+    await waitFor(() => expect(screen.getByText('OK')).toBeEnabled());
+  });
+
+  it('shows "Deleting…" and disables the confirm buttons while the delete is in flight', async () => {
+    const onDelete = vi.fn(() => new Promise<void>(() => {}));
+    render(<EventDetailForm event={event} onSave={vi.fn()} onCancel={vi.fn()} onDelete={onDelete} calendars={calendars} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Delete event'));
+
+    expect(await screen.findByText('Deleting…')).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+    expect(screen.getByLabelText('Title')).toBeDisabled();
+  });
+});

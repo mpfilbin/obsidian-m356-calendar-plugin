@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateEventForm, buildRecurrence } from '../../src/components/CreateEventModal';
 import { M365Calendar } from '../../src/types';
@@ -530,5 +530,58 @@ describe('CreateEventForm — initialAllDay', () => {
     expect(callArgs.end.getFullYear()).toBe(2026);
     expect(callArgs.end.getMonth()).toBe(3);
     expect(callArgs.end.getDate()).toBe(11);
+  });
+});
+
+describe('CreateEventForm — in-flight submit', () => {
+  const calendars: M365Calendar[] = [
+    { id: 'cal1', name: 'Work', color: '#0078d4', isDefaultCalendar: true, canEdit: true },
+  ];
+
+  function renderForm(onSubmit: () => Promise<void>, onCancel = vi.fn()) {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+  }
+
+  it('disables every control and shows "Creating…" until the request settles', async () => {
+    let finish!: () => void;
+    renderForm(() => new Promise<void>((resolve) => { finish = resolve; }));
+    await userEvent.type(screen.getByLabelText('Title'), 'Standup');
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(await screen.findByText('Creating…')).toBeDisabled();
+    expect(screen.getByLabelText('Title')).toBeDisabled();
+    expect(screen.getByLabelText('Calendar')).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: /all day/i })).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+
+    finish();
+    await waitFor(() => expect(screen.queryByText('Creating…')).not.toBeInTheDocument());
+  });
+
+  it('ignores a second click while the first request is in flight', async () => {
+    const onSubmit = vi.fn(() => new Promise<void>(() => {}));
+    renderForm(onSubmit);
+    await userEvent.type(screen.getByLabelText('Title'), 'Standup');
+    await userEvent.click(screen.getByText('Create'));
+    await userEvent.click(await screen.findByText('Creating…'));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-enables the form and shows the error when the request fails', async () => {
+    renderForm(() => Promise.reject(new Error('Failed to create event: Forbidden')));
+    await userEvent.type(screen.getByLabelText('Title'), 'Standup');
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(await screen.findByText('Failed to create event: Forbidden')).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toBeEnabled();
+    expect(screen.getByText('Create')).toBeEnabled();
   });
 });

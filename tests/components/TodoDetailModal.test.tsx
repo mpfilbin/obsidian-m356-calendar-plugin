@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { TodoDetailForm } from '../../src/components/TodoDetailModal';
@@ -337,5 +337,86 @@ describe('TodoDetailForm', () => {
       expect(await screen.findByText('Step one')).toBeInTheDocument();
       consoleSpy.mockRestore();
     });
+  });
+});
+
+describe('TodoDetailForm — in-flight requests', () => {
+  const items = [
+    { id: 'ci1', displayName: 'Step one', isChecked: true },
+    { id: 'ci2', displayName: 'Step two', isChecked: false },
+  ];
+  const never = () => new Promise<void>(() => {});
+
+  it('disables the dialog and shows "Completing…" while completion is in flight', async () => {
+    let finish!: () => void;
+    const onComplete = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={onComplete} onDelete={vi.fn()} />);
+    await userEvent.click(screen.getByText('Mark complete'));
+
+    expect(await screen.findByText('Completing…')).toBeDisabled();
+    expect(screen.getByText('Delete')).toBeDisabled();
+
+    finish();
+    await waitFor(() => expect(screen.getByText('Mark complete')).toBeEnabled());
+  });
+
+  it('shows "Deleting…" and disables both confirm buttons while deletion is in flight', async () => {
+    const onDelete = vi.fn(never);
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={vi.fn()} onDelete={onDelete} />);
+    await userEvent.click(screen.getByText('Delete'));
+    await userEvent.click(screen.getByText('Delete task'));
+
+    expect(await screen.findByText('Deleting…')).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+    await userEvent.click(screen.getByText('Deleting…'));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-enables the dialog and shows the error when completion fails', async () => {
+    const onComplete = vi.fn().mockRejectedValue(new Error('Failed to complete task: Forbidden'));
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={makeMockTodoService()} onComplete={onComplete} />);
+    await userEvent.click(screen.getByText('Mark complete'));
+
+    expect(await screen.findByText('Failed to complete task: Forbidden')).toBeInTheDocument();
+    expect(screen.getByText('Mark complete')).toBeEnabled();
+  });
+
+  it('disables the checklist and actions while a checklist update is in flight', async () => {
+    let finish!: () => void;
+    const service = {
+      getChecklistItems: vi.fn().mockResolvedValue(items),
+      createChecklistItem: vi.fn(),
+      updateChecklistItem: vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })),
+      deleteChecklistItem: vi.fn(),
+    } as unknown as TodoService;
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={service} onComplete={vi.fn()} />);
+    await screen.findByText('Step one');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Step one' }));
+
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Step two' })).toBeDisabled());
+    expect(screen.getByLabelText('Add checklist item')).toBeDisabled();
+    expect(screen.getByText('Mark complete')).toBeDisabled();
+
+    finish();
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Step two' })).toBeEnabled());
+    expect(screen.getByText('Mark complete')).toBeEnabled();
+  });
+
+  it('completes automatically only after the last checklist update has been saved', async () => {
+    let finish!: () => void;
+    const onComplete = vi.fn();
+    const service = {
+      getChecklistItems: vi.fn().mockResolvedValue(items),
+      createChecklistItem: vi.fn(),
+      updateChecklistItem: vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })),
+      deleteChecklistItem: vi.fn(),
+    } as unknown as TodoService;
+    render(<TodoDetailForm todo={todo} todoList={todoList} todoService={service} onComplete={onComplete} />);
+    await screen.findByText('Step two');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Step two' }));
+    expect(onComplete).not.toHaveBeenCalled();
+
+    finish();
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
   });
 });

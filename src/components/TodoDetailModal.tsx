@@ -3,6 +3,7 @@ import React, { StrictMode, useState, useEffect } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365TodoItem, M365TodoList, M365ChecklistItem } from '../types';
 import { TodoService } from '../services/TodoService';
+import { usePending } from '../hooks/usePending';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -10,8 +11,8 @@ interface TodoDetailFormProps {
   todo: M365TodoItem;
   todoList: M365TodoList;
   todoService: TodoService;
-  onComplete: () => void;
-  onDelete?: () => void;
+  onComplete: () => void | Promise<void>;
+  onDelete?: () => void | Promise<void>;
 }
 
 export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete }) => {
@@ -19,6 +20,33 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   const [loadingChecklist, setLoadingChecklist] = useState(true);
   const [newItemText, setNewItemText] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [error, setError] = useState('');
+  // Which main action is running, so its button can say what is happening.
+  const [action, setAction] = useState<'complete' | 'delete' | null>(null);
+  const { pending: actionPending, run: runAction } = usePending();
+  // Checklist edits are optimistic fire-and-forget requests; count them so the dialog is
+  // disabled (and visibly busy) until every one has settled.
+  const [pendingChecklistOps, setPendingChecklistOps] = useState(0);
+  const trackChecklistOp = <T,>(request: Promise<T>): Promise<T> => {
+    setPendingChecklistOps((n) => n + 1);
+    return request.finally(() => setPendingChecklistOps((n) => n - 1));
+  };
+  const busy = actionPending || pendingChecklistOps > 0;
+
+  const runMainAction = async (kind: 'complete' | 'delete', handler?: () => void | Promise<void>) => {
+    if (!handler) return;
+    setError('');
+    setAction(kind);
+    try {
+      await runAction(handler);
+    } catch (e) {
+      // The caller has already shown a notice; keep the dialog open with the reason.
+      setError(e instanceof Error ? e.message : `Failed to ${kind} task`);
+      setConfirmingDelete(false);
+    } finally {
+      setAction(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -33,18 +61,17 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     const updated = { ...item, isChecked: !item.isChecked };
     const nextItems = checklistItems.map((i) => i.id === item.id ? updated : i);
     setChecklistItems(nextItems);
-    void todoService.updateChecklistItem(todo.listId, todo.id, item.id, { isChecked: updated.isChecked })
-      .catch((e: unknown) => console.error('Failed to update checklist item:', e));
-    if (nextItems.length > 0 && nextItems.every((i) => i.isChecked)) {
-      onComplete();
-    }
+    const allChecked = nextItems.length > 0 && nextItems.every((i) => i.isChecked);
+    void trackChecklistOp(todoService.updateChecklistItem(todo.listId, todo.id, item.id, { isChecked: updated.isChecked }))
+      .catch((e: unknown) => console.error('Failed to update checklist item:', e))
+      .then(() => { if (allChecked) void runMainAction('complete', onComplete); });
   };
 
   const handleAddItem = () => {
     const text = newItemText.trim();
     if (!text) return;
     setNewItemText('');
-    void todoService.createChecklistItem(todo.listId, todo.id, text)
+    void trackChecklistOp(todoService.createChecklistItem(todo.listId, todo.id, text))
       .then((created) => setChecklistItems((prev) => [...prev, created]))
       .catch((e: unknown) => console.error('Failed to create checklist item:', e));
   };
@@ -53,7 +80,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     const index = checklistItems.findIndex((i) => i.id === itemId);
     const item = checklistItems[index];
     setChecklistItems((items) => items.filter((i) => i.id !== itemId));
-    void todoService.deleteChecklistItem(todo.listId, todo.id, itemId)
+    void trackChecklistOp(todoService.deleteChecklistItem(todo.listId, todo.id, itemId))
       .catch((e: unknown) => {
         console.error('Failed to delete checklist item:', e);
         setChecklistItems((items) => {
@@ -72,7 +99,8 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   });
 
   return (
-    <div className="m365-todo-detail">
+    <div className="m365-todo-detail" aria-busy={busy}>
+      {error && <div className="m365-form-error">{error}</div>}
       <div className="m365-todo-detail-row">
         <span className="m365-todo-detail-label">List:</span>
         <span style={{ color: todoList.color }}>{todoList.displayName}</span>
@@ -109,6 +137,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
                     aria-label={item.displayName}
                     checked={item.isChecked}
                     onChange={() => handleToggle(item)}
+                    disabled={busy}
                   />
                   <span style={{ textDecoration: item.isChecked ? 'line-through' : 'none' }}>
                     {item.displayName}
@@ -117,6 +146,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
                     type="button"
                     aria-label={`Delete ${item.displayName}`}
                     onClick={() => handleDelete(item.id)}
+                    disabled={busy}
                   >
                     ×
                   </button>
@@ -132,6 +162,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(); }}
               onBlur={handleAddItem}
+              disabled={busy}
             />
           </>
         )}
@@ -140,14 +171,28 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
         {confirmingDelete ? (
           <>
             <span>This will permanently delete the task.</span>
-            <button type="button" onClick={() => setConfirmingDelete(false)}>Cancel</button>
-            <button className="mod-warning" type="button" onClick={onDelete}>Delete task</button>
+            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={busy}>Cancel</button>
+            <button
+              className="mod-warning"
+              type="button"
+              onClick={() => void runMainAction('delete', onDelete)}
+              disabled={busy}
+            >
+              {action === 'delete' ? 'Deleting…' : 'Delete task'}
+            </button>
           </>
         ) : (
           <>
-            <button className="m365-todo-complete-btn" type="button" onClick={onComplete}>Mark complete</button>
+            <button
+              className="m365-todo-complete-btn"
+              type="button"
+              onClick={() => void runMainAction('complete', onComplete)}
+              disabled={busy}
+            >
+              {action === 'complete' ? 'Completing…' : 'Mark complete'}
+            </button>
             {onDelete && (
-              <button className="mod-warning" type="button" onClick={() => setConfirmingDelete(true)}>Delete</button>
+              <button className="mod-warning" type="button" onClick={() => setConfirmingDelete(true)} disabled={busy}>Delete</button>
             )}
           </>
         )}
@@ -166,21 +211,23 @@ export class TodoDetailModal extends Modal {
     private readonly todo: M365TodoItem,
     private readonly todoList: M365TodoList,
     private readonly todoService: TodoService,
-    private readonly onComplete: () => void,
-    private readonly onDelete: () => void,
+    private readonly onComplete: () => void | Promise<void>,
+    private readonly onDelete: () => void | Promise<void>,
   ) {
     super(app);
   }
 
   onOpen(): void {
     this.titleEl.setText(this.todo.title);
-    const handleComplete = () => {
-      this.onComplete();
+    // Stay open (disabled, see TodoDetailForm) until the request settles; a rejection keeps
+    // the dialog open so the form can show the error.
+    const handleComplete = async () => {
+      await this.onComplete();
       this.close();
     };
-    const handleDelete = () => {
+    const handleDelete = async () => {
+      await this.onDelete();
       this.close();
-      this.onDelete();
     };
     this.root = createRoot(this.contentEl);
     this.root.render(

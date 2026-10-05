@@ -25,8 +25,8 @@ const eventDetailModalCallbacks = vi.hoisted(() => ({
 }));
 
 const todoDetailModalCallbacks = vi.hoisted(() => ({
-  onComplete: null as (() => void) | null,
-  onDelete: null as (() => void) | null,
+  onComplete: null as (() => void | Promise<void>) | null,
+  onDelete: null as (() => void | Promise<void>) | null,
 }));
 
 vi.mock('../../src/components/EventDetailModal', () => ({
@@ -56,8 +56,8 @@ vi.mock('../../src/components/TodoDetailModal', () => ({
       _todo: unknown,
       _list: unknown,
       _todoService: unknown,
-      onComplete: () => void,
-      onDelete: () => void,
+      onComplete: () => void | Promise<void>,
+      onDelete: () => void | Promise<void>,
     ) {
       todoDetailModalCallbacks.onComplete = onComplete;
       todoDetailModalCallbacks.onDelete = onDelete;
@@ -867,7 +867,8 @@ describe('CalendarApp', () => {
       await screen.findByText('Write quarterly report');
 
       await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
-      todoDetailModalCallbacks.onComplete!();
+      // The rejection is also passed back so the detail dialog can show it inline.
+      await expect(todoDetailModalCallbacks.onComplete!()).rejects.toThrow('Network error');
 
       await waitFor(() => {
         expect(obsidianMock.Notice).toHaveBeenCalledWith(
@@ -940,7 +941,7 @@ describe('CalendarApp', () => {
       await screen.findByText('Write quarterly report');
 
       await userEvent.click(screen.getByLabelText('View task: Write quarterly report'));
-      todoDetailModalCallbacks.onDelete!();
+      await expect(todoDetailModalCallbacks.onDelete!()).rejects.toThrow('Network error');
 
       await waitFor(() => {
         expect(obsidianMock.Notice).toHaveBeenCalledWith(

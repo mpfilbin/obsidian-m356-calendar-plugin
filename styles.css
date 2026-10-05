@@ -492,6 +492,10 @@
 /* ─── Create Task Form ────────────────────────────────────────────────────── */
 
 .m365-create-task-form {
+  /* These forms are <fieldset>s so `disabled` greys out every control while a request is in flight. */
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: var(--size-4-3);
   display: flex;
   flex-direction: column;
@@ -525,6 +529,9 @@
 }
 
 .m365-create-event-form {
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: var(--size-4-3);
   display: flex;
   flex-direction: column;

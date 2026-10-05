@@ -165,14 +165,19 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
       return;
     }
     // Mark the task as in-flight while the request runs, then drop it from the list on success.
-    const runTodoAction = (action: () => Promise<void>) => {
+    // The returned promise lets the detail dialog stay open (disabled) until the request settles;
+    // failures are reported here and rethrown so the dialog can show them inline.
+    const runTodoAction = async (action: () => Promise<void>) => {
       setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
-      void action()
-        .then(() => setTodos((prev) => prev.filter((t) => t.id !== todo.id)))
-        .catch((e: unknown) => notifyError(e))
-        .finally(() => {
-          setCompletingTodoIds((prev) => { const next = new Set(prev); next.delete(todo.id); return next; });
-        });
+      try {
+        await action();
+        setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+      } catch (e) {
+        notifyError(e);
+        throw e;
+      } finally {
+        setCompletingTodoIds((prev) => { const next = new Set(prev); next.delete(todo.id); return next; });
+      }
     };
     const onComplete = () => runTodoAction(() => todoService.completeTask(todo.listId, todo.id));
     const onDelete = () => runTodoAction(() => todoService.deleteTask(todo.listId, todo.id));
