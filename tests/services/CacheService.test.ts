@@ -53,6 +53,25 @@ describe('CacheService', () => {
     expect(result!.map((e) => e.id)).toEqual(['e2']);
   });
 
+  it('includes multi-day events that started before the range but overlap it', async () => {
+    const spanning: M365Event = {
+      ...makeEvent('span', '2026-04-10T00:00:00'),
+      end: { dateTime: '2026-04-15T00:00:00', timeZone: 'UTC' },
+    };
+    await cache.addEvents('cal1', APR_START, APR_END, [spanning, evtApr4]);
+    const result = cache.getEventsForRange('cal1', WEEK_START, WEEK_END);
+    expect(result!.map((e) => e.id)).toEqual(['span']);
+  });
+
+  it('excludes events that end exactly at the range start', async () => {
+    const ends: M365Event = {
+      ...makeEvent('ends', '2026-04-12T00:00:00'),
+      end: { dateTime: '2026-04-13T00:00:00', timeZone: 'UTC' },
+    };
+    await cache.addEvents('cal1', APR_START, APR_END, [ends]);
+    expect(cache.getEventsForRange('cal1', WEEK_START, WEEK_END)).toEqual([]);
+  });
+
   it('serves a week-range request from a covering month-range entry', async () => {
     // The key scenario: month fetch covers week request
     await cache.addEvents('cal1', APR_START, APR_END, [evtApr4, evtApr15]);
