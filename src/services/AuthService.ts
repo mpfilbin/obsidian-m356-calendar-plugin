@@ -53,6 +53,8 @@ export class AuthService {
     state: string;
   } | null = null;
 
+  private refreshPromise: Promise<string> | null = null;
+
   async isAuthenticated(): Promise<boolean> {
     try {
       await this.getValidToken();
@@ -71,7 +73,14 @@ export class AuthService {
       return stored.accessToken;
     }
 
-    return this.refreshAccessToken(stored.refreshToken);
+    // Share one in-flight refresh between concurrent callers. Refresh tokens
+    // may rotate, so parallel refreshes could invalidate each other.
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.refreshAccessToken(stored.refreshToken).finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+    return this.refreshPromise;
   }
 
   async signIn(): Promise<void> {

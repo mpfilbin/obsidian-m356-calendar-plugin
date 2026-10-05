@@ -42,8 +42,9 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   const [confirmingDelete, setConfirmingDelete] = useState<false | 'occurrence' | 'single'>(false);
   const [deleting, setDeleting] = useState(false);
 
+  const isRecurring = !!event.type && event.type !== 'singleInstance';
   const eventCalendar = calendars.find((c) => c.id === event.calendarId);
-  const calendarDropdownDisabled = confirmingDelete !== false || saving || !(eventCalendar?.canEdit ?? false);
+  const calendarDropdownDisabled = confirmingDelete !== false || saving || !(eventCalendar?.canEdit ?? false) || isRecurring;
   const selectedCalendar = calendars.find((c) => c.id === selectedCalendarId);
 
   const handleAllDayChange = (checked: boolean) => {

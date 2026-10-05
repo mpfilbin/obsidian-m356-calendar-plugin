@@ -49,10 +49,11 @@ export class CalendarService {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const isAllDay = input.isAllDay ?? false;
     const formatDateTime = (d: Date) =>
-      isAllDay ? `${d.toISOString().slice(0, 10)}T00:00:00` : toLocalISOString(d);
+      isAllDay ? `${toDateOnly(d)}T00:00:00` : toLocalISOString(d);
     const body = {
       subject: input.subject,
       body: { contentType: 'text', content: input.description ?? '' },
+      ...(input.location ? { location: { displayName: input.location } } : {}),
       start: { dateTime: formatDateTime(input.start), timeZone },
       end: { dateTime: formatDateTime(input.end), timeZone },
       isAllDay,
@@ -117,19 +118,37 @@ export class CalendarService {
     // The Graph API has no move endpoint for calendar events (only for mail).
     // Create in the destination calendar first (so the original is preserved if
     // creation fails), then delete the original.
+    // Recurring events cannot be copied faithfully (recurrence, exceptions), so
+    // refuse rather than silently turning a series into a single event.
+    if (event.type && event.type !== 'singleInstance') {
+      throw new Error('Recurring events cannot be moved to another calendar');
+    }
     const isAllDay = patch.isAllDay ?? event.isAllDay;
     // patch datetime strings are local-format ("YYYY-MM-DDTHH:MM:SS"); new Date()
     // without a timezone offset treats them as local time, which is correct here.
     const startDate = new Date(patch.start?.dateTime ?? event.start.dateTime);
     const endDate = new Date(patch.end?.dateTime ?? event.end.dateTime);
+    // bodyPreview is truncated, so fetch the full body when the patch doesn't supply one.
+    const description = patch.bodyContent ?? (await this.getEventBody(event.id)) ?? event.bodyPreview;
     await this.createEvent(destinationCalendarId, {
       subject: patch.subject ?? event.subject,
       start: startDate,
       end: endDate,
       isAllDay,
-      description: patch.bodyContent ?? event.bodyPreview,
+      description,
+      location: patch.location ?? event.location,
     });
     await this.deleteEvent(event.id);
+  }
+
+  private async getEventBody(eventId: string): Promise<string | undefined> {
+    const token = await this.auth.getValidToken();
+    const response = await this.fetch(`${GRAPH_BASE}/me/events/${eventId}?$select=body`, {
+      headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' },
+    });
+    if (!response.ok) throw new Error(`Failed to fetch event: ${response.statusText}`);
+    const data = await response.json() as { body?: { content?: string } };
+    return data.body?.content;
   }
 
   private buildRecurrenceBody(r: EventRecurrence, start: Date): object {

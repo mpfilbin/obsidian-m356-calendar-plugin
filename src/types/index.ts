@@ -48,6 +48,7 @@ export interface NewEventInput {
   start: Date;
   end: Date;
   description?: string;
+  location?: string;
   isAllDay?: boolean;
   recurrence?: EventRecurrence;
 }

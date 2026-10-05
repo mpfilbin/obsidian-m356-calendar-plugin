@@ -430,8 +430,8 @@ describe('CalendarService', () => {
     vi.stubGlobal('fetch', fetchMock);
     await service.createEvent('cal1', {
       subject: 'All Day Event',
-      start: new Date('2026-04-10'),
-      end: new Date('2026-04-11'),
+      start: new Date(2026, 3, 10),
+      end: new Date(2026, 3, 11),
       isAllDay: true,
     });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
@@ -541,6 +541,7 @@ describe('CalendarService', () => {
     start: { dateTime: '2026-04-04T09:00:00', timeZone: 'UTC' },
     end: { dateTime: '2026-04-04T09:30:00', timeZone: 'UTC' },
     isAllDay: false,
+    bodyContent: 'Full notes',
   };
   const MOVE_CREATE_RESPONSE = {
     id: 'evt-new',
@@ -587,6 +588,32 @@ describe('CalendarService', () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('moveEvent fetches the full body and preserves location when patch has no body', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ body: { content: 'Complete body text' } }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(MOVE_CREATE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    const { bodyContent: _omit, ...patchNoBody } = MOVE_PATCH;
+    await service.moveEvent({ ...MOVE_EVENT, location: 'Room 1' }, 'cal2', patchNoBody);
+    expect(fetchMock.mock.calls[0][0]).toContain('/me/events/evt1?$select=body');
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(body.body.content).toBe('Complete body text');
+    expect(body.location).toEqual({ displayName: 'Room 1' });
+  });
+
+  it.each(['occurrence', 'exception', 'seriesMaster'] as const)(
+    'moveEvent refuses %s events without making requests',
+    async (type) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      await expect(service.moveEvent({ ...MOVE_EVENT, type }, 'cal2', MOVE_PATCH)).rejects.toThrow(
+        'Recurring events cannot be moved',
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   describe('createEvent recurrence', () => {
     // June 15 2026 is a Monday; month index 5 → month number 6; getDate() = 15

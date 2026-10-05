@@ -49,6 +49,27 @@ describe('AuthService', () => {
     expect(await auth.getValidToken()).toBe('access-token');
   });
 
+  it('getValidToken shares one refresh between concurrent callers', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 }),
+    );
+    const results = await Promise.all([auth.getValidToken(), auth.getValidToken(), auth.getValidToken()]);
+    expect(results).toEqual(['new-token', 'new-token', 'new-token']);
+    expect(requestUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('getValidToken can refresh again after a failed refresh', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl)
+      .mockResolvedValueOnce(makeRequestUrlResponse(400, { error: 'invalid_grant' }))
+      .mockResolvedValueOnce(
+        makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'r', expires_in: 3600 }),
+      );
+    await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
+    expect(await auth.getValidToken()).toBe('new-token');
+  });
+
   it('getValidToken throws when not authenticated', async () => {
     getSecret.mockReturnValue(null);
     await expect(auth.getValidToken()).rejects.toThrow('Not authenticated');
