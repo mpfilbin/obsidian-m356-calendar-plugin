@@ -127,6 +127,16 @@ npm run dev
 ./scripts/install.sh /path/to/your/vault
 ```
 
+On Windows (PowerShell):
+
+```powershell
+.\scripts\install.ps1 C:\path\to\your\vault
+# remove it again (also drops the entry from community-plugins.json)
+.\scripts\uninstall.ps1 C:\path\to\your\vault
+```
+
+If PowerShell blocks the script, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first.
+
 ### Run tests
 
 ```bash
