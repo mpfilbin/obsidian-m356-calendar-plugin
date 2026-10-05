@@ -702,8 +702,10 @@ describe('CalendarApp', () => {
     await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(3));
     const [, nextDayStart, nextDayEnd] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[2];
 
-    expect(nextDayStart.getTime() - dayStart.getTime()).toBe(24 * 60 * 60 * 1000);
-    expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
+    // Compare calendar days, not milliseconds: a DST change makes a day 23 or 25 hours long.
+    const nextDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    expect(nextDayStart.getTime()).toBe(nextDay(dayStart).getTime());
+    expect(nextDayEnd.getTime()).toBe(nextDay(nextDayStart).getTime());
   });
 
   it('ignores a slow event response that was superseded by newer navigation', async () => {

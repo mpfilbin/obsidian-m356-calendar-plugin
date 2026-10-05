@@ -30,7 +30,26 @@ jobs:
       - run: npm run typecheck
 
   test:
-    name: Test
+    name: Test (${{ matrix.tz }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Date handling is timezone-sensitive; cover UTC-, UTC and UTC+ offsets.
+        tz: [UTC, America/Los_Angeles, Pacific/Auckland]
+    env:
+      TZ: ${{ matrix.tz }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,4 +58,4 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run test
+      - run: npm run build

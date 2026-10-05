@@ -21,11 +21,11 @@ const FORECAST_WEATHER: DailyWeather = {
   precipProbability: 0.1,
 };
 
-// Build Unix timestamp for a date at noon UTC — matches real OpenWeather One Call 3.0 behavior
-// where daily[].dt is approximately noon in the location's local timezone (not midnight UTC).
-// Tests run in jsdom (UTC), so noon UTC = noon local → toDateOnly correctly returns dateStr.
+// Build Unix timestamp for a date at local noon — matches real OpenWeather One Call 3.0 behavior
+// where daily[].dt is approximately noon in the location's timezone (not midnight UTC).
+// Using local noon (no Z suffix) keeps toDateOnly stable in any machine timezone.
 function noonUtcUnix(dateStr: string): number {
-  return Math.floor(new Date(`${dateStr}T12:00:00Z`).getTime() / 1000);
+  return Math.floor(new Date(`${dateStr}T12:00:00`).getTime() / 1000);
 }
 
 // Build the forecast API response object where daily[0] corresponds to TODAY
