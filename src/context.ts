@@ -10,9 +10,14 @@ export interface AppContextValue {
   calendarService: CalendarService;
   weatherService: WeatherService;
   todoService: TodoService;
+  /** Settings at the time the view was created; use `subscribeSettings` for later changes. */
   settings: M365CalendarSettings;
-  saveSettings: (s: M365CalendarSettings) => Promise<void>;
-  registerWeatherRefresh: (cb: () => void) => void;
+  /** Merges `patch` into the plugin's live settings and persists them. */
+  saveSettings: (patch: Partial<M365CalendarSettings>) => Promise<void>;
+  /** Called whenever settings change (e.g. from the settings tab). Returns an unsubscribe function. */
+  subscribeSettings: (cb: (s: M365CalendarSettings) => void) => () => void;
+  /** Called when cached weather is cleared and views should refetch. Returns an unsubscribe function. */
+  subscribeWeatherRefresh: (cb: () => void) => () => void;
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);

@@ -20,7 +20,8 @@ function notifyError(e: unknown): void {
 }
 
 export const CalendarApp: React.FC = () => {
-  const { app, calendarService, weatherService, todoService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
+  const { app, calendarService, weatherService, todoService, settings: initialSettings, saveSettings, subscribeSettings, subscribeWeatherRefresh } = useAppContext();
+  const [settings, setSettings] = useState(initialSettings);
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendars, setCalendars] = useState<M365Calendar[]>([]);
@@ -39,10 +40,18 @@ export const CalendarApp: React.FC = () => {
   const todoListsLoadedRef = useRef(false);
 
   const calendarsLoadedRef = useRef(false);
-  const settingsRef = useRef(settings);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+  // Request counters: a response is applied only if no newer request of the same kind
+  // has started, so rapid navigation can't let a slow older response overwrite newer data.
+  const eventsRequestRef = useRef(0);
+  const todosRequestRef = useRef(0);
+  const weatherRequestRef = useRef(0);
+
+  useEffect(() => subscribeSettings(setSettings), [subscribeSettings]);
 
   const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
+    const requestId = ++eventsRequestRef.current;
+    const isStale = () => requestId !== eventsRequestRef.current;
     setSyncing(true);
     if (options.userInitiated) setError(null);
     setRefreshFailed(false);
@@ -58,13 +67,14 @@ export const CalendarApp: React.FC = () => {
         activeEnabledIds = enabledIds.filter((id) => fetchedIdSet.has(id));
         if (activeEnabledIds.length !== enabledIds.length) {
           setEnabledIds(activeEnabledIds);
-          void saveSettings({ ...settingsRef.current, enabledCalendarIds: activeEnabledIds });
+          void saveSettings({ enabledCalendarIds: activeEnabledIds });
         }
       }
       if (activeEnabledIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
         const bypassCache = !!options.reloadCalendars;
         const fetched = await calendarService.getEvents(activeEnabledIds, start, end, bypassCache);
+        if (isStale()) return;
         setEvents(fetched);
       } else {
         setEvents([]);
@@ -72,6 +82,7 @@ export const CalendarApp: React.FC = () => {
       if (options.userInitiated) setError(null);
     } catch (e) {
       if (calendarsFetchAttempted) calendarsLoadedRef.current = false;
+      if (isStale()) return;
       if (options.userInitiated) {
         notifyError(e);
         setError(e instanceof Error ? e.message : 'Failed to load calendar data');
@@ -80,26 +91,30 @@ export const CalendarApp: React.FC = () => {
         setRefreshFailed(true);
       }
     } finally {
-      setSyncing(false);
+      if (!isStale()) setSyncing(false);
     }
   }, [calendarService, enabledIds, currentDate, view, saveSettings]);
 
   const fetchWeather = useCallback(async () => {
     if (!settings.weatherEnabled) {
+      weatherRequestRef.current++;
       setWeather(new Map());
       return;
     }
+    const requestId = ++weatherRequestRef.current;
     const { start, end } = getDateRange(currentDate, view);
     const dates = getDatesInRange(start, end);
     try {
       const result = await weatherService.getWeatherForDates(dates);
-      setWeather(result);
+      if (requestId === weatherRequestRef.current) setWeather(result);
     } catch {
-      setWeather(new Map(dates.map((d) => [d, null])));
+      if (requestId === weatherRequestRef.current) setWeather(new Map(dates.map((d) => [d, null])));
     }
   }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
 
   const fetchTodos = useCallback(async (options: { reloadLists?: boolean } = {}) => {
+    const requestId = ++todosRequestRef.current;
+    const isStale = () => requestId !== todosRequestRef.current;
     let listFetchAttempted = false;
     setRefreshFailed(false);
     try {
@@ -112,12 +127,14 @@ export const CalendarApp: React.FC = () => {
       if (enabledTodoListIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
         const tasks = await todoService.getTasks(enabledTodoListIds, start, end);
+        if (isStale()) return;
         setTodos(tasks);
       } else {
         setTodos([]);
       }
     } catch (e) {
       if (listFetchAttempted) todoListsLoadedRef.current = false;
+      if (isStale()) return;
       console.error('M365 Calendar todos:', e);
       setRefreshFailed(true);
     }
@@ -126,9 +143,10 @@ export const CalendarApp: React.FC = () => {
   // Keep a ref to the latest fetchWeather so the registered callback never goes stale.
   const fetchWeatherRef = useRef(fetchWeather);
   useEffect(() => { fetchWeatherRef.current = fetchWeather; }, [fetchWeather]);
-  useEffect(() => {
-    registerWeatherRefresh(() => void fetchWeatherRef.current());
-  }, [registerWeatherRefresh]);
+  useEffect(
+    () => subscribeWeatherRefresh(() => void fetchWeatherRef.current()),
+    [subscribeWeatherRefresh],
+  );
 
   useEffect(() => {
     void fetchAll({ userInitiated: true });
@@ -174,7 +192,7 @@ export const CalendarApp: React.FC = () => {
       : [...enabledIds, calendarId];
     setEnabledIds(next);
     try {
-      await saveSettings({ ...settings, enabledCalendarIds: next, sidebarCollapsed });
+      await saveSettings({ enabledCalendarIds: next });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
       setEnabledIds(enabledIds);
@@ -185,7 +203,7 @@ export const CalendarApp: React.FC = () => {
     const next = !sidebarCollapsed;
     setSidebarCollapsed(next);
     try {
-      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed: next });
+      await saveSettings({ sidebarCollapsed: next });
     } catch (e) {
       setSidebarCollapsed(sidebarCollapsed);
       setError(e instanceof Error ? e.message : 'Failed to save settings');
@@ -198,7 +216,7 @@ export const CalendarApp: React.FC = () => {
       : [...enabledTodoListIds, listId];
     setEnabledTodoListIds(next);
     try {
-      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed, enabledTodoListIds: next });
+      await saveSettings({ enabledTodoListIds: next });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
       setEnabledTodoListIds(enabledTodoListIds);

@@ -20,7 +20,9 @@ export default class M365CalendarPlugin extends Plugin {
   private weatherService!: WeatherService;
   private todoService!: TodoService;
   private saveDataQueue: Promise<void> = Promise.resolve();
-  private weatherRefreshHandler: (() => void) | null = null;
+  private readonly weatherRefreshHandlers = new Set<() => void>();
+  private readonly settingsListeners = new Set<(s: M365CalendarSettings) => void>();
+  private settingsEmitTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Serialize all saveData calls so concurrent writes (cache, weatherCache, settings)
   // never clobber each other with a stale read-modify-write.
@@ -95,11 +97,18 @@ export default class M365CalendarPlugin extends Plugin {
         weatherService: this.weatherService,
         todoService: this.todoService,
         settings: this.settings,
-        saveSettings: async (s) => {
-          this.settings = s;
+        saveSettings: async (patch) => {
+          this.settings = { ...this.settings, ...patch };
           await this.saveSettings();
         },
-        registerWeatherRefresh: (cb) => { this.weatherRefreshHandler = cb; },
+        subscribeSettings: (cb) => {
+          this.settingsListeners.add(cb);
+          return () => { this.settingsListeners.delete(cb); };
+        },
+        subscribeWeatherRefresh: (cb) => {
+          this.weatherRefreshHandlers.add(cb);
+          return () => { this.weatherRefreshHandlers.delete(cb); };
+        },
       });
     });
 
@@ -116,13 +125,15 @@ export default class M365CalendarPlugin extends Plugin {
     this.addSettingTab(new M365CalendarSettingTab(this.app, this));
   }
 
-  async onunload(): Promise<void> {
-    
+  onunload(): void {
+    if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
+    this.settingsListeners.clear();
+    this.weatherRefreshHandlers.clear();
   }
 
   async clearWeatherCache(): Promise<void> {
     await this.weatherCacheService.clearAll();
-    this.weatherRefreshHandler?.();
+    this.weatherRefreshHandlers.forEach((cb) => cb());
   }
 
   async loadSettings(): Promise<void> {
@@ -133,6 +144,17 @@ export default class M365CalendarPlugin extends Plugin {
   async saveSettings(): Promise<void> {
     await this.queueSave({ settings: this.settings });
     this.logger.setEnabled(this.settings.debugLogging);
+    this.scheduleSettingsEmit();
+  }
+
+  // Debounced so typing in a settings text field doesn't refetch on every keystroke.
+  private scheduleSettingsEmit(): void {
+    if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
+    this.settingsEmitTimer = setTimeout(() => {
+      this.settingsEmitTimer = null;
+      const snapshot = { ...this.settings };
+      this.settingsListeners.forEach((cb) => cb(snapshot));
+    }, 500);
   }
 
   private async activateView(): Promise<void> {

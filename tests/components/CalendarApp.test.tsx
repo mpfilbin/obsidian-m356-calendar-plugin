@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import * as obsidianMock from '../../tests/__mocks__/obsidian';
@@ -140,7 +140,8 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
     } as unknown as AppContextValue['todoService'],
     settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
     saveSettings: vi.fn().mockResolvedValue(undefined),
-    registerWeatherRefresh: vi.fn(),
+    subscribeSettings: vi.fn(() => () => {}),
+    subscribeWeatherRefresh: vi.fn(() => () => {}),
     ...overrides,
   };
 }
@@ -703,6 +704,59 @@ describe('CalendarApp', () => {
 
     expect(nextDayStart.getTime() - dayStart.getTime()).toBe(24 * 60 * 60 * 1000);
     expect(nextDayEnd.getTime() - nextDayStart.getTime()).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it('ignores a slow event response that was superseded by newer navigation', async () => {
+    let resolveSlow!: (events: unknown[]) => void;
+    const slow = new Promise<unknown[]>((r) => { resolveSlow = r; });
+    const ctx = makeContext();
+    const getEvents = ctx.calendarService.getEvents as ReturnType<typeof vi.fn>;
+    getEvents.mockReset();
+    getEvents
+      .mockReturnValueOnce(slow)
+      .mockResolvedValue([{ ...mockEvent, id: 'fast', subject: 'Fast Event', start: { dateTime: '2026-05-05T09:00:00', timeZone: 'UTC' }, end: { dateTime: '2026-05-05T10:00:00', timeZone: 'UTC' } }]);
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(getEvents).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByText('›'));
+    expect(await screen.findByText('Fast Event')).toBeInTheDocument();
+
+    resolveSlow([{ ...mockEvent, id: 'slow', subject: 'Slow Event', start: { dateTime: '2026-05-06T09:00:00', timeZone: 'UTC' }, end: { dateTime: '2026-05-06T10:00:00', timeZone: 'UTC' } }]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText('Slow Event')).not.toBeInTheDocument();
+    expect(screen.getByText('Fast Event')).toBeInTheDocument();
+  });
+
+  it('refetches weather when settings change while the view is open', async () => {
+    const ctx = makeContext();
+    let notify!: (s: AppContextValue['settings']) => void;
+    (ctx.subscribeSettings as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+      notify = cb;
+      return () => {};
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
+    expect(ctx.weatherService.getWeatherForDates).not.toHaveBeenCalled();
+
+    act(() => {
+      notify({ ...ctx.settings, weatherEnabled: true, weatherLocation: 'London, GB', openWeatherApiKey: 'k' });
+    });
+    await waitFor(() => expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalled());
+  });
+
+  it('refetches weather when a weather-refresh notification arrives', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], weatherEnabled: true, weatherLocation: 'NYC', openWeatherApiKey: 'k' },
+    });
+    let refresh!: () => void;
+    (ctx.subscribeWeatherRefresh as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+      refresh = cb;
+      return () => {};
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalledTimes(1));
+    act(() => refresh());
+    await waitFor(() => expect(ctx.weatherService.getWeatherForDates).toHaveBeenCalledTimes(2));
   });
 
   it('sidebar starts collapsed when settings.sidebarCollapsed is true', async () => {
