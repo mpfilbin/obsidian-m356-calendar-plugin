@@ -244,6 +244,16 @@ describe('week and day timeline drag and drop', () => {
     expect(onDrop.mock.calls[0][1]).toEqual({ date: '2026-04-07' });
   });
 
+  it('only highlights the header when hovering the header, not the all-day row', () => {
+    withDrag(week([timed()]));
+    fire('dragStart', screen.getByLabelText('Edit event: Team Meeting'));
+    const allDay = document.querySelector('.m365-week-allday-main') as HTMLElement;
+    fakeRect(allDay, { left: 0, width: 700 });
+    fire('dragOver', allDay, { clientX: 350 }); // column 3 → Wed Apr 8
+    expect(document.querySelector('[data-drop-date="2026-04-08"]')).not.toHaveClass('m365-drop-hover');
+    expect(document.querySelectorAll('.m365-week-allday-cell.m365-drop-hover')).toHaveLength(1);
+  });
+
   it('lets a task be dropped on a timeline column to change its day', () => {
     const { onDrop } = withDrag(week([], [todo]));
     fire('dragStart', screen.getByLabelText('View task: Pay rent'));

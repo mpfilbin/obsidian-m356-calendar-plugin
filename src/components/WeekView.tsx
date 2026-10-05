@@ -122,7 +122,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
             <div
               key={`header-${toDateOnly(day)}`}
               data-drop-date={toDateOnly(day)}
-              className={['m365-calendar-week-day', isToday ? 'today' : '', hover?.target.date === toDateOnly(day) ? 'm365-drop-hover' : '']
+              className={['m365-calendar-week-day', isToday ? 'today' : '', hover?.zone === 'headers' && hover.target.date === toDateOnly(day) ? 'm365-drop-hover' : '']
                 .filter(Boolean)
                 .join(' ')}
               onClick={() => onDayClick(day)}
