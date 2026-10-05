@@ -29,6 +29,30 @@ export function parseDateInput(s: string): Date {
   return new Date(s.length === 10 ? `${s}T00:00` : s);
 }
 
+/** Adds `days` calendar days to a "YYYY-MM-DD" string (DST-safe; works on local calendar days). */
+export function addDaysToDateOnly(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  return toDateOnly(new Date(y, m - 1, d + days));
+}
+
+/** Whole calendar days from `from` to `to` (both "YYYY-MM-DD"); NaN if either is invalid. */
+export function daysBetweenDateOnly(from: string, to: string): number {
+  const parse = (s: string) => {
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((parse(to) - parse(from)) / 86_400_000);
+}
+
+/**
+ * For an all-day event whose end date is derived (End field hidden): when the start moves to
+ * `newStart`, returns the new end date, keeping the event's current length in days (minimum 1).
+ */
+export function shiftAllDayEnd(newStart: string, prevStart: string, prevEnd: string): string {
+  const span = daysBetweenDateOnly(prevStart, prevEnd);
+  return addDaysToDateOnly(newStart, Number.isFinite(span) && span > 0 ? span : 1);
+}
+
 /** Format a Date as a locale-appropriate short time string, e.g. "2:30 PM" or "14:30". */
 export function formatTime(d: Date): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

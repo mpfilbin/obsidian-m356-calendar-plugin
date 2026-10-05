@@ -2,7 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Calendar, NewEventInput, EventRecurrence, RecurrenceFrequency, DayOfWeek, WeekIndex, RecurrenceEndType } from '../types';
-import { toDateOnly, toDateTimeLocal, parseDateInput } from '../lib/datetime';
+import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
 
 const DAY_NAMES: DayOfWeek[] = [
   'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
@@ -140,6 +140,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     );
   };
 
+  // For all-day events the End field is hidden and derived from Start, keeping the event's length.
+  const handleStartChange = (value: string) => {
+    if (isAllDay && value) setEndStr(shiftAllDayEnd(value, startStr, endStr));
+    setStartStr(value);
+  };
+
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
     const s = parseDateInput(startStr);
@@ -253,18 +259,20 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           id="m365-create-start"
           type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
-          onChange={(e) => setStartStr(e.target.value)}
+          onChange={(e) => handleStartChange(e.target.value)}
         />
       </div>
-      <div className="m365-form-field">
-        <label htmlFor="m365-create-end">End</label>
-        <input
-          id="m365-create-end"
-          type={isAllDay ? 'date' : 'datetime-local'}
-          value={endStr}
-          onChange={(e) => setEndStr(e.target.value)}
-        />
-      </div>
+      {!isAllDay && (
+        <div className="m365-form-field">
+          <label htmlFor="m365-create-end">End</label>
+          <input
+            id="m365-create-end"
+            type="datetime-local"
+            value={endStr}
+            onChange={(e) => setEndStr(e.target.value)}
+          />
+        </div>
+      )}
       <div className="m365-form-field">
         <label htmlFor="m365-create-description">Description (optional)</label>
         <textarea

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EventDetailForm } from '../../src/components/EventDetailModal';
 import { M365Event, M365Calendar } from '../../src/types';
@@ -113,13 +113,19 @@ describe('EventDetailForm', () => {
     expect(checkbox.checked).toBe(true);
   });
 
-  it('advances end date by one day when toggling All day on a same-day timed event', async () => {
+  it('hides End and saves a one-day all-day event when toggling All day on a same-day timed event', async () => {
     render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} calendars={[]} />);
 
     await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
 
     expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-04');
-    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-05');
+    expect(screen.queryByLabelText('End')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText('OK'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const patch = onSave.mock.calls[0][0];
+    expect(patch.isAllDay).toBe(true);
+    expect(patch.start.dateTime).toBe('2026-04-04T00:00:00');
+    expect(patch.end.dateTime).toBe('2026-04-05T00:00:00');
   });
 
   it('restores correct local date when toggling All day off after it was on', async () => {
@@ -142,9 +148,36 @@ describe('EventDetailForm', () => {
     render(<EventDetailForm event={multiDayEvent} onSave={onSave} onCancel={onCancel} calendars={[]} />);
 
     await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByText('OK'));
 
-    expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-04');
-    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-06');
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].end.dateTime).toBe('2026-04-06T00:00:00');
+  });
+
+  it('hides End for an existing all-day event and keeps its length when Start moves', async () => {
+    const threeDayAllDay = {
+      ...event,
+      isAllDay: true,
+      start: { dateTime: '2026-04-04T00:00:00', timeZone: 'America/New_York' },
+      end: { dateTime: '2026-04-07T00:00:00', timeZone: 'America/New_York' },
+    };
+    render(<EventDetailForm event={threeDayAllDay} onSave={onSave} onCancel={onCancel} calendars={[]} />);
+    expect(screen.queryByLabelText('End')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-04-10' } });
+    await userEvent.click(screen.getByText('OK'));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const patch = onSave.mock.calls[0][0];
+    expect(patch.start.dateTime).toBe('2026-04-10T00:00:00');
+    expect(patch.end.dateTime).toBe('2026-04-13T00:00:00');
+  });
+
+  it('shows End again when All day is turned off', async () => {
+    render(<EventDetailForm event={event} onSave={onSave} onCancel={onCancel} calendars={[]} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    expect(screen.getByLabelText('End')).toBeInTheDocument();
   });
 
   it('does not render a Delete button when onDelete is not provided', () => {

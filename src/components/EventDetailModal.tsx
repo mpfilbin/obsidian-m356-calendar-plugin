@@ -2,7 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Event, M365Calendar, EventPatch } from '../types';
-import { toDateOnly, toDateTimeLocal, parseDateInput } from '../lib/datetime';
+import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +46,12 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   const eventCalendar = calendars.find((c) => c.id === event.calendarId);
   const calendarDropdownDisabled = confirmingDelete !== false || saving || !(eventCalendar?.canEdit ?? false) || isRecurring;
   const selectedCalendar = calendars.find((c) => c.id === selectedCalendarId);
+
+  // For all-day events the End field is hidden and derived from Start, keeping the event's length.
+  const handleStartChange = (value: string) => {
+    if (isAllDay && value) setEndStr(shiftAllDayEnd(value, startStr, endStr));
+    setStartStr(value);
+  };
 
   const handleAllDayChange = (checked: boolean) => {
     setIsAllDay(checked);
@@ -214,20 +220,22 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           id="m365-event-start"
           type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
-          onChange={(e) => setStartStr(e.target.value)}
+          onChange={(e) => handleStartChange(e.target.value)}
           disabled={confirmingDelete !== false || saving}
         />
       </div>
-      <div className="m365-form-field">
-        <label htmlFor="m365-event-end">End</label>
-        <input
-          id="m365-event-end"
-          type={isAllDay ? 'date' : 'datetime-local'}
-          value={endStr}
-          onChange={(e) => setEndStr(e.target.value)}
-          disabled={confirmingDelete !== false || saving}
-        />
-      </div>
+      {!isAllDay && (
+        <div className="m365-form-field">
+          <label htmlFor="m365-event-end">End</label>
+          <input
+            id="m365-event-end"
+            type="datetime-local"
+            value={endStr}
+            onChange={(e) => setEndStr(e.target.value)}
+            disabled={confirmingDelete !== false || saving}
+          />
+        </div>
+      )}
       <div className="m365-form-field">
         <label htmlFor="m365-event-description">Description</label>
         <textarea

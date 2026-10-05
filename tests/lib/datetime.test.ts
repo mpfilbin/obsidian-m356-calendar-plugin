@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime, getWeekDays, getDaysInMonthView, getDateRange, getDatesInRange } from '../../src/lib/datetime';
+import { toDateOnly, toDateTimeLocal, toLocalISOString, parseDateInput, formatTime, getWeekDays, getDaysInMonthView, getDateRange, getDatesInRange, addDaysToDateOnly, daysBetweenDateOnly, shiftAllDayEnd } from '../../src/lib/datetime';
 
 // All Date objects are constructed with the local-time constructor (year, month, day, ...)
 // so these tests are timezone-independent.
@@ -197,5 +197,27 @@ describe('getDatesInRange', () => {
   it('returns an empty array when start equals end', () => {
     const d = new Date(2026, 3, 1);
     expect(getDatesInRange(d, d)).toHaveLength(0);
+  });
+});
+
+describe('all-day end helpers', () => {
+  it('addDaysToDateOnly rolls over months, years and leap days', () => {
+    expect(addDaysToDateOnly('2026-04-30', 1)).toBe('2026-05-01');
+    expect(addDaysToDateOnly('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDaysToDateOnly('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDaysToDateOnly('2026-04-10', 3)).toBe('2026-04-13');
+  });
+
+  it('daysBetweenDateOnly counts calendar days and ignores DST', () => {
+    expect(daysBetweenDateOnly('2026-04-04', '2026-04-07')).toBe(3);
+    expect(daysBetweenDateOnly('2026-03-07', '2026-03-09')).toBe(2);
+    expect(daysBetweenDateOnly('bad', '2026-04-07')).toBeNaN();
+  });
+
+  it('shiftAllDayEnd keeps the current length, with a minimum of one day', () => {
+    expect(shiftAllDayEnd('2026-04-10', '2026-04-04', '2026-04-07')).toBe('2026-04-13');
+    expect(shiftAllDayEnd('2026-04-10', '2026-04-04', '2026-04-05')).toBe('2026-04-11');
+    expect(shiftAllDayEnd('2026-04-10', '2026-04-04', '2026-04-04')).toBe('2026-04-11');
+    expect(shiftAllDayEnd('2026-04-10', '', '')).toBe('2026-04-11');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateEventForm, buildRecurrence } from '../../src/components/CreateEventModal';
 import { M365Calendar } from '../../src/types';
@@ -95,7 +95,7 @@ describe('CreateEventForm', () => {
     expect(checkbox.checked).toBe(false);
   });
 
-  it('switches start and end inputs to date type when All day is checked', async () => {
+  it('switches Start to a date input and hides End when All day is checked', async () => {
     render(
       <CreateEventForm
         calendars={calendars}
@@ -111,24 +111,62 @@ describe('CreateEventForm', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
 
     expect((screen.getByLabelText('Start') as HTMLInputElement).type).toBe('date');
-    expect((screen.getByLabelText('End') as HTMLInputElement).type).toBe('date');
+    expect(screen.queryByLabelText('End')).not.toBeInTheDocument();
   });
 
-  it('advances end date by one day when toggling All day and start equals end date', async () => {
-    // initialDate sets default start=09:00 and end=10:00 on the same day (2026-04-10)
+  it('shows End again when All day is unchecked', async () => {
     render(
       <CreateEventForm
         calendars={calendars}
         defaultCalendarId="cal1"
-        initialDate={new Date(2026, 3, 10)} // April 10 local time
+        initialDate={new Date(2026, 3, 10)}
         onSubmit={onSubmit}
         onCancel={onCancel}
       />,
     );
     await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    expect((screen.getByLabelText('End') as HTMLInputElement).type).toBe('datetime-local');
+  });
 
-    expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-10');
-    expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-11');
+  it('submits an all-day event ending the day after it starts', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText('Title'), 'Conference');
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    await userEvent.click(screen.getByText('Create'));
+
+    const input = onSubmit.mock.calls[0][1];
+    expect(input.isAllDay).toBe(true);
+    expect(input.start).toEqual(new Date(2026, 3, 10));
+    expect(input.end).toEqual(new Date(2026, 3, 11));
+  });
+
+  it('recalculates the all-day end when Start changes', async () => {
+    render(
+      <CreateEventForm
+        calendars={calendars}
+        defaultCalendarId="cal1"
+        initialDate={new Date(2026, 3, 10)}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText('Title'), 'Conference');
+    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-04-30' } });
+    await userEvent.click(screen.getByText('Create'));
+
+    const input = onSubmit.mock.calls[0][1];
+    expect(input.start).toEqual(new Date(2026, 3, 30));
+    expect(input.end).toEqual(new Date(2026, 4, 1)); // rolls over the month
   });
 
   it('submits with isAllDay true when All day is checked', async () => {
@@ -166,29 +204,6 @@ describe('CreateEventForm', () => {
     const startInput = screen.getByLabelText('Start') as HTMLInputElement;
     expect(startInput.type).toBe('datetime-local');
     expect(startInput.value.startsWith('2026-04-10')).toBe(true);
-  });
-
-  it('shows validation error when all-day end date is not after start date', async () => {
-    render(
-      <CreateEventForm
-        calendars={calendars}
-        defaultCalendarId="cal1"
-        initialDate={new Date(2026, 3, 10)}
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-      />,
-    );
-    await userEvent.type(screen.getByLabelText('Title'), 'Conference');
-    await userEvent.click(screen.getByRole('checkbox', { name: /all day/i }));
-
-    // Manually set end to same day as start
-    const endInput = screen.getByLabelText('End') as HTMLInputElement;
-    await userEvent.clear(endInput);
-    await userEvent.type(endInput, '2026-04-10');
-
-    await userEvent.click(screen.getByText('Create'));
-    expect(screen.getByText('For all-day events, the end date must be after the start date')).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('submits with isAllDay false when All day is not checked', async () => {
@@ -458,19 +473,22 @@ describe('CreateEventForm — initialAllDay', () => {
     expect(startInput.value).toBe('2026-04-10');
   });
 
-  it('end date is the day after initialDate when initialAllDay is true', () => {
+  it('hides End and submits the day after initialDate when initialAllDay is true', async () => {
+    const onSubmit = vi.fn();
     render(
       <CreateEventForm
         calendars={calendars}
         defaultCalendarId="cal1"
         initialDate={new Date(2026, 3, 10)}
         initialAllDay={true}
-        onSubmit={vi.fn()}
+        onSubmit={onSubmit}
         onCancel={vi.fn()}
       />,
     );
-    const endInput = document.getElementById('m365-create-end') as HTMLInputElement;
-    expect(endInput.value).toBe('2026-04-11');
+    expect(screen.queryByLabelText('End')).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Title'), 'Holiday');
+    await userEvent.click(screen.getByText('Create'));
+    expect(onSubmit.mock.calls[0][1].end).toEqual(new Date(2026, 3, 11));
   });
 
   it('all-day checkbox is unchecked by default (no initialAllDay prop)', () => {
