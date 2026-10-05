@@ -179,6 +179,21 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName('Test connection')
+      .setDesc('Check the API key and location, and show which place the location resolves to.')
+      .addButton((button) =>
+        button.setButtonText('Test').onClick(async () => {
+          button.setDisabled(true);
+          try {
+            const result = await this.plugin.testWeatherConnection();
+            new Notice(`M365 Calendar weather: ${result.message}`, result.ok ? 5000 : 10000);
+          } finally {
+            button.setDisabled(false);
+          }
+        }),
+      );
+
+    new Setting(containerEl)
       .setName('Temperature units')
       .addDropdown((dropdown) =>
         dropdown

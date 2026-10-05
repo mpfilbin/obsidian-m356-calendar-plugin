@@ -331,6 +331,10 @@
   grid-template-columns: repeat(7, 1fr);
   grid-auto-rows: 22px;
   flex-shrink: 0;
+  /* Continue the column dividers through the spanning rows, where no cell element exists. */
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), var(--background-modifier-border) 0);
+  background-size: calc(100% / 7) 100%;
+  background-repeat: repeat-x;
 }
 
 .m365-month-day-cells {
@@ -349,6 +353,7 @@
   margin: 1px 2px;
   background: var(--background-modifier-border);
   border: none;
+  box-shadow: none;
   font-size: 0.75em;
   color: var(--text-muted);
   cursor: pointer;
@@ -487,6 +492,10 @@
 /* ─── Create Task Form ────────────────────────────────────────────────────── */
 
 .m365-create-task-form {
+  /* These forms are <fieldset>s so `disabled` greys out every control while a request is in flight. */
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: var(--size-4-3);
   display: flex;
   flex-direction: column;
@@ -520,6 +529,9 @@
 }
 
 .m365-create-event-form {
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: var(--size-4-3);
   display: flex;
   flex-direction: column;
@@ -593,6 +605,9 @@
   margin: 0;
   border: none;
   background: none;
+  /* Obsidian's default button style adds a shadow and fixed height. */
+  box-shadow: none;
+  height: auto;
   text-align: left;
   cursor: pointer;
 }
@@ -602,6 +617,7 @@
   width: 100%;
   background: var(--background-modifier-border);
   border: none;
+  box-shadow: none;
   border-radius: 3px;
   padding: 1px 4px;
   margin: 1px 0;
@@ -965,6 +981,8 @@
   box-sizing: border-box;
   width: calc(100% - 4px);
   pointer-events: auto;
+  box-shadow: none;
+  height: auto;
 }
 
 .m365-spanning-bar:hover {
@@ -1050,4 +1068,66 @@
   padding: 2px var(--size-4-1);
   border-right: 1px solid var(--background-modifier-border);
   overflow: hidden;
+}
+
+/* ─── Drag and drop ───────────────────────────────────────────────────────── */
+
+[draggable="true"].m365-event-click-btn,
+[draggable="true"].m365-spanning-bar {
+  cursor: grab;
+}
+
+/* The item being dragged. */
+.m365-dragging {
+  opacity: 0.4;
+}
+
+/* An item whose move is still being saved. */
+.m365-drag-pending {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* A day (or timeline column) that would receive the drop. */
+.m365-drop-hover {
+  background-color: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+}
+
+/* Snapped start time shown while dragging an event over a timeline. */
+.m365-drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--interactive-accent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.m365-drop-indicator-label {
+  position: absolute;
+  top: -9px;
+  left: 2px;
+  padding: 0 var(--size-4-1);
+  border-radius: var(--radius-s);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+/* ─── Confirm dialog ──────────────────────────────────────────────────────── */
+
+.m365-confirm-form {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: var(--size-4-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+}
+
+.m365-confirm-form p {
+  margin: 0;
 }

@@ -7,6 +7,8 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Month and week views** of your M365 calendar events
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
 - **Create events** — click any day to create a new event without leaving Obsidian
+- **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
+- **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
 - **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
 - **Local caching** — renders instantly from cache, refreshes in the background
 - **Theme aware** — uses Obsidian CSS variables to match your active theme
@@ -126,6 +128,16 @@ npm run dev
 ```bash
 ./scripts/install.sh /path/to/your/vault
 ```
+
+On Windows (PowerShell):
+
+```powershell
+.\scripts\install.ps1 C:\path\to\your\vault
+# remove it again (also drops the entry from community-plugins.json)
+.\scripts\uninstall.ps1 C:\path\to\your\vault
+```
+
+If PowerShell blocks the script, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first.
 
 ### Run tests
 

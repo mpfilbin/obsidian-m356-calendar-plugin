@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from '../src/settings';
-import { Notice, _getSettingInstances, _clearSettingInstances } from 'obsidian';
+import { Notice } from 'obsidian';
+import { _getSettingInstances, _clearSettingInstances } from './__mocks__/obsidian';
 import type M365CalendarPlugin from '../src/main';
 
 describe('M365CalendarSettingTab', () => {
@@ -14,6 +15,7 @@ describe('M365CalendarSettingTab', () => {
       isAuthenticated: ReturnType<typeof vi.fn>;
     };
     clearWeatherCache: ReturnType<typeof vi.fn>;
+    testWeatherConnection: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -28,6 +30,7 @@ describe('M365CalendarSettingTab', () => {
         isAuthenticated: vi.fn().mockResolvedValue(false),
       },
       clearWeatherCache: vi.fn().mockResolvedValue(undefined),
+      testWeatherConnection: vi.fn().mockResolvedValue({ ok: true, message: 'Connected. Weather will be shown for London, GB.' }),
     };
     tab = new M365CalendarSettingTab(
       {} as InstanceType<typeof import('obsidian').App>,
@@ -54,5 +57,16 @@ describe('M365CalendarSettingTab', () => {
 
     expect(Notice).toHaveBeenCalledWith(expect.stringContaining('Signed in'));
     expect(displaySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the result of the weather connection test in a notice', async () => {
+    tab.display();
+    const testSetting = _getSettingInstances().find(
+      (s) => s.buttons.length === 1 && s.name === 'Test connection',
+    );
+    expect(testSetting).toBeDefined();
+    await testSetting!.buttons[0].simulateClick();
+    expect(mockPlugin.testWeatherConnection).toHaveBeenCalledTimes(1);
+    expect(Notice).toHaveBeenCalledWith(expect.stringContaining('London, GB'), 5000);
   });
 });

@@ -7,6 +7,8 @@ import { toDateOnly, getDaysInMonthView } from '../lib/datetime';
 import { computeWeekSpanningLayout } from '../lib/spanningLayout';
 import { usePopoverContext } from '../PopoverContext';
 import { OverflowPopup } from './OverflowPopup';
+import { useDragContext } from '../DragContext';
+import { useDragSource, useDropZones, dayColumnResolver } from '../hooks/useDragDrop';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -15,6 +17,7 @@ interface MonthViewProps {
   onDayClick: (date: Date) => void;
   onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   maxEventsPerDay?: number;
   maxSpanningLanes?: number;
   weather?: Map<string, DailyWeather | null>;
@@ -22,6 +25,7 @@ interface MonthViewProps {
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  onTodoContextMenu?: (todo: M365TodoItem, e: MouseEvent) => void;
   completingTodoIds?: Set<string>;
 }
 
@@ -32,6 +36,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onDayClick,
   onDayContextMenu,
   onEventClick,
+  onEventContextMenu,
   maxEventsPerDay = 4,
   maxSpanningLanes = 2,
   weather,
@@ -39,6 +44,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
   todos = [],
   todoLists = [],
   onTodoClick,
+  onTodoContextMenu,
   completingTodoIds,
 }) => {
   const days = getDaysInMonthView(currentDate);
@@ -49,6 +55,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
   const todoListMap = useMemo(() => new Map(todoLists.map((l) => [l.id, l])), [todoLists]);
   const today = new Date();
   const { showPopover, hidePopover } = usePopoverContext();
+  const dnd = useDragContext();
+  const dragSource = useDragSource();
+  const { hover, bind } = useDropZones();
 
   const [overflowPopover, setOverflowPopover] = useState<{
     events: M365Event[];
@@ -84,7 +93,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
           const spanningIds = new Set(segments.map((s) => s.event.id));
 
           return (
-            <div key={weekIdx} className="m365-month-week-row">
+            <div
+              key={weekIdx}
+              className="m365-month-week-row"
+              {...bind(`week-${weekIdx}`, dayColumnResolver(week))}
+            >
               <div className="m365-month-date-row">
                 {week.map((day) => {
                   const isCurrentMonth = day.getMonth() === currentDate.getMonth();
@@ -97,6 +110,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         'm365-month-date-cell',
                         isCurrentMonth ? '' : 'other-month',
                         isToday ? 'today' : '',
+                        hover?.target.date === cellDateStr ? 'm365-drop-hover' : '',
                       ]
                         .filter(Boolean)
                         .join(' ')}
@@ -159,7 +173,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       event={seg.event}
                       calendar={cal}
                       segment={seg}
+                      weekStart={weekStart}
                       onEventClick={onEventClick}
+                      onEventContextMenu={onEventContextMenu}
                     />
                   );
                 })}
@@ -192,6 +208,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         'm365-calendar-day-cell',
                         isCurrentMonth ? '' : 'other-month',
                         isToday ? 'today' : '',
+                        hover?.target.date === cellDateStr ? 'm365-drop-hover' : '',
                       ]
                         .filter(Boolean)
                         .join(' ')}
@@ -209,8 +226,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
                             <button
                               key={event.id}
                               type="button"
-                              className="m365-event-click-btn"
+                              className={`m365-event-click-btn${dnd.isPending(event.id) ? ' m365-drag-pending' : ''}`}
                               aria-label={`Edit event: ${event.subject}`}
+                              {...dragSource({ kind: 'event', event, grabbedDate: cellDateStr, grabOffsetMin: 0 })}
                               onMouseEnter={(e) =>
                                 showPopover(
                                   event,
@@ -223,7 +241,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                                 e.stopPropagation();
                                 onEventClick?.(event);
                               }}
-                              onContextMenu={(e) => e.stopPropagation()}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onEventContextMenu?.(event, e.nativeEvent);
+                              }}
                             >
                               <EventCard event={event} calendar={cal} />
                             </button>
@@ -239,11 +261,16 @@ export const MonthView: React.FC<MonthViewProps> = ({
                               className="m365-event-click-btn"
                               aria-label={`View task: ${todo.title}`}
                               disabled={completingTodoIds?.has(todo.id) ?? false}
+                              {...dragSource({ kind: 'todo', todo })}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onTodoClick?.(todo);
                               }}
-                              onContextMenu={(e) => e.stopPropagation()}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onTodoContextMenu?.(todo, e.nativeEvent);
+                              }}
                             >
                               <TodoCard
                                 todo={todo}

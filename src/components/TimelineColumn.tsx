@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
-import { formatTime } from '../lib/datetime';
+import { formatTime, toDateOnly } from '../lib/datetime';
+import { useDragContext } from '../DragContext';
+import { useDragSource, useDropZones } from '../hooks/useDragDrop';
+import { eventDurationMinutes, snapStartMinutes } from '../lib/reschedule';
 
 export interface LayoutEvent {
   event: M365Event;
@@ -73,6 +76,7 @@ interface TimelineColumnProps {
   onTimeClick: (date: Date) => void;
   onTimeContextMenu?: (dateTime: Date, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   showLabels?: boolean;
   showNowLine?: boolean;
   'data-testid'?: string;
@@ -85,6 +89,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   onTimeClick,
   onTimeContextMenu,
   onEventClick,
+  onEventContextMenu,
   showLabels = false,
   showNowLine = false,
   'data-testid': testId,
@@ -92,6 +97,22 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const laid = useMemo(() => layoutEvents(events), [events]);
   const { showPopover, hidePopover } = usePopoverContext();
+  const dnd = useDragContext();
+  const dragSource = useDragSource();
+  const { hover, bind } = useDropZones();
+  const dateStr = toDateOnly(date);
+
+  // Drop zone for the whole column: events land at the (snapped) time under the block's top edge,
+  // tasks just take this day. All-day and multi-day events can't be placed on the timeline.
+  const dropProps = bind('column', (e, drag) => {
+    if (drag.kind === 'todo') return { date: dateStr };
+    const ev = drag.event;
+    if (ev.isAllDay || ev.start.dateTime.slice(0, 10) !== ev.end.dateTime.slice(0, 10)) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const raw = (e.clientY - rect.top) / PX_PER_MIN - drag.grabOffsetMin;
+    return { date: dateStr, minutes: snapStartMinutes(raw, eventDurationMinutes(ev) ?? 60) };
+  });
+  const dropMinutes = hover?.target.minutes;
 
   const now = useNow(showNowLine);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -118,7 +139,8 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
 
   return (
     <div
-      className="m365-timeline-column"
+      className={`m365-timeline-column${hover && dropMinutes === undefined ? ' m365-drop-hover' : ''}`}
+      {...dropProps}
       style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
@@ -170,8 +192,17 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
             <button
               key={event.id}
               type="button"
-              className="m365-event-click-btn m365-day-event-block"
+              className={`m365-event-click-btn m365-day-event-block${dnd.isPending(event.id) ? ' m365-drag-pending' : ''}`}
               aria-label={`Edit event: ${event.subject}`}
+              {...dragSource(
+                { kind: 'event', event, grabbedDate: dateStr, grabOffsetMin: 0 },
+                (e) => ({
+                  kind: 'event',
+                  event,
+                  grabbedDate: dateStr,
+                  grabOffsetMin: (e.clientY - e.currentTarget.getBoundingClientRect().top) / PX_PER_MIN,
+                }),
+              )}
               style={{
                 position: 'absolute',
                 top: `${startMin * PX_PER_MIN}px`,
@@ -188,7 +219,11 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
                 e.stopPropagation();
                 onEventClick?.(event);
               }}
-              onContextMenu={(e) => e.stopPropagation()}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEventContextMenu?.(event, e.nativeEvent);
+              }}
             >
               <div className="m365-day-event-content">
                 <span className="m365-day-event-time" style={{ color: cal.color }}>
@@ -202,6 +237,13 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
           );
         })}
       </div>
+      {dropMinutes !== undefined && (
+        <div className="m365-drop-indicator" style={{ top: `${dropMinutes * PX_PER_MIN}px` }}>
+          <span className="m365-drop-indicator-label">
+            {formatTime(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, dropMinutes))}
+          </span>
+        </div>
+      )}
       {showNowLine && (
         <div
           className="m365-now-line"

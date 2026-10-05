@@ -21,11 +21,11 @@ const FORECAST_WEATHER: DailyWeather = {
   precipProbability: 0.1,
 };
 
-// Build Unix timestamp for a date at noon UTC — matches real OpenWeather One Call 3.0 behavior
-// where daily[].dt is approximately noon in the location's local timezone (not midnight UTC).
-// Tests run in jsdom (UTC), so noon UTC = noon local → toDateOnly correctly returns dateStr.
+// Build Unix timestamp for a date at local noon — matches real OpenWeather One Call 3.0 behavior
+// where daily[].dt is approximately noon in the location's timezone (not midnight UTC).
+// Using local noon (no Z suffix) keeps toDateOnly stable in any machine timezone.
 function noonUtcUnix(dateStr: string): number {
-  return Math.floor(new Date(`${dateStr}T12:00:00Z`).getTime() / 1000);
+  return Math.floor(new Date(`${dateStr}T12:00:00`).getTime() / 1000);
 }
 
 // Build the forecast API response object where daily[0] corresponds to TODAY
@@ -107,6 +107,123 @@ describe('WeatherService', () => {
     expect(forecastUrl).toContain('onecall');
     expect(forecastUrl).toContain('40.7128');
     expect(result.get(TODAY)).not.toBeNull();
+  });
+
+  describe('problem reporting', () => {
+    let onProblem: ReturnType<typeof vi.fn>;
+    beforeEach(() => {
+      onProblem = vi.fn();
+      service = new WeatherService(
+        () => 'secret-key', () => LOCATION, () => 'imperial', cache as WeatherCacheService,
+        undefined, onProblem,
+      );
+    });
+
+    it('explains a 401 from the forecast endpoint without leaking the API key', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({ cod: 401, message: 'Invalid API key' }) }),
+      );
+      const result = await service.getWeatherForDates([TODAY]);
+      expect(result.get(TODAY)).toBeNull();
+      expect(onProblem).toHaveBeenCalledTimes(1);
+      expect(onProblem.mock.calls[0][0]).toMatch(/rejected the API key.*One Call by Call/);
+      expect(onProblem.mock.calls[0][0]).not.toContain('secret-key');
+    });
+
+    it('reports an unknown location', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem.mock.calls[0][0]).toContain(`"${LOCATION}"`);
+    });
+
+    it('reports a geocoding HTTP failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({ message: 'Invalid API key' }) }));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem.mock.calls[0][0]).toContain('API key');
+    });
+
+    it('reports a network failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not repeat the same problem on every refresh', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
+      await service.getWeatherForDates([TODAY]);
+      await service.getWeatherForDates([TODAY]);
+      expect(onProblem).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('testConnection', () => {
+    const forecastOk = { ok: true, json: () => Promise.resolve({ current: { temp: 60 } }) };
+
+    it('asks for a key or location before making any request', async () => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+      const noKey = new WeatherService(() => ' ', () => LOCATION, () => 'imperial', cache as WeatherCacheService);
+      expect((await noKey.testConnection()).message).toMatch(/API key/);
+      const noLoc = new WeatherService(() => 'k', () => '', () => 'imperial', cache as WeatherCacheService);
+      expect((await noLoc.testConnection()).message).toMatch(/location/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('reports the resolved place on success and bypasses the cache', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([{ lat: 1, lon: 2, name: 'Springfield', state: 'Illinois', country: 'US' }]) })
+        .mockResolvedValueOnce(forecastOk),
+      );
+      const result = await service.testConnection();
+      expect(result).toEqual({ ok: true, message: 'Connected. Weather will be shown for Springfield, Illinois, US.' });
+      expect(cache.get).not.toHaveBeenCalled();
+      expect(cache.set).not.toHaveBeenCalled();
+    });
+
+    it('reports an unknown location', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }));
+      const result = await service.testConnection();
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(`"${LOCATION}"`);
+    });
+
+    it('reports a rejected key from the forecast endpoint without leaking it', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+        .mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({ message: 'Invalid API key' }) }),
+      );
+      const result = await service.testConnection();
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/One Call by Call/);
+      expect(result.message).not.toContain('test-api-key');
+    });
+
+    it('reports a network failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      vi.useFakeTimers();
+      const promise = service.testConnection();
+      await vi.runAllTimersAsync();
+      expect((await promise).message).toMatch(/Could not reach OpenWeather/);
+    });
+  });
+
+  it('uses the weather location timezone offset to pick the calendar date', async () => {
+    // 12:00 in Auckland (UTC+13) on TOMORROW is 23:00 UTC the previous day.
+    const noonAuckland = Math.floor(new Date(`${TOMORROW}T12:00:00Z`).getTime() / 1000) - 13 * 3600;
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(GEO_RESPONSE) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          timezone_offset: 13 * 3600,
+          current: { temp: 60, weather: [{ id: 800, description: 'clear', icon: '01d' }] },
+          daily: [{ dt: noonAuckland, temp: { day: 60, min: 50, max: 70 }, pop: 0, weather: [{ id: 800, description: 'clear', icon: '01d' }] }],
+        }),
+      }),
+    );
+    const result = await service.getWeatherForDates([TOMORROW]);
+    expect(result.get(TOMORROW)?.date).toBe(TOMORROW);
   });
 
   it('caches forecast results via cache.set', async () => {

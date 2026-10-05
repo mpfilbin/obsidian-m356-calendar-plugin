@@ -15,6 +15,26 @@ describe('TodoService', () => {
     vi.unstubAllGlobals();
   });
 
+  describe('updateTaskDueDate', () => {
+    it('PATCHes only the due date, formatted like createTask', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.updateTaskDueDate('list 1', 'task/1', '2026-05-20');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://graph.microsoft.com/v1.0/me/todo/lists/list%201/tasks/task%2F1',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ dueDateTime: { dateTime: '2026-05-20T00:00:00', timeZone: 'UTC' } }),
+        }),
+      );
+    });
+
+    it('throws a descriptive error when Graph rejects the change', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, statusText: 'Forbidden' }));
+      await expect(service.updateTaskDueDate('l', 't', '2026-05-20')).rejects.toThrow('Failed to reschedule task: Forbidden');
+    });
+  });
+
   describe('getLists', () => {
     it('maps Graph response to M365TodoList and assigns a hex color', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

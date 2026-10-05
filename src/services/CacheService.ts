@@ -2,6 +2,15 @@ import { CacheStore, M365Event } from '../types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// Event start/end are local wall-clock strings (requested via the Prefer timezone header).
+// Zero-length events (end <= start) are treated as instants at `start`.
+function overlaps(e: M365Event, rangeStart: Date, rangeEnd: Date): boolean {
+  const eventStart = new Date(e.start.dateTime);
+  const eventEnd = new Date(e.end.dateTime);
+  if (!(eventEnd > eventStart)) return eventStart >= rangeStart && eventStart < rangeEnd;
+  return eventStart < rangeEnd && eventEnd > rangeStart;
+}
+
 export class CacheService {
   private store: CacheStore = {};
 
@@ -37,10 +46,9 @@ export class CacheService {
       (iv) => iv.start <= startISO && iv.end >= endISO && now - iv.fetchedAt <= CACHE_TTL_MS,
     );
     if (!covered) return null;
-    return entry.events.filter((e) => {
-      const eventStart = new Date(e.start.dateTime);
-      return eventStart >= start && eventStart < end;
-    });
+    // Overlap test, not start-in-range: a multi-day event that began before
+    // `start` must still be returned, matching what a network fetch returns.
+    return entry.events.filter((e) => overlaps(e, start, end));
   }
 
   async addEvents(calendarId: string, start: Date, end: Date, events: M365Event[]): Promise<void> {
@@ -75,12 +83,7 @@ export class CacheService {
         continue;
       }
       entry.events = entry.events.filter((e) =>
-        entry.intervals.some((iv) => {
-          const eventStart = new Date(e.start.dateTime);
-          const ivStart = new Date(iv.start);
-          const ivEnd = new Date(iv.end);
-          return eventStart >= ivStart && eventStart < ivEnd;
-        }),
+        entry.intervals.some((iv) => overlaps(e, new Date(iv.start), new Date(iv.end))),
       );
     }
   }

@@ -24,11 +24,13 @@ interface DayViewProps {
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
   onEventClick?: (event: M365Event) => void;
+  onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   weather?: Map<string, DailyWeather | null>;
   weatherUnits?: 'imperial' | 'metric';
   todos?: M365TodoItem[];
   todoLists?: M365TodoList[];
   onTodoClick?: (todo: M365TodoItem) => void;
+  onTodoContextMenu?: (todo: M365TodoItem, e: MouseEvent) => void;
   completingTodoIds?: Set<string>;
 }
 
@@ -38,11 +40,13 @@ export const DayView: React.FC<DayViewProps> = ({
   calendars,
   onTimeClick,
   onEventClick,
+  onEventContextMenu,
   weather,
   weatherUnits = 'imperial',
   todos = [],
   todoLists = [],
   onTodoClick,
+  onTodoContextMenu,
   completingTodoIds,
 }) => {
   const calendarMap = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
@@ -108,6 +112,11 @@ export const DayView: React.FC<DayViewProps> = ({
                   e.stopPropagation();
                   onEventClick?.(event);
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEventContextMenu?.(event, e.nativeEvent);
+                }}
               >
                 <EventCard event={event} calendar={cal} />
               </button>
@@ -126,6 +135,11 @@ export const DayView: React.FC<DayViewProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   onTodoClick?.(todo);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onTodoContextMenu?.(todo, e.nativeEvent);
                 }}
               >
                 <TodoCard todo={todo} todoList={list} isCompleting={completingTodoIds?.has(todo.id) ?? false} />
@@ -164,6 +178,7 @@ export const DayView: React.FC<DayViewProps> = ({
           calendars={calendars}
           onTimeClick={onTimeClick}
           onEventClick={onEventClick}
+          onEventContextMenu={onEventContextMenu}
           showLabels={true}
           showNowLine={isToday}
           data-testid="m365-day-timeline"

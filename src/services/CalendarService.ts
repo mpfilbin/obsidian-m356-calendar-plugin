@@ -1,36 +1,29 @@
 import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence } from '../types';
 import { AuthService } from './AuthService';
+import { GraphClient } from './GraphClient';
+import { type Logger, NullLogger } from '../lib/logger';
 import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
 import { toLocalISOString, toDateOnly } from '../lib/datetime';
-import { fetchWithRetry } from '../lib/fetchWithRetry';
-import { type Logger, NullLogger } from '../lib/logger';
 
-const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 export class CalendarService {
   private readonly semaphore = new Semaphore(2);
+  private readonly graph: GraphClient;
 
   constructor(
-    private readonly auth: AuthService,
+    auth: AuthService,
     private readonly cache: CacheService,
-    private readonly logger: Logger = new NullLogger(),
-  ) {}
-
-  private fetch(url: string, options: RequestInit = {}): Promise<Response> {
-    return fetchWithRetry(url, options, this.logger);
+    logger: Logger = new NullLogger(),
+  ) {
+    this.graph = new GraphClient(auth, logger);
   }
 
   async getCalendars(): Promise<M365Calendar[]> {
-    const token = await this.auth.getValidToken();
-    const response = await this.fetch(`${GRAPH_BASE}/me/calendars`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error(`Failed to fetch calendars: ${response.statusText}`);
-    const data = await response.json();
-    return data.value.map((c: Record<string, unknown>) => ({
-      id: c.id,
-      name: c.name,
+    const data = await this.graph.json<{ value: Record<string, unknown>[] }>('GET', '/me/calendars', 'fetch calendars');
+    return data.value.map((c) => ({
+      id: c.id as string,
+      name: c.name as string,
       color: (c.hexColor as string) || '#0078d4',
       isDefaultCalendar: (c.isDefaultCalendar as boolean) ?? false,
       canEdit: (c.canEdit as boolean) ?? false,
@@ -45,35 +38,27 @@ export class CalendarService {
   }
 
   async createEvent(calendarId: string, input: NewEventInput): Promise<M365Event> {
-    const token = await this.auth.getValidToken();
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const isAllDay = input.isAllDay ?? false;
     const formatDateTime = (d: Date) =>
-      isAllDay ? `${d.toISOString().slice(0, 10)}T00:00:00` : toLocalISOString(d);
+      isAllDay ? `${toDateOnly(d)}T00:00:00` : toLocalISOString(d);
     const body = {
       subject: input.subject,
       body: { contentType: 'text', content: input.description ?? '' },
+      ...(input.location ? { location: { displayName: input.location } } : {}),
       start: { dateTime: formatDateTime(input.start), timeZone },
       end: { dateTime: formatDateTime(input.end), timeZone },
       isAllDay,
       ...(input.recurrence ? { recurrence: this.buildRecurrenceBody(input.recurrence, input.start) } : {}),
     };
-    const response = await this.fetch(`${GRAPH_BASE}/me/calendars/${calendarId}/events`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(`Failed to create event: ${response.statusText}`);
-    const data = await response.json();
+    const data = await this.graph.json<Record<string, unknown>>(
+      'POST', `/me/calendars/${calendarId}/events`, 'create event', { body },
+    );
     await this.cache.clearAll();
     return this.mapEvent(data, calendarId);
   }
 
   async updateEvent(eventId: string, patch: EventPatch): Promise<void> {
-    const token = await this.auth.getValidToken();
     const body: Record<string, unknown> = {};
     if (patch.subject !== undefined) body.subject = patch.subject;
     if (patch.location !== undefined) body.location = { displayName: patch.location };
@@ -81,35 +66,17 @@ export class CalendarService {
     if (patch.start !== undefined) body.start = patch.start;
     if (patch.end !== undefined) body.end = patch.end;
     if (patch.bodyContent !== undefined) body.body = { contentType: 'text', content: patch.bodyContent };
-    const response = await this.fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(`Failed to update event: ${response.statusText}`);
+    await this.graph.send('PATCH', `/me/events/${eventId}`, 'update event', { body });
     await this.cache.clearAll();
   }
 
   async deleteEvent(eventId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const response = await this.fetch(`${GRAPH_BASE}/me/events/${eventId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error(`Failed to delete event: ${response.statusText}`);
+    await this.graph.send('DELETE', `/me/events/${eventId}`, 'delete event');
     await this.cache.clearAll();
   }
 
   async deleteEventSeries(seriesMasterId: string): Promise<void> {
-    const token = await this.auth.getValidToken();
-    const response = await this.fetch(`${GRAPH_BASE}/me/events/${seriesMasterId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error(`Failed to delete event series: ${response.statusText}`);
+    await this.graph.send('DELETE', `/me/events/${seriesMasterId}`, 'delete event series');
     await this.cache.clearAll();
   }
 
@@ -117,19 +84,35 @@ export class CalendarService {
     // The Graph API has no move endpoint for calendar events (only for mail).
     // Create in the destination calendar first (so the original is preserved if
     // creation fails), then delete the original.
+    // Recurring events cannot be copied faithfully (recurrence, exceptions), so
+    // refuse rather than silently turning a series into a single event.
+    if (event.type && event.type !== 'singleInstance') {
+      throw new Error('Recurring events cannot be moved to another calendar');
+    }
     const isAllDay = patch.isAllDay ?? event.isAllDay;
     // patch datetime strings are local-format ("YYYY-MM-DDTHH:MM:SS"); new Date()
     // without a timezone offset treats them as local time, which is correct here.
     const startDate = new Date(patch.start?.dateTime ?? event.start.dateTime);
     const endDate = new Date(patch.end?.dateTime ?? event.end.dateTime);
+    // bodyPreview is truncated, so fetch the full body when the patch doesn't supply one.
+    const description = patch.bodyContent ?? (await this.getEventBody(event.id)) ?? event.bodyPreview;
     await this.createEvent(destinationCalendarId, {
       subject: patch.subject ?? event.subject,
       start: startDate,
       end: endDate,
       isAllDay,
-      description: patch.bodyContent ?? event.bodyPreview,
+      description,
+      location: patch.location ?? event.location,
     });
     await this.deleteEvent(event.id);
+  }
+
+  private async getEventBody(eventId: string): Promise<string | undefined> {
+    const data = await this.graph.json<{ body?: { content?: string } }>(
+      'GET', `/me/events/${eventId}?$select=body`, 'fetch event',
+      { headers: { Prefer: 'outlook.body-content-type="text"' } },
+    );
+    return data.body?.content;
   }
 
   private buildRecurrenceBody(r: EventRecurrence, start: Date): object {
@@ -167,28 +150,19 @@ export class CalendarService {
 
     await this.semaphore.acquire();
     try {
-      const token = await this.auth.getValidToken();
       const params = new URLSearchParams({
         startDateTime: start.toISOString(),
         endDateTime: end.toISOString(),
         $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location,type,seriesMasterId',
         $top: '999',
       });
-      const events: M365Event[] = [];
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      let url: string | null = `${GRAPH_BASE}/me/calendars/${calendarId}/calendarView?${params}`;
-      while (url) {
-        const response = await this.fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Prefer: `outlook.timezone="${timeZone}"`,
-          },
-        });
-        if (!response.ok) throw new Error(`Failed to fetch events: ${response.statusText}`);
-        const data = await response.json() as Record<string, unknown>;
-        (data.value as Record<string, unknown>[]).forEach((e) => events.push(this.mapEvent(e, calendarId)));
-        url = (data['@odata.nextLink'] as string | undefined) ?? null;
-      }
+      const raw = await this.graph.getAll<Record<string, unknown>>(
+        `/me/calendars/${calendarId}/calendarView?${params}`,
+        'fetch events',
+        { headers: { Prefer: `outlook.timezone="${timeZone}"` } },
+      );
+      const events = raw.map((e) => this.mapEvent(e, calendarId));
       await this.cache.addEvents(calendarId, start, end, events);
       return events;
     } finally {

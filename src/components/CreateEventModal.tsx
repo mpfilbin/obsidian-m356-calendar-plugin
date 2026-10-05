@@ -2,7 +2,8 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Calendar, NewEventInput, EventRecurrence, RecurrenceFrequency, DayOfWeek, WeekIndex, RecurrenceEndType } from '../types';
-import { toDateOnly, toDateTimeLocal, parseDateInput } from '../lib/datetime';
+import { usePending } from '../hooks/usePending';
+import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
 
 const DAY_NAMES: DayOfWeek[] = [
   'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
@@ -83,7 +84,7 @@ interface CreateEventFormProps {
   defaultCalendarId: string;
   initialDate: Date;
   initialAllDay?: boolean;
-  onSubmit: (calendarId: string, event: NewEventInput) => void;
+  onSubmit: (calendarId: string, event: NewEventInput) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -120,6 +121,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   });
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const { pending: submitting, run } = usePending();
 
   const [repeat, setRepeat] = useState(false);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -138,6 +140,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     setDaysOfWeek((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
     );
+  };
+
+  // For all-day events the End field is hidden and derived from Start, keeping the event's length.
+  const handleStartChange = (value: string) => {
+    if (isAllDay && value) setEndStr(shiftAllDayEnd(value, startStr, endStr));
+    setStartStr(value);
   };
 
   const handleAllDayChange = (checked: boolean) => {
@@ -162,7 +170,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!subject.trim()) {
       setError('Title is required');
       return;
@@ -203,18 +211,24 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         return;
       }
     }
-    onSubmit(calendarId, {
-      subject: subject.trim(),
-      start,
-      end,
-      isAllDay,
-      description: description.trim() || undefined,
-      recurrence: buildRecurrence(repeat, frequency, intervalStr, daysOfWeek, monthlyMode, endType, recurrenceEndDateStr, occurrencesStr, start),
-    });
+    setError('');
+    try {
+      await run(() => onSubmit(calendarId, {
+        subject: subject.trim(),
+        start,
+        end,
+        isAllDay,
+        description: description.trim() || undefined,
+        recurrence: buildRecurrence(repeat, frequency, intervalStr, daysOfWeek, monthlyMode, endType, recurrenceEndDateStr, occurrencesStr, start),
+      }));
+    } catch (e) {
+      // The caller has already reported the failure; keep the form open with the message.
+      setError(e instanceof Error ? e.message : 'Failed to create event');
+    }
   };
 
   return (
-    <div className="m365-create-event-form">
+    <fieldset className="m365-create-event-form" disabled={submitting} aria-busy={submitting}>
       {error && <div className="m365-form-error">{error}</div>}
       <div className="m365-form-field">
         <label htmlFor="m365-create-subject">Title</label>
@@ -253,18 +267,20 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           id="m365-create-start"
           type={isAllDay ? 'date' : 'datetime-local'}
           value={startStr}
-          onChange={(e) => setStartStr(e.target.value)}
+          onChange={(e) => handleStartChange(e.target.value)}
         />
       </div>
-      <div className="m365-form-field">
-        <label htmlFor="m365-create-end">End</label>
-        <input
-          id="m365-create-end"
-          type={isAllDay ? 'date' : 'datetime-local'}
-          value={endStr}
-          onChange={(e) => setEndStr(e.target.value)}
-        />
-      </div>
+      {!isAllDay && (
+        <div className="m365-form-field">
+          <label htmlFor="m365-create-end">End</label>
+          <input
+            id="m365-create-end"
+            type="datetime-local"
+            value={endStr}
+            onChange={(e) => setEndStr(e.target.value)}
+          />
+        </div>
+      )}
       <div className="m365-form-field">
         <label htmlFor="m365-create-description">Description (optional)</label>
         <textarea
@@ -414,11 +430,11 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       )}
       <div className="m365-form-actions">
         <button onClick={onCancel}>Cancel</button>
-        <button className="mod-cta" onClick={handleSubmit}>
-          Create
+        <button className="mod-cta" onClick={() => void handleSubmit()}>
+          {submitting ? 'Creating…' : 'Create'}
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 };
 

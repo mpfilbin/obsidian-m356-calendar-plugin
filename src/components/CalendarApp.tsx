@@ -1,146 +1,44 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Notice, Menu } from 'obsidian';
-import { M365Calendar, M365Event, M365TodoList, M365TodoItem, DailyWeather, ViewType, DayContextMenuPayload } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ViewType } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
-import { CreateEventModal } from './CreateEventModal';
-import { CreateTaskModal } from './CreateTaskModal';
-import { EventDetailModal } from './EventDetailModal';
-import { TodoDetailModal } from './TodoDetailModal';
 import { useAppContext } from '../context';
-import { getDateRange, getDatesInRange, toDateOnly } from '../lib/datetime';
-
-function notifyError(e: unknown): void {
-  const message = e instanceof Error ? e.message : 'An error occurred';
-  console.error('M365 Calendar:', e);
-  new Notice(`M365 Calendar: ${message}`);
-}
+import { useEventsData } from '../hooks/useEventsData';
+import { useTodosData } from '../hooks/useTodosData';
+import { useWeather } from '../hooks/useWeather';
+import { useCalendarActions } from '../hooks/useCalendarActions';
+import { useReschedule } from '../hooks/useReschedule';
+import { DragProvider } from '../DragContext';
 
 export const CalendarApp: React.FC = () => {
-  const { app, calendarService, weatherService, todoService, settings, saveSettings, registerWeatherRefresh } = useAppContext();
+  const { settings: initialSettings, saveSettings, subscribeSettings } = useAppContext();
+  const [settings, setSettings] = useState(initialSettings);
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [calendars, setCalendars] = useState<M365Calendar[]>([]);
-  const [events, setEvents] = useState<M365Event[]>([]);
-  const [enabledIds, setEnabledIds] = useState<string[]>(settings.enabledCalendarIds);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(settings.sidebarCollapsed ?? false);
-  const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshFailed, setRefreshFailed] = useState(false);
-  const [weather, setWeather] = useState<Map<string, DailyWeather | null>>(new Map());
-
-  const [todoLists, setTodoLists] = useState<M365TodoList[]>([]);
-  const [todos, setTodos] = useState<M365TodoItem[]>([]);
   const [completingTodoIds, setCompletingTodoIds] = useState<Set<string>>(new Set());
-  const [enabledTodoListIds, setEnabledTodoListIds] = useState<string[]>(settings.enabledTodoListIds);
-  const todoListsLoadedRef = useRef(false);
 
-  const calendarsLoadedRef = useRef(false);
-  const settingsRef = useRef(settings);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => subscribeSettings(setSettings), [subscribeSettings]);
 
-  const fetchAll = useCallback(async (options: { reloadCalendars?: boolean; userInitiated?: boolean } = {}) => {
-    setSyncing(true);
-    if (options.userInitiated) setError(null);
-    setRefreshFailed(false);
-    let calendarsFetchAttempted = false;
-    let activeEnabledIds = enabledIds;
-    try {
-      if (!calendarsLoadedRef.current || options.reloadCalendars) {
-        calendarsFetchAttempted = true;
-        const fetchedCalendars = await calendarService.getCalendars();
-        calendarsLoadedRef.current = true;
-        setCalendars(fetchedCalendars);
-        const fetchedIdSet = new Set(fetchedCalendars.map((c) => c.id));
-        activeEnabledIds = enabledIds.filter((id) => fetchedIdSet.has(id));
-        if (activeEnabledIds.length !== enabledIds.length) {
-          setEnabledIds(activeEnabledIds);
-          void saveSettings({ ...settingsRef.current, enabledCalendarIds: activeEnabledIds });
-        }
-      }
-      if (activeEnabledIds.length > 0) {
-        const { start, end } = getDateRange(currentDate, view);
-        const bypassCache = !!options.reloadCalendars;
-        const fetched = await calendarService.getEvents(activeEnabledIds, start, end, bypassCache);
-        setEvents(fetched);
-      } else {
-        setEvents([]);
-      }
-      if (options.userInitiated) setError(null);
-    } catch (e) {
-      if (calendarsFetchAttempted) calendarsLoadedRef.current = false;
-      if (options.userInitiated) {
-        notifyError(e);
-        setError(e instanceof Error ? e.message : 'Failed to load calendar data');
-      } else {
-        console.error('M365 Calendar:', e);
-        setRefreshFailed(true);
-      }
-    } finally {
-      setSyncing(false);
-    }
-  }, [calendarService, enabledIds, currentDate, view, saveSettings]);
+  const eventsData = useEventsData(currentDate, view);
+  const { calendars, events, setEvents, enabledIds, syncing, error, setError, authError, fetchAll } = eventsData;
+  const todosData = useTodosData(currentDate, view, setError);
+  const { todoLists, todos, setTodos, enabledTodoListIds, fetchTodos } = todosData;
+  const { weather, fetchWeather } = useWeather(settings, currentDate, view);
 
-  const fetchWeather = useCallback(async () => {
-    if (!settings.weatherEnabled) {
-      setWeather(new Map());
-      return;
-    }
-    const { start, end } = getDateRange(currentDate, view);
-    const dates = getDatesInRange(start, end);
-    try {
-      const result = await weatherService.getWeatherForDates(dates);
-      setWeather(result);
-    } catch {
-      setWeather(new Map(dates.map((d) => [d, null])));
-    }
-  }, [weatherService, settings.weatherEnabled, settings.weatherLocation, settings.openWeatherApiKey, settings.weatherUnits, currentDate, view]);
+  const actions = useCalendarActions({
+    currentDate, view, calendars, enabledIds, setEvents,
+    todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds,
+    refreshEvents: () => fetchAll(),
+  });
 
-  const fetchTodos = useCallback(async (options: { reloadLists?: boolean } = {}) => {
-    let listFetchAttempted = false;
-    setRefreshFailed(false);
-    try {
-      if (!todoListsLoadedRef.current || options.reloadLists) {
-        listFetchAttempted = true;
-        todoListsLoadedRef.current = true;
-        const lists = await todoService.getLists();
-        setTodoLists(lists);
-      }
-      if (enabledTodoListIds.length > 0) {
-        const { start, end } = getDateRange(currentDate, view);
-        const tasks = await todoService.getTasks(enabledTodoListIds, start, end);
-        setTodos(tasks);
-      } else {
-        setTodos([]);
-      }
-    } catch (e) {
-      if (listFetchAttempted) todoListsLoadedRef.current = false;
-      console.error('M365 Calendar todos:', e);
-      setRefreshFailed(true);
-    }
-  }, [todoService, enabledTodoListIds, currentDate, view]);
-
-  // Keep a ref to the latest fetchWeather so the registered callback never goes stale.
-  const fetchWeatherRef = useRef(fetchWeather);
-  useEffect(() => { fetchWeatherRef.current = fetchWeather; }, [fetchWeather]);
-  useEffect(() => {
-    registerWeatherRefresh(() => void fetchWeatherRef.current());
-  }, [registerWeatherRefresh]);
-
-  useEffect(() => {
-    void fetchAll({ userInitiated: true });
-  }, [fetchAll]);
-
-  useEffect(() => {
-    void fetchWeather();
-  }, [fetchWeather]);
-
-  useEffect(() => {
-    void fetchTodos();
-  }, [fetchTodos]);
+  const reschedule = useReschedule({
+    calendars, setEvents, setTodos, completingTodoIds, setCompletingTodoIds,
+    refreshEvents: () => fetchAll(),
+  });
 
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
@@ -168,121 +66,15 @@ export const CalendarApp: React.FC = () => {
     setCurrentDate(d);
   };
 
-  const handleToggleCalendar = async (calendarId: string) => {
-    const next = enabledIds.includes(calendarId)
-      ? enabledIds.filter((id) => id !== calendarId)
-      : [...enabledIds, calendarId];
-    setEnabledIds(next);
-    try {
-      await saveSettings({ ...settings, enabledCalendarIds: next, sidebarCollapsed });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save settings');
-      setEnabledIds(enabledIds);
-    }
-  };
-
   const handleToggleSidebar = async () => {
     const next = !sidebarCollapsed;
     setSidebarCollapsed(next);
     try {
-      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed: next });
+      await saveSettings({ sidebarCollapsed: next });
     } catch (e) {
       setSidebarCollapsed(sidebarCollapsed);
       setError(e instanceof Error ? e.message : 'Failed to save settings');
     }
-  };
-
-  const handleToggleTodoList = async (listId: string) => {
-    const next = enabledTodoListIds.includes(listId)
-      ? enabledTodoListIds.filter((id) => id !== listId)
-      : [...enabledTodoListIds, listId];
-    setEnabledTodoListIds(next);
-    try {
-      await saveSettings({ ...settings, enabledCalendarIds: enabledIds, sidebarCollapsed, enabledTodoListIds: next });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save settings');
-      setEnabledTodoListIds(enabledTodoListIds);
-    }
-  };
-
-  const openCreateEventModal = (date: Date, initialAllDay = false) => {
-    const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
-    if (enabledCalendars.length === 0) {
-      new Notice('Enable at least one calendar to create events.');
-      return;
-    }
-    new CreateEventModal(
-      app,
-      enabledCalendars,
-      settings.defaultCalendarId,
-      date,
-      async (calendarId, event) => {
-        try {
-          await calendarService.createEvent(calendarId, event);
-          await fetchAll();
-        } catch (e) {
-          notifyError(e);
-          throw e;
-        }
-      },
-      initialAllDay,
-    ).open();
-  };
-
-  const openCreateTaskModal = (date: Date) => {
-    if (todoLists.length === 0) {
-      new Notice('No task lists available. Enable at least one task list.');
-      return;
-    }
-    const todoListIds = new Set(todoLists.map((l) => l.id));
-    const defaultListId = enabledTodoListIds.find((id) => todoListIds.has(id)) ?? todoLists[0]?.id ?? '';
-    new CreateTaskModal(
-      app,
-      todoLists,
-      defaultListId,
-      date,
-      async (listId, input, steps) => {
-        let created: M365TodoItem;
-        try {
-          created = await todoService.createTask(listId, input);
-        } catch (e) {
-          notifyError(e);
-          throw e; // keep modal open
-        }
-        // Task created — append to state before attempting steps so it's visible even if steps fail
-        const { start, end } = getDateRange(currentDate, view);
-        const startStr = toDateOnly(start);
-        const endStr = toDateOnly(end);
-        if (created.dueDate >= startStr && created.dueDate <= endStr) {
-          setTodos((prev) => [...prev, created]);
-        }
-        for (const step of steps) {
-          try {
-            await todoService.createChecklistItem(listId, created.id, step);
-          } catch (e) {
-            notifyError(e); // partial failure — task was created; don't rethrow or modal stays open
-          }
-        }
-      },
-    ).open();
-  };
-
-  const handleDayContextMenu = (payload: DayContextMenuPayload, event: MouseEvent) => {
-    const menu = new Menu();
-    menu.addItem((item) =>
-      item.setTitle('New event').setIcon('calendar-plus').onClick(() => {
-        const date = payload.kind === 'timed' ? payload.dateTime : payload.date;
-        openCreateEventModal(date, payload.kind === 'allday');
-      }),
-    );
-    menu.addItem((item) =>
-      item.setTitle('New task').setIcon('check-square').onClick(() => {
-        // Tasks only have a due date (no time), so always pass the date portion only.
-        const date = payload.kind === 'timed' ? payload.dateTime : payload.date;
-        openCreateTaskModal(date);
-      }),
-    );
-    menu.showAtMouseEvent(event);
   };
 
   const handleDayClick = (date: Date) => {
@@ -290,163 +82,91 @@ export const CalendarApp: React.FC = () => {
     setCurrentDate(date);
   };
 
-  const handleEventClick = (event: M365Event) => {
-    const calendar = calendars.find((c) => c.id === event.calendarId);
-    const isSeries = event.type === 'occurrence' || event.type === 'exception';
-    const isMaster = event.type === 'seriesMaster';
-    const onDelete = calendar?.canEdit
-      ? async () => {
-          await calendarService.deleteEvent(event.id);
-          setEvents((prev) => prev.filter(
-            (e) => e.id !== event.id && e.seriesMasterId !== event.id,
-          ));
-          new Notice(isMaster ? 'Series deleted' : 'Event deleted');
-        }
-      : undefined;
-    const { seriesMasterId } = event;
-    const onDeleteSeries = isSeries && calendar?.canEdit && seriesMasterId
-      ? async () => {
-          await calendarService.deleteEventSeries(seriesMasterId);
-          setEvents((prev) => prev.filter(
-            (e) => e.seriesMasterId !== seriesMasterId && e.id !== seriesMasterId,
-          ));
-          new Notice('Series deleted');
-        }
-      : undefined;
-    new EventDetailModal(
-      app,
-      event,
-      async (patch, targetCalendarId) => {
-        try {
-          if (targetCalendarId !== event.calendarId) {
-            // moveEvent creates in the new calendar (with patch applied) then
-            // deletes the original, so updateEvent on the old ID would 404.
-            await calendarService.moveEvent(event, targetCalendarId, patch);
-          } else {
-            await calendarService.updateEvent(event.id, patch);
-          }
-        } catch (e) {
-          notifyError(e);
-          throw e;
-        }
-      },
-      () => void fetchAll({ reloadCalendars: false }),
-      calendars,
-      onDelete,
-      onDeleteSeries,
-    ).open();
-  };
-
-  const handleTodoClick = (todo: M365TodoItem) => {
-    const list = todoLists.find((l) => l.id === todo.listId);
-    if (!list) {
-      console.warn('M365 Calendar: todo list not found for task', todo.id);
-      return;
-    }
-    const onComplete = () => {
-      setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
-      void todoService.completeTask(todo.listId, todo.id)
-        .then(() => {
-          setTodos((prev) => prev.filter((t) => t.id !== todo.id));
-          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
-        })
-        .catch((e: unknown) => {
-          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
-          notifyError(e);
-        });
-    };
-    const onDelete = () => {
-      setCompletingTodoIds((prev) => new Set([...prev, todo.id]));
-      void todoService.deleteTask(todo.listId, todo.id)
-        .then(() => {
-          setTodos((prev) => prev.filter((t) => t.id !== todo.id));
-          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
-        })
-        .catch((e: unknown) => {
-          setCompletingTodoIds((prev) => { const s = new Set(prev); s.delete(todo.id); return s; });
-          notifyError(e);
-        });
-    };
-    new TodoDetailModal(app, todo, list, todoService, onComplete, onDelete).open();
-  };
-
   return (
     <div className="m365-calendar">
-      {error && <div className="m365-calendar-error">{error}</div>}
+      {(error ?? authError) && <div className="m365-calendar-error">{error ?? authError}</div>}
       <Toolbar
         currentDate={currentDate}
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
-        onNewEvent={() => openCreateEventModal(new Date())}
-        onNewTask={() => openCreateTaskModal(view === 'day' ? currentDate : new Date())}
+        onNewEvent={() => actions.openCreateEventModal(new Date())}
+        onNewTask={() => actions.openCreateTaskModal(view === 'day' ? currentDate : new Date())}
         onRefresh={() => {
           void fetchAll({ reloadCalendars: true, userInitiated: true });
           void fetchTodos({ reloadLists: true });
         }}
         syncing={syncing}
-        refreshFailed={refreshFailed}
+        refreshFailed={eventsData.refreshFailed || todosData.refreshFailed}
       />
       <div className="m365-calendar-body">
         <CalendarSelector
           calendars={calendars}
           enabledCalendarIds={enabledIds}
-          onToggle={(id) => void handleToggleCalendar(id)}
+          onToggle={(id) => void eventsData.toggleCalendar(id)}
           todoLists={todoLists}
           enabledTodoListIds={enabledTodoListIds}
-          onToggleTodoList={(id) => void handleToggleTodoList(id)}
+          onToggleTodoList={(id) => void todosData.toggleTodoList(id)}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => void handleToggleSidebar()}
         />
-        <div className="m365-calendar-main">
-          {view === 'month' && (
-            <MonthView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onDayClick={handleDayClick}
-              onDayContextMenu={handleDayContextMenu}
-              onEventClick={handleEventClick}
-              onTodoClick={handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-          {view === 'week' && (
-            <WeekView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onDayClick={handleDayClick}
-              onDayContextMenu={handleDayContextMenu}
-              onEventClick={handleEventClick}
-              onTodoClick={handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-          {view === 'day' && (
-            <DayView
-              currentDate={currentDate}
-              events={events}
-              calendars={calendars}
-              todos={todos}
-              todoLists={todoLists}
-              onTimeClick={openCreateEventModal}
-              onEventClick={handleEventClick}
-              onTodoClick={handleTodoClick}
-              completingTodoIds={completingTodoIds}
-              weather={weather}
-              weatherUnits={settings.weatherUnits}
-            />
-          )}
-        </div>
+        <DragProvider canDrag={reschedule.canDrag} isPending={reschedule.isPending} onDrop={reschedule.onDrop}>
+          <div className="m365-calendar-main">
+            {view === 'month' && (
+              <MonthView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onDayClick={handleDayClick}
+                onDayContextMenu={actions.handleDayContextMenu}
+                onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
+                onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+            {view === 'week' && (
+              <WeekView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onDayClick={handleDayClick}
+                onDayContextMenu={actions.handleDayContextMenu}
+                onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
+                onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+            {view === 'day' && (
+              <DayView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onTimeClick={actions.openCreateEventModal}
+                onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
+                onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+          </div>
+        </DragProvider>
       </div>
     </div>
   );

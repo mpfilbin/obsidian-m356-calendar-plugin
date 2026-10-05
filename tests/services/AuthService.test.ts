@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { requestUrl, type RequestUrlResponse } from 'obsidian';
-import { AuthService, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
+import { AuthService, AuthError, isAuthError, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
 
 function makeRequestUrlResponse(status: number, json: unknown): RequestUrlResponse {
@@ -49,9 +49,34 @@ describe('AuthService', () => {
     expect(await auth.getValidToken()).toBe('access-token');
   });
 
-  it('getValidToken throws when not authenticated', async () => {
+  it('getValidToken shares one refresh between concurrent callers', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl).mockResolvedValue(
+      makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 }),
+    );
+    const results = await Promise.all([auth.getValidToken(), auth.getValidToken(), auth.getValidToken()]);
+    expect(results).toEqual(['new-token', 'new-token', 'new-token']);
+    expect(requestUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('getValidToken can refresh again after a failed refresh', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl)
+      .mockResolvedValueOnce(makeRequestUrlResponse(400, { error: 'invalid_grant' }))
+      .mockResolvedValueOnce(
+        makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'r', expires_in: 3600 }),
+      );
+    await expect(auth.getValidToken()).rejects.toBeInstanceOf(AuthError);
+    expect(await auth.getValidToken()).toBe('new-token');
+  });
+
+  it('getValidToken throws a not-signed-in AuthError when not authenticated', async () => {
     getSecret.mockReturnValue(null);
-    await expect(auth.getValidToken()).rejects.toThrow('Not authenticated');
+    const err = await auth.getValidToken().catch((e: unknown) => e);
+    expect(isAuthError(err)).toBe(true);
+    expect((err as AuthError).kind).toBe('not-signed-in');
+    expect((err as AuthError).message).toContain('Not authenticated');
+    expect((err as AuthError).message).toContain('Sign in');
   });
 
   it('getValidToken refreshes token when within 60s buffer', async () => {
@@ -64,12 +89,32 @@ describe('AuthService', () => {
     expect(setSecret).toHaveBeenCalled();
   });
 
-  it('getValidToken throws when refresh fails', async () => {
+  it('treats a 401 on refresh as an expired session and clears the stored tokens', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
     vi.mocked(requestUrl).mockResolvedValue(
       makeRequestUrlResponse(401, { error: 'Unauthorized' }),
     );
-    await expect(auth.getValidToken()).rejects.toThrow('Token refresh failed');
+    const err = await auth.getValidToken().catch((e: unknown) => e);
+    expect(isAuthError(err) && err.kind).toBe('session-expired');
+    expect((err as AuthError).message).toContain('session has expired');
+    expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
+  });
+
+  it.each(['invalid_grant', 'interaction_required'])('treats %s on refresh as an expired session', async (code) => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl).mockResolvedValue(makeRequestUrlResponse(400, { error: code }));
+    const err = await auth.getValidToken().catch((e: unknown) => e);
+    expect(isAuthError(err) && err.kind).toBe('session-expired');
+    expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
+  });
+
+  it('keeps the tokens and throws a plain error on a transient refresh failure', async () => {
+    getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
+    vi.mocked(requestUrl).mockResolvedValue(makeRequestUrlResponse(503, { error: 'temporarily_unavailable' }));
+    const err = await auth.getValidToken().catch((e: unknown) => e);
+    expect(isAuthError(err)).toBe(false);
+    expect((err as Error).message).toContain('Token refresh failed (503)');
+    expect(setSecret).not.toHaveBeenCalled();
   });
 
   it('uses POST with contentType field for token requests so Obsidian routes through main-process net, not renderer fetch', async () => {
@@ -78,7 +123,7 @@ describe('AuthService', () => {
       makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
     );
     await auth.getValidToken();
-    const opts = vi.mocked(requestUrl).mock.calls[0][0] as Record<string, unknown>;
+    const opts = vi.mocked(requestUrl).mock.calls[0][0] as unknown as Record<string, unknown>;
     expect(opts.method).toBe('POST');
     expect(opts.contentType).toBe('application/x-www-form-urlencoded');
     expect(opts.headers).toBeUndefined();

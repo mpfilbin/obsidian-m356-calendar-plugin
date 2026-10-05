@@ -2,13 +2,14 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365TodoList, NewTaskInput, TaskRecurrence } from '../types';
+import { usePending } from '../hooks/usePending';
 import { toDateOnly } from '../lib/datetime';
 
 interface CreateTaskFormProps {
   todoLists: M365TodoList[];
   defaultListId: string;
   initialDate: Date;
-  onSubmit: (listId: string, input: NewTaskInput, steps: string[]) => void;
+  onSubmit: (listId: string, input: NewTaskInput, steps: string[]) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -30,6 +31,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   const [steps, setSteps] = useState<string[]>([]);
   const [newStep, setNewStep] = useState('');
   const [error, setError] = useState('');
+  const { pending: submitting, run } = usePending();
 
   const addStep = () => {
     const text = newStep.trim();
@@ -42,7 +44,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     setSteps((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) {
       setError('Title is required');
       return;
@@ -58,16 +60,22 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     const pendingStep = newStep.trim();
     const allSteps = pendingStep ? [...steps, pendingStep] : steps;
     const recurrence: TaskRecurrence | undefined = repeat ? { frequency, interval: Math.max(1, parseInt(intervalStr) || 1) } : undefined;
-    onSubmit(listId, {
-      title: title.trim(),
-      dueDate,
-      notes: notes.trim() || undefined,
-      recurrence,
-    }, allSteps);
+    setError('');
+    try {
+      await run(() => onSubmit(listId, {
+        title: title.trim(),
+        dueDate,
+        notes: notes.trim() || undefined,
+        recurrence,
+      }, allSteps));
+    } catch (e) {
+      // The caller has already reported the failure; keep the form open with the message.
+      setError(e instanceof Error ? e.message : 'Failed to create task');
+    }
   };
 
   return (
-    <div className="m365-create-task-form">
+    <fieldset className="m365-create-task-form" disabled={submitting} aria-busy={submitting}>
       {error && <div className="m365-form-error">{error}</div>}
       <div className="m365-form-field">
         <label htmlFor="m365-create-task-title">Title</label>
@@ -176,11 +184,11 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
       </div>
       <div className="m365-form-actions">
         <button onClick={onCancel}>Cancel</button>
-        <button className="mod-cta" onClick={handleSubmit}>
-          Create
+        <button className="mod-cta" onClick={() => void handleSubmit()}>
+          {submitting ? 'Creating…' : 'Create'}
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 };
 

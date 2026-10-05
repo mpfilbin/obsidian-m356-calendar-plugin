@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateTaskForm } from '../../src/components/CreateTaskModal';
 import { M365TodoList } from '../../src/types';
@@ -273,5 +273,45 @@ describe('CreateTaskForm', () => {
       expect.objectContaining({ title: 'My task' }),
       expect.arrayContaining(['Pending step']),
     );
+  });
+});
+
+describe('CreateTaskForm — in-flight submit', () => {
+  function renderForm(onSubmit: () => Promise<void>) {
+    render(
+      <CreateTaskForm
+        todoLists={todoLists}
+        defaultListId="list1"
+        initialDate={new Date(2026, 4, 15)}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+  }
+
+  it('disables every control and shows "Creating…" until the request settles', async () => {
+    let finish!: () => void;
+    renderForm(() => new Promise<void>((resolve) => { finish = resolve; }));
+    await userEvent.type(screen.getByLabelText('Title'), 'Pay rent');
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(await screen.findByText('Creating…')).toBeDisabled();
+    expect(screen.getByLabelText('Title')).toBeDisabled();
+    expect(screen.getByLabelText('List')).toBeDisabled();
+    expect(screen.getByLabelText('Add step')).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+
+    finish();
+    await waitFor(() => expect(screen.queryByText('Creating…')).not.toBeInTheDocument());
+  });
+
+  it('re-enables the form and shows the error when the request fails', async () => {
+    renderForm(() => Promise.reject(new Error('Failed to create task: Forbidden')));
+    await userEvent.type(screen.getByLabelText('Title'), 'Pay rent');
+    await userEvent.click(screen.getByText('Create'));
+
+    expect(await screen.findByText('Failed to create task: Forbidden')).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toBeEnabled();
+    expect(screen.getByText('Create')).toBeEnabled();
   });
 });
