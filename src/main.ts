@@ -6,9 +6,10 @@ import { CacheService } from './services/CacheService';
 import { WeatherService, type WeatherTestResult } from './services/WeatherService';
 import { WeatherCacheService, WEATHER_CACHE_KEY } from './services/WeatherCacheService';
 import { TodoService } from './services/TodoService';
+import { TaskCacheService, TASK_CACHE_KEY } from './services/TaskCacheService';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from './settings';
 import { M365CalendarView, VIEW_TYPE_M365_CALENDAR } from './view';
-import { M365CalendarSettings, CacheStore, WeatherCacheStore } from './types';
+import { M365CalendarSettings, CacheStore, WeatherCacheStore, TaskCacheStore } from './types';
 
 export default class M365CalendarPlugin extends Plugin {
   settings!: M365CalendarSettings;
@@ -18,6 +19,7 @@ export default class M365CalendarPlugin extends Plugin {
   private cacheService!: CacheService;
   private weatherCacheService!: WeatherCacheService;
   private weatherService!: WeatherService;
+  private taskCacheService!: TaskCacheService;
   private todoService!: TodoService;
   private saveDataQueue: Promise<void> = Promise.resolve();
   private readonly weatherRefreshHandlers = new Set<() => void>();
@@ -60,6 +62,15 @@ export default class M365CalendarPlugin extends Plugin {
     );
     await this.weatherCacheService.init();
 
+    this.taskCacheService = new TaskCacheService(
+      async () => {
+        const data = await this.loadData();
+        return (data?.[TASK_CACHE_KEY] as TaskCacheStore) ?? {};
+      },
+      async (taskCache) => this.queueSave({ [TASK_CACHE_KEY]: taskCache }),
+    );
+    await this.taskCacheService.init();
+
     this.weatherService = new WeatherService(
       () => this.settings.openWeatherApiKey,
       () => this.settings.weatherLocation,
@@ -92,7 +103,7 @@ export default class M365CalendarPlugin extends Plugin {
 
     this.calendarService = new CalendarService(this.authService, this.cacheService, this.logger);
 
-    this.todoService = new TodoService(this.authService, this.logger);
+    this.todoService = new TodoService(this.authService, this.logger, this.taskCacheService);
 
     this.registerView(VIEW_TYPE_M365_CALENDAR, (leaf) => {
       return new M365CalendarView(leaf, {
@@ -150,12 +161,12 @@ export default class M365CalendarPlugin extends Plugin {
   }
 
   /**
-   * Deletes every locally stored calendar event and its sync metadata (which date ranges were
-   * fetched, and when), then tells open calendar views to re-download calendars, events and tasks
+   * Deletes every locally stored calendar event and task and their sync metadata (which date ranges
+   * or lists were fetched, and when), then tells open calendar views to re-download calendars, events and tasks
    * from scratch. Settings, sign-in and the weather cache are left alone.
    */
   async purgeCalendarData(): Promise<void> {
-    await this.cacheService.clearAll();
+    await Promise.all([this.cacheService.clearAll(), this.taskCacheService.clearAll()]);
     this.resyncHandlers.forEach((cb) => cb());
   }
 

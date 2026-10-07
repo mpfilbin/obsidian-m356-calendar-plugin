@@ -1186,6 +1186,32 @@ describe('CalendarApp', () => {
       expect(screen.getByText('Fresh event')).toBeInTheDocument();
     });
 
+    it('reads tasks through the cache while browsing, but bypasses it for resync, refresh and background refresh', async () => {
+      const { ctx, resync } = makeResyncContext();
+      renderCalendarApp(ctx);
+      await screen.findByText('Pay rent');
+      const getTasks = ctx.todoService.getTasks as ReturnType<typeof vi.fn>;
+      const lastBypass = () => getTasks.mock.calls[getTasks.mock.calls.length - 1][3];
+
+      expect(lastBypass()).toBe(false); // first load
+
+      await userEvent.click(screen.getByText('›')); // next month
+      await waitFor(() => expect(getTasks).toHaveBeenCalledTimes(2));
+      expect(lastBypass()).toBe(false); // navigating may use the cache
+
+      await userEvent.click(screen.getByText('↻')); // Refresh button
+      await waitFor(() => expect(getTasks).toHaveBeenCalledTimes(3));
+      expect(lastBypass()).toBe(true);
+
+      resync();
+      await waitFor(() => expect(getTasks).toHaveBeenCalledTimes(4));
+      expect(lastBypass()).toBe(true);
+
+      act(() => { vi.advanceTimersByTime(10 * 60 * 1000); }); // background refresh interval
+      await waitFor(() => expect(getTasks).toHaveBeenCalledTimes(5));
+      expect(lastBypass()).toBe(true);
+    });
+
     it('keeps which calendars and task lists are enabled', async () => {
       const { ctx, resync } = makeResyncContext();
       renderCalendarApp(ctx);

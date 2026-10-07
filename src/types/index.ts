@@ -160,3 +160,11 @@ export type WeatherCacheStore = Record<string, WeatherCacheEntry>; // key: "YYYY
 export type DayContextMenuPayload =
   | { kind: 'timed'; dateTime: Date }   // timeline right-click — includes computed time
   | { kind: 'allday'; date: Date }      // month cell, week header, or all-day row
+
+export interface TaskCacheEntry {
+  /** Every open task in the list that has a due date, whatever range was being viewed. */
+  tasks: M365TodoItem[];
+  fetchedAt: number;
+}
+
+export type TaskCacheStore = Record<string, TaskCacheEntry>; // key: task list id

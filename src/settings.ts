@@ -223,7 +223,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Purge calendar and task data')
-      .setDesc('Delete all locally stored calendar events and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addButton((button) =>
         button
           .setButtonText('Purge and resync')

@@ -58,7 +58,7 @@ export const CalendarApp: React.FC = () => {
     const interval = setInterval(() => {
       void fetchAll({ reloadCalendars: true });
       void fetchWeather();
-      void fetchTodos();
+      void fetchTodos({ reloadLists: true });
     }, ms);
     return () => clearInterval(interval);
   }, [fetchAll, fetchWeather, fetchTodos, settings.refreshIntervalMinutes]);

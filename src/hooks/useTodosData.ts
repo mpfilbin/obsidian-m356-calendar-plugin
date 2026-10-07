@@ -32,7 +32,8 @@ export function useTodosData(
       }
       if (enabledTodoListIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
-        const tasks = await todoService.getTasks(enabledTodoListIds, start, end);
+        // A reload (refresh button, background refresh, resync) must see remote changes, so skip the cache.
+        const tasks = await todoService.getTasks(enabledTodoListIds, start, end, !!options.reloadLists);
         if (isStale()) return;
         setTodos(tasks);
       } else {
