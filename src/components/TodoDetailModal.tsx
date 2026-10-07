@@ -4,6 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { M365TodoItem, M365TodoList, M365ChecklistItem } from '../types';
 import { TodoService } from '../services/TodoService';
 import { usePending } from '../hooks/usePending';
+import { appLogger } from '../lib/logger';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     let cancelled = false;
     void todoService.getChecklistItems(todo.listId, todo.id)
       .then((items) => { if (!cancelled) setChecklistItems(items); })
-      .catch((e: unknown) => { if (!cancelled) console.error('Failed to load checklist items:', e); })
+      .catch((e: unknown) => { if (!cancelled) appLogger.error('[M365 Calendar] Failed to load checklist items:', e); })
       .finally(() => { if (!cancelled) setLoadingChecklist(false); });
     return () => { cancelled = true; };
   }, [todo.listId, todo.id, todoService]);
@@ -63,7 +64,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     setChecklistItems(nextItems);
     const allChecked = nextItems.length > 0 && nextItems.every((i) => i.isChecked);
     void trackChecklistOp(todoService.updateChecklistItem(todo.listId, todo.id, item.id, { isChecked: updated.isChecked }))
-      .catch((e: unknown) => console.error('Failed to update checklist item:', e))
+      .catch((e: unknown) => appLogger.error('[M365 Calendar] Failed to update checklist item:', e))
       .then(() => { if (allChecked) void runMainAction('complete', onComplete); });
   };
 
@@ -73,7 +74,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     setNewItemText('');
     void trackChecklistOp(todoService.createChecklistItem(todo.listId, todo.id, text))
       .then((created) => setChecklistItems((prev) => [...prev, created]))
-      .catch((e: unknown) => console.error('Failed to create checklist item:', e));
+      .catch((e: unknown) => appLogger.error('[M365 Calendar] Failed to create checklist item:', e));
   };
 
   const handleDelete = (itemId: string) => {
@@ -82,7 +83,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
     setChecklistItems((items) => items.filter((i) => i.id !== itemId));
     void trackChecklistOp(todoService.deleteChecklistItem(todo.listId, todo.id, itemId))
       .catch((e: unknown) => {
-        console.error('Failed to delete checklist item:', e);
+        appLogger.error('[M365 Calendar] Failed to delete checklist item:', e);
         setChecklistItems((items) => {
           const next = [...items];
           next.splice(index, 0, item);

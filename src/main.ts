@@ -1,5 +1,5 @@
 import { Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
-import { SwitchableLogger } from './lib/logger';
+import { appLogger, SwitchableLogger } from './lib/logger';
 import { AuthService } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
@@ -39,7 +39,8 @@ export default class M365CalendarPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    this.logger = new SwitchableLogger(this.settings.debugLogging);
+    this.logger = appLogger;
+    this.logger.setEnabled(this.settings.debugLogging);
 
     this.cacheService = new CacheService(
       async () => {

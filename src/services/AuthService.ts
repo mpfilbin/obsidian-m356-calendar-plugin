@@ -122,7 +122,8 @@ export class AuthService {
       };
 
       const authUrl = this.buildAuthUrl(redirectUri, codeChallenge, state);
-      this.logger.log('[M365 Auth] Opening auth URL:', authUrl);
+      // Log the endpoint only; the query string carries the client id, state and PKCE challenge.
+      this.logger.log('[M365 Auth] Opening auth URL:', authUrl.split('?')[0]);
       this.openUrl(authUrl).catch((err: unknown) => {
         clearTimeout(timeoutHandle);
         this.pendingSignIn = null;

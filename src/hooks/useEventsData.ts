@@ -4,6 +4,7 @@ import { M365Calendar, M365Event, ViewType } from '../types';
 import { useAppContext } from '../context';
 import { getDateRange } from '../lib/datetime';
 import { notifyError } from '../lib/notify';
+import { appLogger } from '../lib/logger';
 import { isAuthError } from '../services/AuthService';
 
 /**
@@ -67,7 +68,7 @@ export function useEventsData(currentDate: Date, view: ViewType) {
         notifyError(e);
         setError(e instanceof Error ? e.message : 'Failed to load calendar data');
       } else {
-        console.error('M365 Calendar:', e);
+        appLogger.error('[M365 Calendar] Failed to refresh events:', e);
         setRefreshFailed(true);
       }
     } finally {

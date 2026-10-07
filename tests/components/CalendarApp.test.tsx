@@ -231,7 +231,7 @@ describe('CalendarApp', () => {
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalledWith(
-        'M365 Calendar:',
+        '[M365 Calendar]',
         expect.objectContaining({ message: 'Not authenticated' }),
       );
     });

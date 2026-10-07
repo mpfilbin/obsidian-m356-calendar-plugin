@@ -2,6 +2,7 @@ import { App, Modal } from 'obsidian';
 import React, { StrictMode, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { M365Event, M365Calendar, EventPatch } from '../types';
+import { appLogger } from '../lib/logger';
 import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
     try {
       await handler();
     } catch (e) {
-      console.error('M365 Calendar:', e);
+      appLogger.error('[M365 Calendar]', e);
       setError(e instanceof Error ? e.message : 'Failed to delete event');
       setConfirmingDelete(false);
     } finally {
