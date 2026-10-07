@@ -207,6 +207,27 @@ describe('AuthService', () => {
       expect(openUrl).toHaveBeenCalledWith(expect.stringContaining('login.microsoftonline.com'));
     });
 
+    it('does not put the authorization URL query (client id, state, PKCE challenge) in the debug log', async () => {
+      const logger = { log: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const loggedAuth = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl, logger);
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
+      openUrl.mockImplementation((url: string) => {
+        const state = new URL(url).searchParams.get('state') ?? '';
+        loggedAuth.handleOAuthCallback({ action: 'm365-callback', code: 'auth-code', state });
+        return Promise.resolve();
+      });
+      await loggedAuth.signIn();
+
+      const opening = logger.log.mock.calls.find((c) => String(c[0]).includes('Opening auth URL'));
+      expect(opening).toBeDefined();
+      expect(opening![1]).toBe('https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+      const everything = JSON.stringify(logger.log.mock.calls);
+      expect(everything).not.toContain('code_challenge');
+      expect(everything).not.toContain('auth-code');
+    });
+
     it('rejects pending signIn when params contain an error', async () => {
       openUrl.mockImplementation((url: string) => {
         const state = new URL(url).searchParams.get('state') ?? '';

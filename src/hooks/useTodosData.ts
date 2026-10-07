@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { M365TodoList, M365TodoItem, ViewType } from '../types';
 import { useAppContext } from '../context';
 import { getDateRange } from '../lib/datetime';
+import { appLogger } from '../lib/logger';
 
 /** Owns the task lists, the enabled-list selection and the tasks due in the visible range. */
 export function useTodosData(
@@ -31,7 +32,8 @@ export function useTodosData(
       }
       if (enabledTodoListIds.length > 0) {
         const { start, end } = getDateRange(currentDate, view);
-        const tasks = await todoService.getTasks(enabledTodoListIds, start, end);
+        // A reload (refresh button, background refresh, resync) must see remote changes, so skip the cache.
+        const tasks = await todoService.getTasks(enabledTodoListIds, start, end, !!options.reloadLists);
         if (isStale()) return;
         setTodos(tasks);
       } else {
@@ -40,7 +42,7 @@ export function useTodosData(
     } catch (e) {
       if (listFetchAttempted) listsLoadedRef.current = false;
       if (isStale()) return;
-      console.error('M365 Calendar todos:', e);
+      appLogger.error('[M365 Calendar] Failed to load tasks:', e);
       setRefreshFailed(true);
     }
   }, [todoService, enabledTodoListIds, currentDate, view]);

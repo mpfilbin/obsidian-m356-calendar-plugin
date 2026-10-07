@@ -4,6 +4,7 @@ import { GraphClient } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
+import { TaskCacheService } from './TaskCacheService';
 
 const TODO_LIST_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#84cc16',
@@ -26,6 +27,7 @@ export class TodoService {
   constructor(
     auth: AuthService,
     logger: Logger = new NullLogger(),
+    private readonly cache?: TaskCacheService,
   ) {
     this.graph = new GraphClient(auth, logger);
   }
@@ -46,20 +48,40 @@ export class TodoService {
     }));
   }
 
-  async getTasks(listIds: string[], start: Date, end: Date): Promise<M365TodoItem[]> {
+  /**
+   * Open tasks due within [start, end]. Served from the cache when it holds a fresh copy of the
+   * list; `bypassCache` forces a fetch (and refreshes the cache).
+   */
+  async getTasks(listIds: string[], start: Date, end: Date, bypassCache = false): Promise<M365TodoItem[]> {
     if (listIds.length === 0) return [];
     const startStr = toDateOnly(start);
     const endStr = toDateOnly(end);
     const results = await Promise.all(
-      listIds.map((id) => this.getTasksForList(id, startStr, endStr)),
+      listIds.map((id) => this.getTasksForList(id, startStr, endStr, bypassCache)),
     );
     return results.flat();
   }
 
-  private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
+  private async getTasksForList(
+    listId: string,
+    startDate: string,
+    endDate: string,
+    bypassCache: boolean,
+  ): Promise<M365TodoItem[]> {
+    let open = bypassCache ? null : this.cache?.get(listId) ?? null;
+    if (open === null) {
+      const epoch = this.cache?.epoch;
+      open = await this.fetchOpenTasks(listId);
+      await this.cache?.set(listId, open, epoch);
+    }
+    return open.filter((task) => task.dueDate >= startDate && task.dueDate <= endDate);
+  }
+
+  /** Every open task in the list that has a due date. */
+  private async fetchOpenTasks(listId: string): Promise<M365TodoItem[]> {
     // Fetch the whole list and filter locally. Do not add $filter/$select here: Graph answered a
     // `$filter=status ne 'completed'` request for a real list with HTTP 400 (RequestBroker--ParseUri),
-    // while the plain request works. Completed tasks and the due-date range are dropped below.
+    // while the plain request works. Completed and undated tasks are dropped below.
     await this.semaphore.acquire();
     let allTasks: Record<string, unknown>[];
     try {
@@ -69,13 +91,7 @@ export class TodoService {
     }
 
     return allTasks
-      .filter((task) => {
-        if (task.status === 'completed') return false;
-        const due = (task.dueDateTime as { dateTime: string } | null)?.dateTime;
-        if (!due) return false;
-        const dueDate = due.slice(0, 10);
-        return dueDate >= startDate && dueDate <= endDate;
-      })
+      .filter((task) => task.status !== 'completed' && !!(task.dueDateTime as { dateTime: string } | null)?.dateTime)
       .map((task) => ({
         id: task.id as string,
         title: task.title as string,
@@ -90,6 +106,7 @@ export class TodoService {
     await this.graph.send('PATCH', TodoService.taskPath(listId, taskId), 'complete task', {
       body: { status: 'completed' },
     });
+    await this.cache?.invalidate(listId);
   }
 
   /** Changes only the due date of a task ("YYYY-MM-DD"). */
@@ -97,10 +114,12 @@ export class TodoService {
     await this.graph.send('PATCH', TodoService.taskPath(listId, taskId), 'reschedule task', {
       body: { dueDateTime: { dateTime: `${dueDate}T00:00:00`, timeZone: 'UTC' } },
     });
+    await this.cache?.invalidate(listId);
   }
 
   async deleteTask(listId: string, taskId: string): Promise<void> {
     await this.graph.send('DELETE', TodoService.taskPath(listId, taskId), 'delete task');
+    await this.cache?.invalidate(listId);
   }
 
   async getChecklistItems(listId: string, taskId: string): Promise<M365ChecklistItem[]> {
@@ -172,6 +191,7 @@ export class TodoService {
     const data = await this.graph.json<Record<string, unknown>>(
       'POST', TodoService.taskPath(listId), 'create task', { body },
     );
+    await this.cache?.invalidate(listId);
     return {
       id: data.id as string,
       title: data.title as string,

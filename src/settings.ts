@@ -1,6 +1,7 @@
 import { App, type ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
 import M365CalendarPlugin from './main';
 import { M365CalendarSettings } from './types';
+import { appLogger } from './lib/logger';
 
 export const DEFAULT_SETTINGS: M365CalendarSettings = {
   clientId: '',
@@ -84,7 +85,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
               this.display();
             } catch (e) {
               signInBtn.setDisabled(false);
-              console.error('M365 Calendar: Sign in failed', e);
+              appLogger.error('[M365 Calendar] Sign in failed', e);
               new Notice('M365 Calendar: Sign in failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
             }
           });
@@ -95,7 +96,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             await this.plugin.authService.signOut();
             signInBtn.setDisabled(false);
           } catch (e) {
-            console.error('M365 Calendar: Sign out failed', e);
+            appLogger.error('[M365 Calendar] Sign out failed', e);
             new Notice('M365 Calendar: Sign out failed. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
           }
         }),
@@ -222,7 +223,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Purge calendar and task data')
-      .setDesc('Delete all locally stored calendar events and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
       .addButton((button) =>
         button
           .setButtonText('Purge and resync')
@@ -233,7 +234,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
               await this.plugin.purgeCalendarData();
               new Notice('Calendar and task data purged. Resyncing…');
             } catch (e) {
-              console.error('M365 Calendar: purge failed', e);
+              appLogger.error('[M365 Calendar] Purge failed', e);
               new Notice('M365 Calendar: Could not purge calendar data. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
             } finally {
               button.setDisabled(false);

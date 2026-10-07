@@ -79,7 +79,7 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 | Tenant ID | `common` for personal + work, or your tenant ID | `common` |
 | Default view | Month or Week | Month |
 | Background refresh interval | How often to sync with M365 (minutes) | 10 |
-| Purge calendar and task data | Button: deletes locally stored events and sync information, then re-downloads calendars, events and tasks. Keeps your settings and sign-in. Use it to force a full resync | — |
+| Purge calendar and task data | Button: deletes locally stored events, tasks and sync information, then re-downloads calendars, events and tasks. Keeps your settings and sign-in. Use it to force a full resync | — |
 | Clear weather cache | Button: purges cached weather so it is fetched again | — |
 
 ## Troubleshooting

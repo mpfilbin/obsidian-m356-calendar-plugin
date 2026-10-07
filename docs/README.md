@@ -12,12 +12,12 @@
 | `services/GraphClient.ts` | Microsoft Graph transport: bearer auth, 429 retry, pagination, error mapping |
 | `services/CalendarService.ts`, `TodoService.ts` | Calendar / To Do operations built on `GraphClient` |
 | `services/AuthService.ts` | OAuth sign-in and coalesced token refresh |
-| `services/CacheService.ts`, `WeatherCacheService.ts` | Persisted event and weather caches |
+| `services/CacheService.ts`, `TaskCacheService.ts`, `WeatherCacheService.ts` | Persisted event, task and weather caches. Event and task caches share the purge-and-resync flow and an epoch guard so in-flight fetches can't repopulate a purged cache |
 | `hooks/useEventsData.ts`, `useTodosData.ts`, `useWeather.ts` | Data loading per concern; each ignores responses superseded by newer requests |
 | `hooks/useCalendarActions.ts` | Modals, context menu, and event/task mutations |
 | `hooks/useReschedule.ts`, `hooks/useDragDrop.ts`, `DragContext.tsx`, `lib/reschedule.ts` | Drag-and-drop: optimistic move + rollback, drag sources/drop zones, and the pure date/time maths |
-| `components/` | React views (`CalendarApp` composes the hooks) and Obsidian-modal wrappers |
-| `lib/` | Pure helpers (dates, layout, retry, logging) |
+| `components/` | React views (`CalendarApp` composes the hooks) and dialogs. Dialogs extend `ReactModal`, which mounts/unmounts React and provides `closeAfter()` |
+| `lib/` | Pure helpers (dates, layout, retry). `lib/logger.ts` has the plugin-wide `appLogger`: debug output only when "Debug logging" is on, warnings and errors always |
 
 Settings flow: the settings tab and the view both go through `Plugin.saveSettings`; open views receive
 changes (debounced) via `subscribeSettings`, so no reload is needed.

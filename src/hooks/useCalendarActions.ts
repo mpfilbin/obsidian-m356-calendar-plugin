@@ -10,6 +10,7 @@ import { useAppContext } from '../context';
 import { usePopoverContext } from '../PopoverContext';
 import { getDateRange, toDateOnly } from '../lib/datetime';
 import { notifyError } from '../lib/notify';
+import { appLogger } from '../lib/logger';
 
 export interface CalendarActionsDeps {
   currentDate: Date;
@@ -260,7 +261,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
   const handleTodoClick = (todo: M365TodoItem) => {
     const list = todoLists.find((l) => l.id === todo.listId);
     if (!list) {
-      console.warn('M365 Calendar: todo list not found for task', todo.id);
+      appLogger.warn('[M365 Calendar] Task list not found for task', todo.id);
       return;
     }
     const { onComplete, onDelete } = todoActions(todo);

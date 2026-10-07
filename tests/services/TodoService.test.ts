@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TodoService } from '../../src/services/TodoService';
 import { AuthService } from '../../src/services/AuthService';
+import { TaskCacheService } from '../../src/services/TaskCacheService';
 
 describe('TodoService', () => {
   let auth: Pick<AuthService, 'getValidToken'>;
@@ -48,6 +49,100 @@ describe('TodoService', () => {
       vi.stubGlobal('fetch', fetchMock);
       const tasks = await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 3, 30));
       expect(tasks.map((t) => t.id)).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('task cache', () => {
+    const due = (day: string) => ({ dateTime: `${day}T00:00:00.0000000`, timeZone: 'UTC' });
+    const graphTasks = [
+      { id: 'apr', title: 'April', status: 'notStarted', dueDateTime: due('2026-04-10') },
+      { id: 'may', title: 'May', status: 'notStarted', dueDateTime: due('2026-05-10') },
+      { id: 'done', title: 'Done', status: 'completed', dueDateTime: due('2026-04-11') },
+      { id: 'undated', title: 'Undated', status: 'notStarted', dueDateTime: null },
+    ];
+    const april = [new Date(2026, 3, 1), new Date(2026, 3, 30)] as const;
+    const may = [new Date(2026, 4, 1), new Date(2026, 4, 31)] as const;
+    let taskCache: TaskCacheService;
+    let cached: TodoService;
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      taskCache = new TaskCacheService(vi.fn().mockResolvedValue({}), vi.fn().mockResolvedValue(undefined));
+      cached = new TodoService(auth as AuthService, undefined, taskCache);
+      fetchMock = vi.fn().mockImplementation(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ value: graphTasks }) }));
+      vi.stubGlobal('fetch', fetchMock);
+    });
+
+    it('serves other date ranges of the same list from the cache without another request', async () => {
+      expect((await cached.getTasks(['list1'], ...april)).map((t) => t.id)).toEqual(['apr']);
+      expect((await cached.getTasks(['list1'], ...may)).map((t) => t.id)).toEqual(['may']);
+      expect((await cached.getTasks(['list1'], ...april)).map((t) => t.id)).toEqual(['apr']);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('caches only open, dated tasks', async () => {
+      await cached.getTasks(['list1'], ...april);
+      expect(taskCache.get('list1')?.map((t) => t.id)).toEqual(['apr', 'may']);
+    });
+
+    it('fetches each list once and keeps lists separate', async () => {
+      await cached.getTasks(['list1', 'list2'], ...april);
+      await cached.getTasks(['list1', 'list2'], ...may);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('bypassCache refetches and refreshes the cache', async () => {
+      await cached.getTasks(['list1'], ...april);
+      graphTasks.push({ id: 'new', title: 'New', status: 'notStarted', dueDateTime: due('2026-04-20') });
+      try {
+        const tasks = await cached.getTasks(['list1'], ...april, true);
+        expect(tasks.map((t) => t.id)).toEqual(['apr', 'new']);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(taskCache.get('list1')?.map((t) => t.id)).toContain('new');
+      } finally {
+        graphTasks.pop();
+      }
+    });
+
+    it.each([
+      ['completeTask', (s: TodoService) => s.completeTask('list1', 't1')],
+      ['deleteTask', (s: TodoService) => s.deleteTask('list1', 't1')],
+      ['updateTaskDueDate', (s: TodoService) => s.updateTaskDueDate('list1', 't1', '2026-04-12')],
+      ['createTask', (s: TodoService) => s.createTask('list1', { title: 'x', dueDate: '2026-04-12' })],
+    ])('%s drops that list from the cache so it is refetched next time', async (_name, mutate) => {
+      await cached.getTasks(['list1'], ...april);
+      await cached.getTasks(['list2'], ...april);
+      fetchMock.mockImplementation(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ value: graphTasks, id: 't1', title: 'x' }) }));
+      await mutate(cached);
+      expect(taskCache.get('list1')).toBeNull();
+      expect(taskCache.get('list2')).not.toBeNull();
+    });
+
+    it('a failed mutation leaves the cache alone', async () => {
+      await cached.getTasks(['list1'], ...april);
+      fetchMock.mockResolvedValue({ ok: false, status: 403, statusText: 'Forbidden' });
+      await expect(cached.completeTask('list1', 't1')).rejects.toThrow('Forbidden');
+      expect(taskCache.get('list1')).not.toBeNull();
+    });
+
+    it('does not cache a fetch that began before a purge', async () => {
+      let release!: () => void;
+      fetchMock.mockImplementation(() => new Promise((resolve) => {
+        release = () => resolve({ ok: true, json: () => Promise.resolve({ value: graphTasks }) });
+      }));
+      const pending = cached.getTasks(['list1'], ...april);
+      await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+      await taskCache.clearAll();
+      release();
+      await pending;
+      expect(taskCache.get('list1')).toBeNull();
+    });
+
+    it('works without a cache (every call fetches)', async () => {
+      const plain = new TodoService(auth as AuthService);
+      await plain.getTasks(['list1'], ...april);
+      await plain.getTasks(['list1'], ...april);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
 

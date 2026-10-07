@@ -233,7 +233,7 @@ describe('EventDetailForm', () => {
     await userEvent.click(screen.getByText('Delete'));
     await userEvent.click(screen.getByText('Delete event'));
     await waitFor(() =>
-      expect(console.error).toHaveBeenCalledWith('M365 Calendar:', error),
+      expect(console.error).toHaveBeenCalledWith('[M365 Calendar]', error),
     );
   });
 
