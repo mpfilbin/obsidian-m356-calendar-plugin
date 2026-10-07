@@ -16,6 +16,7 @@ describe('M365CalendarSettingTab', () => {
     };
     clearWeatherCache: ReturnType<typeof vi.fn>;
     testWeatherConnection: ReturnType<typeof vi.fn>;
+    purgeCalendarData: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -30,6 +31,7 @@ describe('M365CalendarSettingTab', () => {
         isAuthenticated: vi.fn().mockResolvedValue(false),
       },
       clearWeatherCache: vi.fn().mockResolvedValue(undefined),
+      purgeCalendarData: vi.fn().mockResolvedValue(undefined),
       testWeatherConnection: vi.fn().mockResolvedValue({ ok: true, message: 'Connected. Weather will be shown for London, GB.' }),
     };
     tab = new M365CalendarSettingTab(
@@ -68,5 +70,32 @@ describe('M365CalendarSettingTab', () => {
     await testSetting!.buttons[0].simulateClick();
     expect(mockPlugin.testWeatherConnection).toHaveBeenCalledTimes(1);
     expect(Notice).toHaveBeenCalledWith(expect.stringContaining('London, GB'), 5000);
+  });
+
+  describe('purge calendar and task data', () => {
+    const purgeButton = () =>
+      _getSettingInstances().find((s) => s.name === 'Purge calendar and task data')!.buttons[0];
+
+    it('purges stored calendar data and tells the user it is resyncing', async () => {
+      tab.display();
+      await purgeButton().simulateClick();
+      expect(mockPlugin.purgeCalendarData).toHaveBeenCalledTimes(1);
+      expect(Notice).toHaveBeenCalledWith(expect.stringContaining('Resyncing'));
+    });
+
+    it('is separate from the weather cache button and does not touch it', async () => {
+      tab.display();
+      await purgeButton().simulateClick();
+      expect(mockPlugin.clearWeatherCache).not.toHaveBeenCalled();
+    });
+
+    it('reports a failure instead of claiming success', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockPlugin.purgeCalendarData.mockRejectedValue(new Error('disk full'));
+      tab.display();
+      await purgeButton().simulateClick();
+      expect(Notice).toHaveBeenCalledWith(expect.stringContaining('Could not purge'));
+      expect(Notice).not.toHaveBeenCalledWith(expect.stringContaining('Resyncing'));
+    });
   });
 });

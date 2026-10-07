@@ -218,6 +218,29 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           }),
       );
 
+    new Setting(containerEl).setName('Calendar data').setHeading();
+
+    new Setting(containerEl)
+      .setName('Purge calendar and task data')
+      .setDesc('Delete all locally stored calendar events and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addButton((button) =>
+        button
+          .setButtonText('Purge and resync')
+          .setWarning()
+          .onClick(async () => {
+            button.setDisabled(true);
+            try {
+              await this.plugin.purgeCalendarData();
+              new Notice('Calendar and task data purged. Resyncing…');
+            } catch (e) {
+              console.error('M365 Calendar: purge failed', e);
+              new Notice('M365 Calendar: Could not purge calendar data. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
+            } finally {
+              button.setDisabled(false);
+            }
+          }),
+      );
+
     new Setting(containerEl).setName('Advanced').setHeading();
 
     new Setting(containerEl)
