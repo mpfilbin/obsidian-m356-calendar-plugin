@@ -41,11 +41,16 @@ export const CalendarApp: React.FC = () => {
   });
 
   // "Purge calendar and task data" in settings: drop everything and refetch from scratch.
+  // Keep a ref to the latest resync so the subscribed callback never goes stale.
+  const { resync: resyncEvents } = eventsData;
+  const { resync: resyncTodos } = todosData;
   const resyncRef = useRef<() => void>(() => {});
-  resyncRef.current = () => {
-    eventsData.resync();
-    todosData.resync();
-  };
+  useEffect(() => {
+    resyncRef.current = () => {
+      resyncEvents();
+      resyncTodos();
+    };
+  }, [resyncEvents, resyncTodos]);
   useEffect(() => subscribeResync(() => resyncRef.current()), [subscribeResync]);
 
   useEffect(() => {
