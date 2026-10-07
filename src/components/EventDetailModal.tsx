@@ -1,6 +1,6 @@
-import { App, Modal } from 'obsidian';
-import React, { StrictMode, useState } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { App } from 'obsidian';
+import React, { useState, type ReactNode } from 'react';
+import { ReactModal } from './ReactModal';
 import { M365Event, M365Calendar, EventPatch } from '../types';
 import { appLogger } from '../lib/logger';
 import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
@@ -273,9 +273,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export class EventDetailModal extends Modal {
-  private root: Root | null = null;
-
+export class EventDetailModal extends ReactModal {
   constructor(
     app: App,
     private readonly event: M365Event,
@@ -288,40 +286,24 @@ export class EventDetailModal extends Modal {
     super(app);
   }
 
-  onOpen(): void {
-    this.titleEl.setText('Edit event');
-    this.root = createRoot(this.contentEl);
-    const onDelete = this.onDeleteCallback
-      ? async () => {
-          await this.onDeleteCallback!();
-          this.close();
-        }
-      : undefined;
-    const onDeleteSeries = this.onDeleteSeriesCallback
-      ? async () => {
-          await this.onDeleteSeriesCallback!();
-          this.close();
-        }
-      : undefined;
-    this.root.render(
-      <StrictMode>
-        <EventDetailForm
-          event={this.event}
-          calendars={this.calendars}
-          onSave={async (patch, targetCalendarId) => {
-            await this.onSaveCallback(patch, targetCalendarId);
-            this.close();
-            this.onSaved();
-          }}
-          onCancel={() => this.close()}
-          onDelete={onDelete}
-          onDeleteSeries={onDeleteSeries}
-        />
-      </StrictMode>,
-    );
+  protected getTitle(): string {
+    return 'Edit event';
   }
 
-  onClose(): void {
-    this.root?.unmount();
+  protected renderContent(): ReactNode {
+    const { onDeleteCallback, onDeleteSeriesCallback } = this;
+    return (
+      <EventDetailForm
+        event={this.event}
+        calendars={this.calendars}
+        onSave={async (patch, targetCalendarId) => {
+          await this.closeAfter(() => this.onSaveCallback(patch, targetCalendarId));
+          this.onSaved();
+        }}
+        onCancel={() => this.close()}
+        onDelete={onDeleteCallback ? () => this.closeAfter(onDeleteCallback) : undefined}
+        onDeleteSeries={onDeleteSeriesCallback ? () => this.closeAfter(onDeleteSeriesCallback) : undefined}
+      />
+    );
   }
 }

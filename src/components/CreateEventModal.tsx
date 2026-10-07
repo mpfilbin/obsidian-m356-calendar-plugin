@@ -1,6 +1,6 @@
-import { App, Modal } from 'obsidian';
-import React, { StrictMode, useState } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { App } from 'obsidian';
+import React, { useState, type ReactNode } from 'react';
+import { ReactModal } from './ReactModal';
 import { M365Calendar, NewEventInput, EventRecurrence, RecurrenceFrequency, DayOfWeek, WeekIndex, RecurrenceEndType } from '../types';
 import { usePending } from '../hooks/usePending';
 import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
@@ -438,9 +438,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   );
 };
 
-export class CreateEventModal extends Modal {
-  private root: Root | null = null;
-
+export class CreateEventModal extends ReactModal {
   constructor(
     app: App,
     private readonly calendars: M365Calendar[],
@@ -455,27 +453,20 @@ export class CreateEventModal extends Modal {
     super(app);
   }
 
-  onOpen(): void {
-    this.titleEl.setText('New event');
-    this.root = createRoot(this.contentEl);
-    this.root.render(
-      <StrictMode>
-        <CreateEventForm
-          calendars={this.calendars}
-          defaultCalendarId={this.defaultCalendarId}
-          initialDate={this.initialDate}
-          initialAllDay={this.initialAllDay}
-          onSubmit={async (calendarId, event) => {
-            await this.onSubmit(calendarId, event);
-            this.close();
-          }}
-          onCancel={() => this.close()}
-        />
-      </StrictMode>,
-    );
+  protected getTitle(): string {
+    return 'New event';
   }
 
-  onClose(): void {
-    this.root?.unmount();
+  protected renderContent(): ReactNode {
+    return (
+      <CreateEventForm
+        calendars={this.calendars}
+        defaultCalendarId={this.defaultCalendarId}
+        initialDate={this.initialDate}
+        initialAllDay={this.initialAllDay}
+        onSubmit={(calendarId, event) => this.closeAfter(() => this.onSubmit(calendarId, event))}
+        onCancel={() => this.close()}
+      />
+    );
   }
 }

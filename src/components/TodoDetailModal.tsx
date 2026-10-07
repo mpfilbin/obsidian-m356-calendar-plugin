@@ -1,6 +1,6 @@
-import { App, Modal } from 'obsidian';
-import React, { StrictMode, useState, useEffect } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { App } from 'obsidian';
+import React, { useState, useEffect, type ReactNode } from 'react';
+import { ReactModal } from './ReactModal';
 import { M365TodoItem, M365TodoList, M365ChecklistItem } from '../types';
 import { TodoService } from '../services/TodoService';
 import { usePending } from '../hooks/usePending';
@@ -204,9 +204,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export class TodoDetailModal extends Modal {
-  private root: Root | null = null;
-
+export class TodoDetailModal extends ReactModal {
   constructor(
     app: App,
     private readonly todo: M365TodoItem,
@@ -218,34 +216,21 @@ export class TodoDetailModal extends Modal {
     super(app);
   }
 
-  onOpen(): void {
-    this.titleEl.setText(this.todo.title);
-    // Stay open (disabled, see TodoDetailForm) until the request settles; a rejection keeps
-    // the dialog open so the form can show the error.
-    const handleComplete = async () => {
-      await this.onComplete();
-      this.close();
-    };
-    const handleDelete = async () => {
-      await this.onDelete();
-      this.close();
-    };
-    this.root = createRoot(this.contentEl);
-    this.root.render(
-      <StrictMode>
-        <TodoDetailForm
-          todo={this.todo}
-          todoList={this.todoList}
-          todoService={this.todoService}
-          onComplete={handleComplete}
-          onDelete={handleDelete}
-        />
-      </StrictMode>,
-    );
+  protected getTitle(): string {
+    return this.todo.title;
   }
 
-  onClose(): void {
-    this.root?.unmount();
-    this.root = null;
+  protected renderContent(): ReactNode {
+    // Stay open (disabled, see TodoDetailForm) until the request settles; a rejection keeps
+    // the dialog open so the form can show the error.
+    return (
+      <TodoDetailForm
+        todo={this.todo}
+        todoList={this.todoList}
+        todoService={this.todoService}
+        onComplete={() => this.closeAfter(this.onComplete)}
+        onDelete={() => this.closeAfter(this.onDelete)}
+      />
+    );
   }
 }

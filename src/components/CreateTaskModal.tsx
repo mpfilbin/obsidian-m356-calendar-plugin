@@ -1,6 +1,6 @@
-import { App, Modal } from 'obsidian';
-import React, { StrictMode, useState } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { App } from 'obsidian';
+import React, { useState, type ReactNode } from 'react';
+import { ReactModal } from './ReactModal';
 import { M365TodoList, NewTaskInput, TaskRecurrence } from '../types';
 import { usePending } from '../hooks/usePending';
 import { toDateOnly } from '../lib/datetime';
@@ -192,9 +192,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   );
 };
 
-export class CreateTaskModal extends Modal {
-  private root: Root | null = null;
-
+export class CreateTaskModal extends ReactModal {
   constructor(
     app: App,
     private readonly todoLists: M365TodoList[],
@@ -209,26 +207,19 @@ export class CreateTaskModal extends Modal {
     super(app);
   }
 
-  onOpen(): void {
-    this.titleEl.setText('New task');
-    this.root = createRoot(this.contentEl);
-    this.root.render(
-      <StrictMode>
-        <CreateTaskForm
-          todoLists={this.todoLists}
-          defaultListId={this.defaultListId}
-          initialDate={this.initialDate}
-          onSubmit={async (listId, input, steps) => {
-            await this.onSubmit(listId, input, steps);
-            this.close();
-          }}
-          onCancel={() => this.close()}
-        />
-      </StrictMode>,
-    );
+  protected getTitle(): string {
+    return 'New task';
   }
 
-  onClose(): void {
-    this.root?.unmount();
+  protected renderContent(): ReactNode {
+    return (
+      <CreateTaskForm
+        todoLists={this.todoLists}
+        defaultListId={this.defaultListId}
+        initialDate={this.initialDate}
+        onSubmit={(listId, input, steps) => this.closeAfter(() => this.onSubmit(listId, input, steps))}
+        onCancel={() => this.close()}
+      />
+    );
   }
 }

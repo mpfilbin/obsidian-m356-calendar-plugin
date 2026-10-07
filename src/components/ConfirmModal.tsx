@@ -1,6 +1,6 @@
-import { App, Modal } from 'obsidian';
-import React, { StrictMode, useState } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { App } from 'obsidian';
+import React, { useState, type ReactNode } from 'react';
+import { ReactModal } from './ReactModal';
 import { usePending } from '../hooks/usePending';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
@@ -48,9 +48,7 @@ export const ConfirmForm: React.FC<ConfirmFormProps> = ({ message, confirmLabel,
  * Asks the user to confirm a destructive action. Stays open (disabled) while `onConfirm` runs,
  * closes when it succeeds, and shows the error if it rejects.
  */
-export class ConfirmModal extends Modal {
-  private root: Root | null = null;
-
+export class ConfirmModal extends ReactModal {
   constructor(
     app: App,
     private readonly title: string,
@@ -62,27 +60,19 @@ export class ConfirmModal extends Modal {
     super(app);
   }
 
-  onOpen(): void {
-    this.titleEl.setText(this.title);
-    this.root = createRoot(this.contentEl);
-    this.root.render(
-      <StrictMode>
-        <ConfirmForm
-          message={this.message}
-          confirmLabel={this.confirmLabel}
-          pendingLabel={this.pendingLabel}
-          onConfirm={async () => {
-            await this.onConfirm();
-            this.close();
-          }}
-          onCancel={() => this.close()}
-        />
-      </StrictMode>,
-    );
+  protected getTitle(): string {
+    return this.title;
   }
 
-  onClose(): void {
-    this.root?.unmount();
-    this.root = null;
+  protected renderContent(): ReactNode {
+    return (
+      <ConfirmForm
+        message={this.message}
+        confirmLabel={this.confirmLabel}
+        pendingLabel={this.pendingLabel}
+        onConfirm={() => this.closeAfter(this.onConfirm)}
+        onCancel={() => this.close()}
+      />
+    );
   }
 }
