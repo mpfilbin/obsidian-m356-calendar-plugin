@@ -15,6 +15,43 @@ describe('TodoService', () => {
     vi.unstubAllGlobals();
   });
 
+  describe('getTasks request URL', () => {
+    it('builds a $filter Graph accepts: spaces as %20 (never +) and a literal $filter', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ value: [] }) });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 4, 1));
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain("?$filter=status%20ne%20'completed'&$select=id%2Ctitle%2Cstatus%2Cimportance%2CdueDateTime%2Cbody");
+      expect(url).not.toContain('+');
+      expect(url).not.toContain('%24');
+    });
+  });
+
+  describe('getTasks fallback', () => {
+    const task = (id: string, status: string) => ({ id, title: id, status, dueDateTime: { dateTime: '2026-04-10T00:00:00', timeZone: 'UTC' } });
+
+    it('retries without the filter when Graph rejects the query with a 400, still hiding completed tasks', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: false, status: 400, statusText: 'Bad Request', text: () => Promise.resolve('{"error":{"message":"Invalid request"}}') })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ value: [task('open', 'notStarted'), task('done', 'completed')] }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const tasks = await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 4, 1));
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls[0][0]).toContain('$filter');
+      expect(fetchMock.mock.calls[1][0]).toBe('https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks');
+      expect(tasks.map((t) => t.id)).toEqual(['open']);
+    });
+
+    it('does not retry on other failures such as 403', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 403, statusText: 'Forbidden' });
+      vi.stubGlobal('fetch', fetchMock);
+      await expect(service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 4, 1))).rejects.toThrow('Forbidden');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('updateTaskDueDate', () => {
     it('PATCHes only the due date, formatted like createTask', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true });

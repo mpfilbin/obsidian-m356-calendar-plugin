@@ -1,6 +1,6 @@
 import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence } from '../types';
 import { AuthService } from './AuthService';
-import { GraphClient } from './GraphClient';
+import { GraphClient, buildQuery } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
@@ -151,7 +151,7 @@ export class CalendarService {
     const epoch = this.cache.epoch;
     await this.semaphore.acquire();
     try {
-      const params = new URLSearchParams({
+      const params = buildQuery({
         startDateTime: start.toISOString(),
         endDateTime: end.toISOString(),
         $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location,type,seriesMasterId',

@@ -58,6 +58,17 @@ describe('CalendarService', () => {
     expect(cache.addEvents).toHaveBeenCalledWith('cal1', start, end, expect.any(Array), 7);
   });
 
+  it('requests calendarView with a space-free, literal-$ query', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ value: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await service.getEvents(['cal1'], new Date(Date.UTC(2026, 3, 1)), new Date(Date.UTC(2026, 4, 1)));
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain('/me/calendars/cal1/calendarView?startDateTime=2026-04-01T00%3A00%3A00.000Z');
+    expect(url).toContain('&$select=id%2Csubject%2Cstart');
+    expect(url).toContain('&$top=999');
+    expect(url).not.toContain('+');
+  });
+
   it('getCalendars maps Graph response correctly', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

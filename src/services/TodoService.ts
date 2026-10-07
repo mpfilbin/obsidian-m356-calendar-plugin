@@ -1,6 +1,6 @@
 import { AuthService } from './AuthService';
 import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput, TaskRecurrence } from '../types';
-import { GraphClient } from './GraphClient';
+import { GraphClient, GraphError, buildQuery } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -59,7 +59,7 @@ export class TodoService {
   private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
     // Completed tasks are never shown, so let Graph drop them server-side. The due-date
     // range is still filtered locally because dueDateTime isn't reliably filterable.
-    const params = new URLSearchParams({
+    const params = buildQuery({
       $filter: "status ne 'completed'",
       $select: 'id,title,status,importance,dueDateTime,body',
     });
@@ -67,9 +67,18 @@ export class TodoService {
     await this.semaphore.acquire();
     let allTasks: Record<string, unknown>[];
     try {
-      allTasks = await this.graph.getAll<Record<string, unknown>>(
-        `${TodoService.taskPath(listId)}?${params}`, 'fetch tasks',
-      );
+      try {
+        allTasks = await this.graph.getAll<Record<string, unknown>>(
+          `${TodoService.taskPath(listId)}?${params}`, 'fetch tasks',
+        );
+      } catch (e) {
+        // The filter is only an optimisation: completed tasks are also dropped below. If Graph
+        // rejects the query itself, fall back to fetching the list unfiltered rather than failing.
+        if (!(e instanceof GraphError) || e.status !== 400) throw e;
+        allTasks = await this.graph.getAll<Record<string, unknown>>(
+          TodoService.taskPath(listId), 'fetch tasks',
+        );
+      }
     } finally {
       this.semaphore.release();
     }
