@@ -204,4 +204,42 @@ describe('CacheService', () => {
     // evtApr4 (April 4) is outside the surviving week interval → should be purged
     expect(result!.map((e) => e.id)).toEqual(['e2']);
   });
+
+  // --- purge ---
+
+  it('clearAll removes every cached event and fetch interval and persists the empty cache', async () => {
+    await cache.addEvents('cal1', APR_START, APR_END, [evtApr4, evtApr15]);
+    await cache.addEvents('cal2', APR_START, APR_END, [evtApr4]);
+    save.mockClear();
+
+    await cache.clearAll();
+
+    expect(cache.getEventsForRange('cal1', APR_START, APR_END)).toBeNull();
+    expect(cache.getEventsForRange('cal2', APR_START, APR_END)).toBeNull();
+    expect(save).toHaveBeenLastCalledWith({});
+  });
+
+  it('a purged cache stays empty after a restart', async () => {
+    await cache.addEvents('cal1', APR_START, APR_END, [evtApr4]);
+    await cache.clearAll();
+    const persisted = save.mock.calls[save.mock.calls.length - 1][0];
+
+    const reloaded = new CacheService(vi.fn().mockResolvedValue(persisted), save);
+    await reloaded.init();
+    expect(reloaded.getEventsForRange('cal1', APR_START, APR_END)).toBeNull();
+  });
+
+  it('does not write back results from a fetch that started before a purge', async () => {
+    const epochAtStart = cache.epoch;
+    await cache.clearAll(); // purge while the fetch is in flight
+    await cache.addEvents('cal1', APR_START, APR_END, [evtApr4], epochAtStart);
+
+    expect(cache.getEventsForRange('cal1', APR_START, APR_END)).toBeNull();
+  });
+
+  it('still accepts results from a fetch that started after the purge', async () => {
+    await cache.clearAll();
+    await cache.addEvents('cal1', APR_START, APR_END, [evtApr4], cache.epoch);
+    expect(cache.getEventsForRange('cal1', APR_START, APR_END)).toHaveLength(1);
+  });
 });

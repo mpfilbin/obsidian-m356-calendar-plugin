@@ -79,6 +79,18 @@ export function useEventsData(currentDate: Date, view: ViewType) {
     void fetchAll({ userInitiated: true });
   }, [fetchAll]);
 
+  /** Forget everything held in memory and download calendars and events again, bypassing the cache. */
+  const resync = useCallback(() => {
+    requestRef.current++; // any request still in flight is for the old data; ignore its result
+    calendarsLoadedRef.current = false;
+    setCalendars([]);
+    setEvents([]);
+    setError(null);
+    setAuthError(null);
+    setRefreshFailed(false);
+    void fetchAll({ reloadCalendars: true, userInitiated: true });
+  }, [fetchAll]);
+
   const toggleCalendar = async (calendarId: string) => {
     const next = enabledIds.includes(calendarId)
       ? enabledIds.filter((id) => id !== calendarId)
@@ -95,6 +107,6 @@ export function useEventsData(currentDate: Date, view: ViewType) {
   return {
     calendars, events, setEvents, enabledIds,
     syncing, error, setError, authError, refreshFailed,
-    fetchAll, toggleCalendar,
+    fetchAll, toggleCalendar, resync,
   };
 }

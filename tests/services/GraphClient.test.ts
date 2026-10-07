@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { GraphClient } from '../../src/services/GraphClient';
+import { GraphClient, buildQuery } from '../../src/services/GraphClient';
 import { AuthService } from '../../src/services/AuthService';
 
 describe('GraphClient', () => {
@@ -63,5 +63,22 @@ describe('GraphClient', () => {
     vi.stubGlobal('fetch', fetchMock);
     expect(await client.getAll<number>('/items', 'fetch items')).toEqual([1, 2, 3]);
     expect(fetchMock.mock.calls[1][0]).toBe('https://graph.microsoft.com/v1.0/p2');
+  });
+});
+
+describe('buildQuery', () => {
+  it('encodes spaces as %20, never +, which Graph rejects in $filter with a 400', () => {
+    const query = buildQuery({ $filter: "status ne 'completed'" });
+    expect(query).toBe("$filter=status%20ne%20'completed'");
+    expect(query).not.toContain('+');
+  });
+
+  it('leaves the $ of OData options literal and escapes commas and colons in values', () => {
+    expect(buildQuery({ $select: 'id,title', startDateTime: '2026-04-01T00:00:00.000Z' }))
+      .toBe('$select=id%2Ctitle&startDateTime=2026-04-01T00%3A00%3A00.000Z');
+  });
+
+  it('escapes characters that would break out of a value', () => {
+    expect(buildQuery({ q: 'a&b=c #d' })).toBe('q=a%26b%3Dc%20%23d');
   });
 });

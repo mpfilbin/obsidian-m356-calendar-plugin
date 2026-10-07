@@ -49,6 +49,16 @@ export function useTodosData(
     void fetchTodos();
   }, [fetchTodos]);
 
+  /** Forget everything held in memory and download task lists and tasks again. */
+  const resync = useCallback(() => {
+    requestRef.current++; // any request still in flight is for the old data; ignore its result
+    listsLoadedRef.current = false;
+    setTodoLists([]);
+    setTodos([]);
+    setRefreshFailed(false);
+    void fetchTodos({ reloadLists: true });
+  }, [fetchTodos]);
+
   const toggleTodoList = async (listId: string) => {
     const next = enabledTodoListIds.includes(listId)
       ? enabledTodoListIds.filter((id) => id !== listId)
@@ -62,5 +72,5 @@ export function useTodosData(
     }
   };
 
-  return { todoLists, todos, setTodos, enabledTodoListIds, refreshFailed, fetchTodos, toggleTodoList };
+  return { todoLists, todos, setTodos, enabledTodoListIds, refreshFailed, fetchTodos, toggleTodoList, resync };
 }

@@ -18,6 +18,8 @@ export interface AppContextValue {
   subscribeSettings: (cb: (s: M365CalendarSettings) => void) => () => void;
   /** Called when cached weather is cleared and views should refetch. Returns an unsubscribe function. */
   subscribeWeatherRefresh: (cb: () => void) => () => void;
+  /** Called after stored calendar data is purged; views should drop what they hold and refetch everything. */
+  subscribeResync: (cb: () => void) => () => void;
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);

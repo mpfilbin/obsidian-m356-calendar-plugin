@@ -21,6 +21,7 @@ export default class M365CalendarPlugin extends Plugin {
   private todoService!: TodoService;
   private saveDataQueue: Promise<void> = Promise.resolve();
   private readonly weatherRefreshHandlers = new Set<() => void>();
+  private readonly resyncHandlers = new Set<() => void>();
   private readonly settingsListeners = new Set<(s: M365CalendarSettings) => void>();
   private settingsEmitTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -111,6 +112,10 @@ export default class M365CalendarPlugin extends Plugin {
           this.weatherRefreshHandlers.add(cb);
           return () => { this.weatherRefreshHandlers.delete(cb); };
         },
+        subscribeResync: (cb) => {
+          this.resyncHandlers.add(cb);
+          return () => { this.resyncHandlers.delete(cb); };
+        },
       });
     });
 
@@ -131,6 +136,7 @@ export default class M365CalendarPlugin extends Plugin {
     if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
     this.settingsListeners.clear();
     this.weatherRefreshHandlers.clear();
+    this.resyncHandlers.clear();
   }
 
   testWeatherConnection(): Promise<WeatherTestResult> {
@@ -140,6 +146,16 @@ export default class M365CalendarPlugin extends Plugin {
   async clearWeatherCache(): Promise<void> {
     await this.weatherCacheService.clearAll();
     this.weatherRefreshHandlers.forEach((cb) => cb());
+  }
+
+  /**
+   * Deletes every locally stored calendar event and its sync metadata (which date ranges were
+   * fetched, and when), then tells open calendar views to re-download calendars, events and tasks
+   * from scratch. Settings, sign-in and the weather cache are left alone.
+   */
+  async purgeCalendarData(): Promise<void> {
+    await this.cacheService.clearAll();
+    this.resyncHandlers.forEach((cb) => cb());
   }
 
   async loadSettings(): Promise<void> {

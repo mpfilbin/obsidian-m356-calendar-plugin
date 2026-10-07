@@ -57,19 +57,13 @@ export class TodoService {
   }
 
   private async getTasksForList(listId: string, startDate: string, endDate: string): Promise<M365TodoItem[]> {
-    // Completed tasks are never shown, so let Graph drop them server-side. The due-date
-    // range is still filtered locally because dueDateTime isn't reliably filterable.
-    const params = new URLSearchParams({
-      $filter: "status ne 'completed'",
-      $select: 'id,title,status,importance,dueDateTime,body',
-    });
-
+    // Fetch the whole list and filter locally. Do not add $filter/$select here: Graph answered a
+    // `$filter=status ne 'completed'` request for a real list with HTTP 400 (RequestBroker--ParseUri),
+    // while the plain request works. Completed tasks and the due-date range are dropped below.
     await this.semaphore.acquire();
     let allTasks: Record<string, unknown>[];
     try {
-      allTasks = await this.graph.getAll<Record<string, unknown>>(
-        `${TodoService.taskPath(listId)}?${params}`, 'fetch tasks',
-      );
+      allTasks = await this.graph.getAll<Record<string, unknown>>(TodoService.taskPath(listId), 'fetch tasks');
     } finally {
       this.semaphore.release();
     }

@@ -54,6 +54,7 @@ export class ButtonComponent {
   private _handler: (() => void | Promise<void>) | undefined;
   setButtonText(_text: string) { return this; }
   setCta() { return this; }
+  setWarning() { return this; }
   setDisabled(_disabled: boolean) { return this; }
   onClick(handler: () => void | Promise<void>) { this._handler = handler; return this; }
   async simulateClick() { await this._handler?.(); }

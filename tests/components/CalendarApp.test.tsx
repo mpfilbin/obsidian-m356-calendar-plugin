@@ -158,6 +158,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
     saveSettings: vi.fn().mockResolvedValue(undefined),
     subscribeSettings: vi.fn(() => () => {}),
     subscribeWeatherRefresh: vi.fn(() => () => {}),
+    subscribeResync: vi.fn(() => () => {}),
     ...overrides,
   };
 }
@@ -1108,6 +1109,92 @@ describe('CalendarApp', () => {
         });
         await waitFor(() => expect(cellIndexOf(screen.getByLabelText('View task: Pay rent'))).toBe(before));
       });
+    });
+  });
+
+  describe('purge and resync', () => {
+    const task: M365TodoItem = { id: 'task1', title: 'Pay rent', listId: 'list1', dueDate: '2026-04-15', importance: 'normal' };
+    const list: M365TodoList = { id: 'list1', displayName: 'Work Tasks', color: '#3b82f6' };
+    const fresh = { ...mockEvent, id: 'evt-fresh', subject: 'Fresh event' };
+
+    function makeResyncContext() {
+      const ctx = makeContext({
+        todoService: {
+          getLists: vi.fn().mockResolvedValue([list]),
+          getTasks: vi.fn().mockResolvedValue([task]),
+        } as unknown as AppContextValue['todoService'],
+        settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], enabledTodoListIds: ['list1'] },
+      });
+      let resync!: () => void;
+      (ctx.subscribeResync as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+        resync = cb;
+        return () => {};
+      });
+      return { ctx, resync: () => act(() => resync()) };
+    }
+
+    it('drops what is shown and downloads calendars, events and tasks again, bypassing the cache', async () => {
+      const { ctx, resync } = makeResyncContext();
+      renderCalendarApp(ctx);
+      await screen.findByText('Standup');
+      await screen.findByText('Pay rent');
+      const getEvents = ctx.calendarService.getEvents as ReturnType<typeof vi.fn>;
+
+      let finish!: (events: unknown[]) => void;
+      getEvents.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+      resync();
+
+      // cleared immediately, so it is obvious the data is being reloaded
+      await waitFor(() => {
+        expect(screen.queryByText('Standup')).not.toBeInTheDocument();
+        expect(screen.queryByText('Pay rent')).not.toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(ctx.calendarService.getCalendars).toHaveBeenCalledTimes(2);
+        expect(ctx.todoService.getLists).toHaveBeenCalledTimes(2);
+        expect(ctx.todoService.getTasks).toHaveBeenCalledTimes(2);
+      });
+      const lastCall = getEvents.mock.calls[getEvents.mock.calls.length - 1];
+      expect(lastCall[3]).toBe(true); // bypassCache
+
+      finish([fresh]);
+      expect(await screen.findByText('Fresh event')).toBeInTheDocument();
+      expect(await screen.findByText('Pay rent')).toBeInTheDocument();
+    });
+
+    it('ignores a response that was already in flight when the purge happened', async () => {
+      const ctx = makeContext();
+      let resync!: () => void;
+      (ctx.subscribeResync as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+        resync = cb;
+        return () => {};
+      });
+      let finishOld!: (events: unknown[]) => void;
+      const getEvents = ctx.calendarService.getEvents as ReturnType<typeof vi.fn>;
+      getEvents
+        .mockReturnValueOnce(new Promise((resolve) => { finishOld = resolve; }))
+        .mockResolvedValue([fresh]);
+      renderCalendarApp(ctx);
+      await waitFor(() => expect(getEvents).toHaveBeenCalledTimes(1));
+
+      act(() => resync());
+      expect(await screen.findByText('Fresh event')).toBeInTheDocument();
+
+      await act(async () => { finishOld([{ ...mockEvent, id: 'old', subject: 'Stale event' }]); });
+      expect(screen.queryByText('Stale event')).not.toBeInTheDocument();
+      expect(screen.getByText('Fresh event')).toBeInTheDocument();
+    });
+
+    it('keeps which calendars and task lists are enabled', async () => {
+      const { ctx, resync } = makeResyncContext();
+      renderCalendarApp(ctx);
+      await screen.findByText('Standup');
+      resync();
+      await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(2));
+      const [ids] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[1];
+      expect(ids).toEqual(['cal-1']);
+      expect(ctx.saveSettings).not.toHaveBeenCalledWith(expect.objectContaining({ enabledCalendarIds: [] }));
     });
   });
 

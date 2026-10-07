@@ -15,6 +15,42 @@ describe('TodoService', () => {
     vi.unstubAllGlobals();
   });
 
+  describe('getTasks request URL', () => {
+    it('requests the plain task list with no OData query (Graph returned 400 for $filter on status)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ value: [] }) });
+      vi.stubGlobal('fetch', fetchMock);
+      await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 4, 1));
+      expect(fetchMock.mock.calls[0][0]).toBe('https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks');
+    });
+
+    it('drops completed tasks and tasks outside the range client-side', async () => {
+      const due = (day: string) => ({ dateTime: `${day}T00:00:00.0000000`, timeZone: 'UTC' });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          value: [
+            { id: 'open', title: 'Open', status: 'notStarted', dueDateTime: due('2026-04-10') },
+            { id: 'done', title: 'Done', status: 'completed', dueDateTime: due('2026-04-10') },
+            { id: 'later', title: 'Later', status: 'notStarted', dueDateTime: due('2026-06-01') },
+            { id: 'undated', title: 'Undated', status: 'notStarted', dueDateTime: null },
+          ],
+        }),
+      }));
+      const tasks = await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 3, 30));
+      expect(tasks.map((t) => t.id)).toEqual(['open']);
+    });
+
+    it('follows @odata.nextLink so long lists are fully read', async () => {
+      const due = { dateTime: '2026-04-10T00:00:00.0000000', timeZone: 'UTC' };
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ value: [{ id: 'a', title: 'A', status: 'notStarted', dueDateTime: due }], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/next' }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ value: [{ id: 'b', title: 'B', status: 'notStarted', dueDateTime: due }] }) });
+      vi.stubGlobal('fetch', fetchMock);
+      const tasks = await service.getTasks(['list1'], new Date(2026, 3, 1), new Date(2026, 3, 30));
+      expect(tasks.map((t) => t.id)).toEqual(['a', 'b']);
+    });
+  });
+
   describe('updateTaskDueDate', () => {
     it('PATCHes only the due date, formatted like createTask', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true });

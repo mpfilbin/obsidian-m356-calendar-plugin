@@ -13,6 +13,7 @@ function overlaps(e: M365Event, rangeStart: Date, rangeEnd: Date): boolean {
 
 export class CacheService {
   private store: CacheStore = {};
+  private clearCount = 0;
 
   constructor(
     private readonly load: () => Promise<CacheStore>,
@@ -51,7 +52,22 @@ export class CacheService {
     return entry.events.filter((e) => overlaps(e, start, end));
   }
 
-  async addEvents(calendarId: string, start: Date, end: Date, events: M365Event[]): Promise<void> {
+  /**
+   * Changes every time the cache is cleared. A fetch that began before a clear can pass the epoch it
+   * saw to `addEvents` so its (now stale) results are not written back after the purge.
+   */
+  get epoch(): number {
+    return this.clearCount;
+  }
+
+  async addEvents(
+    calendarId: string,
+    start: Date,
+    end: Date,
+    events: M365Event[],
+    expectedEpoch: number = this.clearCount,
+  ): Promise<void> {
+    if (expectedEpoch !== this.clearCount) return;
     const entry = this.store[calendarId] ?? { events: [], intervals: [] };
     const idToIndex = new Map(entry.events.map((e, i) => [e.id, i]));
     for (const event of events) {
@@ -69,6 +85,7 @@ export class CacheService {
   }
 
   async clearAll(): Promise<void> {
+    this.clearCount++;
     this.store = {};
     await this.save(this.store);
   }

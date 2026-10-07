@@ -4,6 +4,25 @@ import { type Logger, NullLogger } from '../lib/logger';
 
 export const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
+/**
+ * Builds an OData query string for Graph. Unlike `URLSearchParams`, this encodes spaces as `%20`
+ * (not `+`) and leaves the `$` of `$filter` / `$select` literal. Graph's URI parser rejects
+ * `+`-encoded spaces in `$filter` with a 400 "Invalid request" (RequestBroker--ParseUri).
+ */
+export function buildQuery(params: Record<string, string>): string {
+  return Object.entries(params)
+    .map(([key, value]) => `${key.replace(/[^$\w.-]/g, encodeURIComponent)}=${encodeURIComponent(value)}`)
+    .join('&');
+}
+
+/** A non-2xx response from Graph. `status` is the HTTP status code. */
+export class GraphError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'GraphError';
+  }
+}
+
 export interface GraphRequestOptions {
   /** JSON-serialisable request body; sets Content-Type to application/json. */
   body?: unknown;
@@ -57,7 +76,7 @@ export class GraphClient {
     if (!response.ok) {
       const detail = await readErrorDetail(response);
       const status = response.statusText || String(response.status ?? '');
-      throw new Error(`Failed to ${what}: ${status}${detail ? ` (${detail})` : ''}`);
+      throw new GraphError(`Failed to ${what}: ${status}${detail ? ` (${detail})` : ''}`, response.status ?? 0);
     }
     return response;
   }

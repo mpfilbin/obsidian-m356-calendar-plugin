@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ViewType } from '../types';
 import { Toolbar } from './Toolbar';
 import { CalendarSelector } from './CalendarSelector';
@@ -14,7 +14,7 @@ import { useReschedule } from '../hooks/useReschedule';
 import { DragProvider } from '../DragContext';
 
 export const CalendarApp: React.FC = () => {
-  const { settings: initialSettings, saveSettings, subscribeSettings } = useAppContext();
+  const { settings: initialSettings, saveSettings, subscribeSettings, subscribeResync } = useAppContext();
   const [settings, setSettings] = useState(initialSettings);
   const [view, setView] = useState<ViewType>(settings.defaultView);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -39,6 +39,19 @@ export const CalendarApp: React.FC = () => {
     calendars, setEvents, setTodos, completingTodoIds, setCompletingTodoIds,
     refreshEvents: () => fetchAll(),
   });
+
+  // "Purge calendar and task data" in settings: drop everything and refetch from scratch.
+  // Keep a ref to the latest resync so the subscribed callback never goes stale.
+  const { resync: resyncEvents } = eventsData;
+  const { resync: resyncTodos } = todosData;
+  const resyncRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    resyncRef.current = () => {
+      resyncEvents();
+      resyncTodos();
+    };
+  }, [resyncEvents, resyncTodos]);
+  useEffect(() => subscribeResync(() => resyncRef.current()), [subscribeResync]);
 
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;

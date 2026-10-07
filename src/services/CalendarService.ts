@@ -1,6 +1,6 @@
 import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence } from '../types';
 import { AuthService } from './AuthService';
-import { GraphClient } from './GraphClient';
+import { GraphClient, buildQuery } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { CacheService } from './CacheService';
 import { Semaphore } from '../lib/semaphore';
@@ -148,9 +148,10 @@ export class CalendarService {
     const cached = bypassCache ? null : this.cache.getEventsForRange(calendarId, start, end);
     if (cached !== null) return cached;
 
+    const epoch = this.cache.epoch;
     await this.semaphore.acquire();
     try {
-      const params = new URLSearchParams({
+      const params = buildQuery({
         startDateTime: start.toISOString(),
         endDateTime: end.toISOString(),
         $select: 'id,subject,start,end,isAllDay,bodyPreview,webLink,location,type,seriesMasterId',
@@ -163,7 +164,7 @@ export class CalendarService {
         { headers: { Prefer: `outlook.timezone="${timeZone}"` } },
       );
       const events = raw.map((e) => this.mapEvent(e, calendarId));
-      await this.cache.addEvents(calendarId, start, end, events);
+      await this.cache.addEvents(calendarId, start, end, events, epoch);
       return events;
     } finally {
       this.semaphore.release();
