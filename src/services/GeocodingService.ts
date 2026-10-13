@@ -39,13 +39,14 @@ export class GeocodingService {
 
   /** The best match for `query`, or null if the service knows no such place. */
   async geocode(query: string): Promise<GeocodeResult | null> {
-    const key = query.trim().replace(/\s+/g, ' ').toLowerCase();
+    const normalized = query.trim().replace(/\s+/g, ' ');
+    const key = normalized.toLowerCase();
     if (!key) return null;
     if (this.results.has(key)) return this.results.get(key) ?? null;
 
     let pending = this.inFlight.get(key);
     if (!pending) {
-      pending = this.lookup(query.trim().replace(/\s+/g, ' ')).then((result) => {
+      pending = this.lookup(normalized).then((result) => {
         this.results.set(key, result);
         return result;
       }).finally(() => {
