@@ -1,4 +1,4 @@
-import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence } from '../types';
+import { M365Calendar, M365Event, NewEventInput, EventPatch, EventRecurrence, GeoPoint } from '../types';
 import { AuthService } from './AuthService';
 import { GraphClient, buildQuery } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
@@ -171,6 +171,14 @@ export class CalendarService {
     }
   }
 
+  /** Outlook's own coordinates for the location (latitude/longitude), if it has any. */
+  private static parseCoordinates(location: unknown): GeoPoint | undefined {
+    const c = (location as { coordinates?: { latitude?: unknown; longitude?: unknown } } | undefined)?.coordinates;
+    const lat = typeof c?.latitude === 'number' ? c.latitude : NaN;
+    const lon = typeof c?.longitude === 'number' ? c.longitude : NaN;
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : undefined;
+  }
+
   private mapEvent(e: Record<string, unknown>, calendarId: string): M365Event {
     return {
       id: e.id as string,
@@ -182,6 +190,7 @@ export class CalendarService {
       bodyPreview: e.bodyPreview as string | undefined,
       webLink: e.webLink as string | undefined,
       location: (e.location as { displayName?: string } | undefined)?.displayName,
+      locationCoordinates: CalendarService.parseCoordinates(e.location),
       type: e.type as M365Event['type'] | undefined,
       seriesMasterId: e.seriesMasterId as string | undefined,
     };

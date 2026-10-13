@@ -3,6 +3,7 @@ import { App } from 'obsidian';
 import { CalendarService } from './services/CalendarService';
 import { WeatherService } from './services/WeatherService';
 import { TodoService } from './services/TodoService';
+import { GeocodingService } from './services/GeocodingService';
 import { M365CalendarSettings } from './types';
 
 export interface AppContextValue {
@@ -10,6 +11,7 @@ export interface AppContextValue {
   calendarService: CalendarService;
   weatherService: WeatherService;
   todoService: TodoService;
+  geocodingService: GeocodingService;
   /** Settings at the time the view was created; use `subscribeSettings` for later changes. */
   settings: M365CalendarSettings;
   /** Merges `patch` into the plugin's live settings and persists them. */

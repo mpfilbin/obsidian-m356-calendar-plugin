@@ -33,6 +33,7 @@ export const CalendarApp: React.FC = () => {
     currentDate, view, calendars, enabledIds, setEvents,
     todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds,
     refreshEvents: () => fetchAll(),
+    mapsEnabled: settings.mapsEnabled,
   });
 
   const reschedule = useReschedule({

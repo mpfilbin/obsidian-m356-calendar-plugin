@@ -69,6 +69,23 @@ describe('CalendarService', () => {
     expect(url).not.toContain('+');
   });
 
+  it('maps the coordinates Outlook holds for an event location', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ value: [
+        { ...FAKE_EVENT_RESPONSE, id: 'with', location: { displayName: 'HQ', coordinates: { latitude: 47.6, longitude: -122.3 } } },
+        { ...FAKE_EVENT_RESPONSE, id: 'without', location: { displayName: 'Room 4' } },
+        { ...FAKE_EVENT_RESPONSE, id: 'junk', location: { displayName: 'X', coordinates: { latitude: 'a', longitude: null } } },
+      ] }),
+    }));
+    const events = await service.getEvents(['cal1'], new Date(2026, 3, 1), new Date(2026, 4, 1));
+    const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+    expect(byId.with.locationCoordinates).toEqual({ lat: 47.6, lon: -122.3 });
+    expect(byId.with.location).toBe('HQ');
+    expect(byId.without.locationCoordinates).toBeUndefined();
+    expect(byId.junk.locationCoordinates).toBeUndefined();
+  });
+
   it('getCalendars maps Graph response correctly', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

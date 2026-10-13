@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import React, { useState, type ReactNode } from 'react';
 import { ReactModal } from './ReactModal';
+import { LocationField, MapSupport } from './LocationMap';
 import { M365Calendar, NewEventInput, EventRecurrence, RecurrenceFrequency, DayOfWeek, WeekIndex, RecurrenceEndType } from '../types';
 import { usePending } from '../hooks/usePending';
 import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
@@ -86,6 +87,8 @@ interface CreateEventFormProps {
   initialAllDay?: boolean;
   onSubmit: (calendarId: string, event: NewEventInput) => void | Promise<void>;
   onCancel: () => void;
+  /** Shows the location on a map when provided. */
+  maps?: MapSupport;
 }
 
 export const CreateEventForm: React.FC<CreateEventFormProps> = ({
@@ -95,6 +98,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   initialAllDay = false,
   onSubmit,
   onCancel,
+  maps,
 }) => {
   const [subject, setSubject] = useState('');
   const [calendarId, setCalendarId] = useState(
@@ -119,6 +123,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
     return toDateTimeLocal(defaultEnd);
   });
+  const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const { pending: submitting, run } = usePending();
@@ -218,6 +223,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         start,
         end,
         isAllDay,
+        location: location.trim() || undefined,
         description: description.trim() || undefined,
         recurrence: buildRecurrence(repeat, frequency, intervalStr, daysOfWeek, monthlyMode, endType, recurrenceEndDateStr, occurrencesStr, start),
       }));
@@ -251,6 +257,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           ))}
         </select>
       </div>
+      <LocationField id="m365-create-location" value={location} onChange={setLocation} maps={maps} />
       <div className="m365-form-checkbox">
         <label>
           <input
@@ -449,6 +456,7 @@ export class CreateEventModal extends ReactModal {
       event: NewEventInput,
     ) => Promise<void>,
     private readonly initialAllDay: boolean = false,
+    private readonly maps?: MapSupport,
   ) {
     super(app);
   }
@@ -466,6 +474,7 @@ export class CreateEventModal extends ReactModal {
         initialAllDay={this.initialAllDay}
         onSubmit={(calendarId, event) => this.closeAfter(() => this.onSubmit(calendarId, event))}
         onCancel={() => this.close()}
+        maps={this.maps}
       />
     );
   }

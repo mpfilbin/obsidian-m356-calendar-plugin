@@ -18,6 +18,8 @@ export interface M365Event {
   bodyPreview?: string;
   webLink?: string;
   location?: string;
+  /** Coordinates Outlook already has for the location, when it was picked from its places list. */
+  locationCoordinates?: GeoPoint;
   type?: 'singleInstance' | 'occurrence' | 'exception' | 'seriesMaster';
   seriesMasterId?: string;
 }
@@ -97,6 +99,12 @@ export interface EventRecurrence {
   };
 }
 
+/** A point on the map. */
+export interface GeoPoint {
+  lat: number;
+  lon: number;
+}
+
 export interface EventPatch {
   subject?: string;
   location?: string;
@@ -127,6 +135,7 @@ export interface M365CalendarSettings {
   sidebarCollapsed: boolean;
   enabledTodoListIds: string[];
   debugLogging: boolean;
+  mapsEnabled: boolean;
 }
 
 export interface StoredTokens {
