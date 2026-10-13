@@ -62,10 +62,12 @@ export class ButtonComponent {
 
 export class Setting {
   readonly buttons: ButtonComponent[] = [];
+  readonly toggles: Array<{ simulateChange: (value: boolean) => Promise<void> }> = [];
   constructor(_containerEl?: unknown) { _instances.push(this); }
   name = '';
   setName(name: string) { this.name = name; return this; }
-  setDesc(_: string) { return this; }
+  desc = '';
+  setDesc(desc: string) { this.desc = desc; return this; }
   setHeading() { return this; }
   addButton(cb: (btn: ButtonComponent) => void) {
     const btn = new ButtonComponent();
@@ -87,8 +89,13 @@ export class Setting {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addToggle(cb: (toggle: any) => void) {
-    const toggle = { setValue: () => toggle, onChange: () => toggle };
+    let handler: ((value: boolean) => void | Promise<void>) | undefined;
+    const toggle = {
+      setValue: () => toggle,
+      onChange: (fn: (value: boolean) => void | Promise<void>) => { handler = fn; return toggle; },
+    };
     cb(toggle);
+    this.toggles.push({ simulateChange: async (value) => { await handler?.(value); } });
     return this;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

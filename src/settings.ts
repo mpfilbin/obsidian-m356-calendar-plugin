@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   sidebarCollapsed: false,
   enabledTodoListIds: [],
   debugLogging: false,
+  mapsEnabled: true,
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {
@@ -216,6 +217,20 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           .onClick(async () => {
             await this.plugin.clearWeatherCache();
             new Notice('Weather cache cleared');
+          }),
+      );
+
+    new Setting(containerEl).setName('Maps').setHeading();
+
+    new Setting(containerEl)
+      .setName('Show event locations on a map')
+      .setDesc('Adds a map to the new and edit event dialogs. To place a location, its text is sent to OpenStreetMap (nominatim.openstreetmap.org) and the map is loaded from openstreetmap.org. Turn off to keep locations on your device.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.mapsEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.mapsEnabled = value;
+            await this.plugin.saveSettings();
           }),
       );
 

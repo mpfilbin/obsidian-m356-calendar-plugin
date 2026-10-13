@@ -6,6 +6,7 @@ import { CacheService } from './services/CacheService';
 import { WeatherService, type WeatherTestResult } from './services/WeatherService';
 import { WeatherCacheService, WEATHER_CACHE_KEY } from './services/WeatherCacheService';
 import { TodoService } from './services/TodoService';
+import { GeocodingService } from './services/GeocodingService';
 import { TaskCacheService, TASK_CACHE_KEY } from './services/TaskCacheService';
 import { M365CalendarSettingTab, DEFAULT_SETTINGS } from './settings';
 import { M365CalendarView, VIEW_TYPE_M365_CALENDAR } from './view';
@@ -21,6 +22,7 @@ export default class M365CalendarPlugin extends Plugin {
   private weatherService!: WeatherService;
   private taskCacheService!: TaskCacheService;
   private todoService!: TodoService;
+  private geocodingService!: GeocodingService;
   private saveDataQueue: Promise<void> = Promise.resolve();
   private readonly weatherRefreshHandlers = new Set<() => void>();
   private readonly resyncHandlers = new Set<() => void>();
@@ -105,12 +107,18 @@ export default class M365CalendarPlugin extends Plugin {
 
     this.todoService = new TodoService(this.authService, this.logger, this.taskCacheService);
 
+    this.geocodingService = new GeocodingService(
+      `obsidian-m365-calendar/${this.manifest.version} (Obsidian plugin)`,
+      this.logger,
+    );
+
     this.registerView(VIEW_TYPE_M365_CALENDAR, (leaf) => {
       return new M365CalendarView(leaf, {
         app: this.app,
         calendarService: this.calendarService,
         weatherService: this.weatherService,
         todoService: this.todoService,
+        geocodingService: this.geocodingService,
         settings: this.settings,
         saveSettings: async (patch) => {
           this.settings = { ...this.settings, ...patch };

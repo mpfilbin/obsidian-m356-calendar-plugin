@@ -1131,3 +1131,62 @@
 .m365-confirm-form p {
   margin: 0;
 }
+
+/* ─── Event location map ──────────────────────────────────────────────────── */
+
+.m365-location-input-row {
+  display: flex;
+  gap: var(--size-4-2);
+  align-items: center;
+}
+
+.m365-location-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.m365-location-input-row button {
+  flex-shrink: 0;
+}
+
+.m365-location-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  margin-top: var(--size-4-1);
+}
+
+.m365-location-map-frame {
+  width: 100%;
+  height: 220px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+}
+
+.m365-location-map-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.m365-location-map-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m365-location-map-links {
+  flex-shrink: 0;
+}
+
+.m365-location-map-status {
+  margin-top: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.m365-location-map-error {
+  color: var(--text-error);
+}

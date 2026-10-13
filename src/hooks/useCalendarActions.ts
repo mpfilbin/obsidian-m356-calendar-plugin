@@ -6,6 +6,7 @@ import { CreateTaskModal } from '../components/CreateTaskModal';
 import { EventDetailModal } from '../components/EventDetailModal';
 import { TodoDetailModal } from '../components/TodoDetailModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { MapSupport } from '../components/LocationMap';
 import { useAppContext } from '../context';
 import { usePopoverContext } from '../PopoverContext';
 import { getDateRange, toDateOnly } from '../lib/datetime';
@@ -24,16 +25,23 @@ export interface CalendarActionsDeps {
   setCompletingTodoIds: Dispatch<SetStateAction<Set<string>>>;
   /** Refetches events (without reloading the calendar list). */
   refreshEvents: () => Promise<void>;
+  /** Whether dialogs may show event locations on a map (the Maps setting). */
+  mapsEnabled: boolean;
 }
 
 /** User-initiated actions that open modals / menus and mutate events and tasks. */
 export function useCalendarActions(deps: CalendarActionsDeps) {
-  const { app, calendarService, todoService, settings } = useAppContext();
+  const { app, calendarService, todoService, geocodingService, settings } = useAppContext();
   const { hidePopover } = usePopoverContext();
   const {
     currentDate, view, calendars, enabledIds, setEvents,
-    todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds, refreshEvents,
+    todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds, refreshEvents, mapsEnabled,
   } = deps;
+
+  // Maps send the location text to OpenStreetMap, so they only exist while the setting is on.
+  const mapSupport: MapSupport | undefined = mapsEnabled
+    ? { geocode: (query) => geocodingService.geocode(query) }
+    : undefined;
 
   const openCreateEventModal = (date: Date, initialAllDay = false) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
@@ -56,6 +64,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
         }
       },
       initialAllDay,
+      mapSupport,
     ).open();
   };
 
@@ -165,6 +174,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
       calendars,
       onDelete,
       onDeleteSeries,
+      mapSupport,
     ).open();
   };
 

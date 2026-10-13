@@ -98,4 +98,26 @@ describe('M365CalendarSettingTab', () => {
       expect(Notice).not.toHaveBeenCalledWith(expect.stringContaining('Resyncing'));
     });
   });
+
+  describe('maps setting', () => {
+    const mapsToggle = () => _getSettingInstances().find((s) => s.name === 'Show event locations on a map')!.toggles[0];
+
+    it('is on by default and discloses that locations go to OpenStreetMap', () => {
+      expect(DEFAULT_SETTINGS.mapsEnabled).toBe(true);
+      tab.display();
+      const setting = _getSettingInstances().find((s) => s.name === 'Show event locations on a map');
+      expect(setting?.desc).toContain('OpenStreetMap');
+      expect(setting?.desc).toContain('Turn off');
+    });
+
+    it('saves the choice when toggled', async () => {
+      tab.display();
+      await mapsToggle().simulateChange(false);
+      expect(mockPlugin.settings.mapsEnabled).toBe(false);
+      expect(mockPlugin.saveSettings).toHaveBeenCalledTimes(1);
+
+      await mapsToggle().simulateChange(true);
+      expect(mockPlugin.settings.mapsEnabled).toBe(true);
+    });
+  });
 });

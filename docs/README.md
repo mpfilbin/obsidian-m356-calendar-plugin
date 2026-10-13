@@ -11,6 +11,7 @@
 | `main.ts` | Plugin entry: wires services, registers the view/command/settings tab, owns the settings and weather-refresh subscriptions |
 | `services/GraphClient.ts` | Microsoft Graph transport: bearer auth, 429 retry, pagination, error mapping |
 | `services/CalendarService.ts`, `TodoService.ts` | Calendar / To Do operations built on `GraphClient` |
+| `services/GeocodingService.ts` | Location text → coordinates via OpenStreetMap Nominatim: session cache, shared in-flight lookups, ≥1.1 s between requests, identifying User-Agent |
 | `services/AuthService.ts` | OAuth sign-in and coalesced token refresh |
 | `services/CacheService.ts`, `TaskCacheService.ts`, `WeatherCacheService.ts` | Persisted event, task and weather caches. Event and task caches share the purge-and-resync flow and an epoch guard so in-flight fetches can't repopulate a purged cache |
 | `hooks/useEventsData.ts`, `useTodosData.ts`, `useWeather.ts` | Data loading per concern; each ignores responses superseded by newer requests |

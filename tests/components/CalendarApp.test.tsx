@@ -15,6 +15,7 @@ const modalCallbacks = vi.hoisted(() => ({
   onSubmit: null as ((calendarId: string, event: NewEventInput) => Promise<void>) | null,
   initialDate: null as Date | null,
   initialAllDay: null as boolean | null,
+  maps: undefined as { geocode: (q: string) => Promise<unknown> } | undefined,
 }));
 
 const eventDetailModalCallbacks = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ const eventDetailModalCallbacks = vi.hoisted(() => ({
   onDeleteSeries: undefined as (() => Promise<void>) | undefined,
   onSave: null as ((patch: EventPatch, targetCalendarId: string) => Promise<void>) | null,
   calendars: null as M365Calendar[] | null,
+  maps: undefined as { geocode: (q: string) => Promise<unknown> } | undefined,
 }));
 
 const todoDetailModalCallbacks = vi.hoisted(() => ({
@@ -39,7 +41,9 @@ vi.mock('../../src/components/EventDetailModal', () => ({
       calendars: M365Calendar[],
       onDelete?: () => Promise<void>,
       onDeleteSeries?: () => Promise<void>,
+      maps?: { geocode: (q: string) => Promise<unknown> },
     ) {
+      eventDetailModalCallbacks.maps = maps;
       eventDetailModalCallbacks.onDelete = onDelete;
       eventDetailModalCallbacks.onDeleteSeries = onDeleteSeries;
       eventDetailModalCallbacks.onSave = onSave;
@@ -75,7 +79,9 @@ vi.mock('../../src/components/CreateEventModal', () => ({
       initialDate: Date,
       onSubmit: (calendarId: string, event: NewEventInput) => Promise<void>,
       initialAllDay: boolean = false,
+      maps?: { geocode: (q: string) => Promise<unknown> },
     ) {
+      modalCallbacks.maps = maps;
       modalCallbacks.onSubmit = onSubmit;
       modalCallbacks.initialDate = initialDate;
       modalCallbacks.initialAllDay = initialAllDay;
@@ -159,6 +165,7 @@ function makeContext(overrides: Partial<AppContextValue> = {}): AppContextValue 
     subscribeSettings: vi.fn(() => () => {}),
     subscribeWeatherRefresh: vi.fn(() => () => {}),
     subscribeResync: vi.fn(() => () => {}),
+    geocodingService: { geocode: vi.fn().mockResolvedValue(null) } as unknown as AppContextValue['geocodingService'],
     ...overrides,
   };
 }
@@ -1221,6 +1228,48 @@ describe('CalendarApp', () => {
       const [ids] = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[1];
       expect(ids).toEqual(['cal-1']);
       expect(ctx.saveSettings).not.toHaveBeenCalledWith(expect.objectContaining({ enabledCalendarIds: [] }));
+    });
+  });
+
+  describe('event location maps', () => {
+    const openEventDialog = async (ctx: AppContextValue) => {
+      renderCalendarApp(ctx);
+      await userEvent.click(await screen.findByLabelText('Edit event: Standup'));
+    };
+
+    it('gives the edit and new-event dialogs map support, backed by the geocoding service, when maps are on', async () => {
+      const ctx = makeContext();
+      await openEventDialog(ctx);
+      expect(eventDetailModalCallbacks.maps).toBeDefined();
+      await eventDetailModalCallbacks.maps!.geocode('Pike Place');
+      expect(ctx.geocodingService.geocode).toHaveBeenCalledWith('Pike Place');
+
+      await userEvent.click(screen.getByText('+ New event'));
+      expect(modalCallbacks.maps).toBeDefined();
+    });
+
+    it('gives the dialogs no map support when the Maps setting is off, so nothing is sent to OpenStreetMap', async () => {
+      const ctx = makeContext({ settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], mapsEnabled: false } });
+      await openEventDialog(ctx);
+      expect(eventDetailModalCallbacks.maps).toBeUndefined();
+
+      await userEvent.click(screen.getByText('+ New event'));
+      expect(modalCallbacks.maps).toBeUndefined();
+      expect(ctx.geocodingService.geocode).not.toHaveBeenCalled();
+    });
+
+    it('follows the setting live: turning maps off applies to dialogs opened afterwards', async () => {
+      const ctx = makeContext();
+      let notify!: (s: AppContextValue['settings']) => void;
+      (ctx.subscribeSettings as ReturnType<typeof vi.fn>).mockImplementation((cb) => { notify = cb; return () => {}; });
+      renderCalendarApp(ctx);
+      const chip = await screen.findByLabelText('Edit event: Standup');
+      await userEvent.click(chip);
+      expect(eventDetailModalCallbacks.maps).toBeDefined();
+
+      act(() => notify({ ...ctx.settings, mapsEnabled: false }));
+      await userEvent.click(chip);
+      expect(eventDetailModalCallbacks.maps).toBeUndefined();
     });
   });
 

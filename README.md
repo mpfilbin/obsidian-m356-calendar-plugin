@@ -7,6 +7,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Month and week views** of your M365 calendar events
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
 - **Create events** — click any day to create a new event without leaving Obsidian
+- **Event locations on a map** — add a location when creating an event, edit it later, and see it on an OpenStreetMap preview in the new/edit event dialogs. The location text is looked up with OpenStreetMap (Nominatim) and the map is loaded from openstreetmap.org; turn it off under Settings → Maps to keep locations on your device
 - **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
 - **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
 - **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
@@ -79,6 +80,7 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 | Tenant ID | `common` for personal + work, or your tenant ID | `common` |
 | Default view | Month or Week | Month |
 | Background refresh interval | How often to sync with M365 (minutes) | 10 |
+| Show event locations on a map | Adds a map to the new/edit event dialogs. Sends the location text to OpenStreetMap to place it | On |
 | Purge calendar and task data | Button: deletes locally stored events, tasks and sync information, then re-downloads calendars, events and tasks. Keeps your settings and sign-in. Use it to force a full resync | — |
 | Clear weather cache | Button: purges cached weather so it is fetched again | — |
 

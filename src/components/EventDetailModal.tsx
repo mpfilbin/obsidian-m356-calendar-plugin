@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import React, { useState, type ReactNode } from 'react';
 import { ReactModal } from './ReactModal';
+import { LocationField, MapSupport } from './LocationMap';
 import { M365Event, M365Calendar, EventPatch } from '../types';
 import { appLogger } from '../lib/logger';
 import { toDateOnly, toDateTimeLocal, parseDateInput, shiftAllDayEnd } from '../lib/datetime';
@@ -14,6 +15,8 @@ interface EventDetailFormProps {
   onCancel: () => void;
   onDelete?: () => Promise<void>;
   onDeleteSeries?: () => Promise<void>;
+  /** Shows the location on a map when provided. */
+  maps?: MapSupport;
 }
 
 export const EventDetailForm: React.FC<EventDetailFormProps> = ({
@@ -23,6 +26,7 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
   onCancel,
   onDelete,
   onDeleteSeries,
+  maps,
 }) => {
   const startDate = new Date(event.start.dateTime);
   const endDate = new Date(event.end.dateTime);
@@ -193,17 +197,15 @@ export const EventDetailForm: React.FC<EventDetailFormProps> = ({
           </div>
         </div>
       )}
-      <div className="m365-form-field">
-        <label htmlFor="m365-event-location">Location</label>
-        <input
-          id="m365-event-location"
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Add location"
-          disabled={confirmingDelete !== false || saving}
-        />
-      </div>
+      <LocationField
+        id="m365-event-location"
+        value={location}
+        onChange={setLocation}
+        disabled={confirmingDelete !== false || saving}
+        maps={maps}
+        showInitially
+        initialCoordinates={event.locationCoordinates}
+      />
       <div className="m365-form-checkbox">
         <label>
           <input
@@ -282,6 +284,7 @@ export class EventDetailModal extends ReactModal {
     private readonly calendars: M365Calendar[],
     private readonly onDeleteCallback?: () => Promise<void>,
     private readonly onDeleteSeriesCallback?: () => Promise<void>,
+    private readonly maps?: MapSupport,
   ) {
     super(app);
   }
@@ -303,6 +306,7 @@ export class EventDetailModal extends ReactModal {
         onCancel={() => this.close()}
         onDelete={onDeleteCallback ? () => this.closeAfter(onDeleteCallback) : undefined}
         onDeleteSeries={onDeleteSeriesCallback ? () => this.closeAfter(onDeleteSeriesCallback) : undefined}
+        maps={this.maps}
       />
     );
   }
