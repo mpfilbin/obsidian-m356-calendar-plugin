@@ -119,9 +119,10 @@ export class M365CalendarSettingTab extends PluginSettingTab {
         dropdown
           .addOption('month', 'Month')
           .addOption('week', 'Week')
+          .addOption('agenda', 'Agenda')
           .setValue(this.plugin.settings.defaultView)
           .onChange(async (value) => {
-            this.plugin.settings.defaultView = value as 'month' | 'week';
+            this.plugin.settings.defaultView = value as 'month' | 'week' | 'agenda';
             await this.plugin.saveSettings();
           }),
       );

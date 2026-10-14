@@ -49,6 +49,19 @@ describe('Toolbar', () => {
     expect(onViewChange).toHaveBeenCalledWith('week');
   });
 
+  it('calls onViewChange("agenda") when Agenda button is clicked', async () => {
+    const onViewChange = vi.fn();
+    render(<Toolbar {...defaultProps} onViewChange={onViewChange} />);
+    await userEvent.click(screen.getByText('Agenda'));
+    expect(onViewChange).toHaveBeenCalledWith('agenda');
+  });
+
+  it('labels the agenda view by its week', () => {
+    render(<Toolbar {...defaultProps} view="agenda" />);
+    expect(screen.getByText(/^Week of /)).toBeInTheDocument();
+    expect(screen.getByText('Agenda')).toHaveClass('active');
+  });
+
   it('disables refresh button and shows Syncing text when syncing', () => {
     render(<Toolbar {...defaultProps} syncing={true} />);
     const btn = screen.getByText(/Syncing/i);

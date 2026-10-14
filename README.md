@@ -1,10 +1,10 @@
 # M365 Calendar for Obsidian
 
-An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared, and group) inside Obsidian, with month and week views.
+An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared, and group) inside Obsidian, with month, week and agenda views.
 
 ## Features
 
-- **Month and week views** of your M365 calendar events
+- **Month, week and agenda views** of your M365 calendar events; the agenda lists the current week (Sunday–Saturday) day by day, all-day events and tasks first, then timed events in order
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
 - **Create events** — click any day to create a new event without leaving Obsidian
 - **Event locations on a map** — add a location when creating an event, edit it later, and see it on an OpenStreetMap preview in the new/edit event dialogs. The location text is looked up with OpenStreetMap (Nominatim) and the map is loaded from openstreetmap.org; turn it off under Settings → Maps to keep locations on your device
@@ -64,9 +64,9 @@ The calendar can be dragged to the main editor area or pinned to either sidebar.
 
 ### Navigating
 
-- Use **‹ / ›** buttons to move backward/forward by one month or week
+- Use **‹ / ›** buttons to move backward/forward by one month or week (the agenda moves by week)
 - Click **Today** to return to the current date
-- Toggle between **Month** and **Week** views using the buttons in the toolbar
+- Toggle between **Month**, **Week** and **Agenda** views using the buttons in the toolbar
 
 ### Creating an event
 
@@ -78,7 +78,7 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 |---|---|---|
 | Client ID | Azure AD application ID | _(required)_ |
 | Tenant ID | `common` for personal + work, or your tenant ID | `common` |
-| Default view | Month or Week | Month |
+| Default view | Month, Week or Agenda | Month |
 | Background refresh interval | How often to sync with M365 (minutes) | 10 |
 | Show event locations on a map | Adds a map to the new/edit event dialogs. Sends the location text to OpenStreetMap to place it | On |
 | Purge calendar and task data | Button: deletes locally stored events, tasks and sync information, then re-downloads calendars, events and tasks. Keeps your settings and sign-in. Use it to force a full resync | — |

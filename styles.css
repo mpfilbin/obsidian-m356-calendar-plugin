@@ -198,6 +198,96 @@
   min-height: 0;
 }
 
+/* ─── Agenda View ─────────────────────────────────────────────────────────── */
+
+.m365-agenda-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+.m365-agenda-day {
+  padding: var(--size-4-2) 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.m365-agenda-day-header {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+  margin-bottom: var(--size-4-1);
+}
+
+.m365-agenda-day .m365-agenda-day-title {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  height: auto;
+  cursor: pointer;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+}
+
+.m365-agenda-day.today .m365-agenda-day-title {
+  color: var(--interactive-accent);
+}
+
+.m365-agenda-weather {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.m365-agenda-empty {
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  padding-left: var(--size-4-3);
+}
+
+.m365-agenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.m365-agenda-list li {
+  margin: 2px 0;
+}
+
+.m365-agenda-row {
+  display: flex;
+  gap: var(--size-4-3);
+  padding: 2px var(--size-4-2);
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+}
+
+.m365-agenda-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.m365-agenda-time {
+  flex: 0 0 9em;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.m365-agenda-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m365-agenda-task .m365-agenda-title {
+  font-style: italic;
+}
+
 /* ─── Day View ────────────────────────────────────────────────────────────── */
 
 .m365-day-view {

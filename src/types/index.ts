@@ -1,4 +1,4 @@
-export type ViewType = 'month' | 'week' | 'day';
+export type ViewType = 'month' | 'week' | 'day' | 'agenda';
 
 export interface M365Calendar {
   id: string;
