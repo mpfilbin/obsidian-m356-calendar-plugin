@@ -27,7 +27,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const label =
     view === 'month'
       ? currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : view === 'week'
+      : view === 'week' || view === 'agenda'
       ? `Week of ${currentDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
       : currentDate.toLocaleDateString(undefined, {
           weekday: 'long',
@@ -59,6 +59,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           onClick={() => onViewChange('week')}
         >
           Week
+        </button>
+        <button
+          className={view === 'agenda' ? 'active' : ''}
+          onClick={() => onViewChange('agenda')}
+        >
+          Agenda
         </button>
       </div>
       <div className="m365-toolbar-actions">

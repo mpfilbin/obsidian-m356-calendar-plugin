@@ -346,6 +346,47 @@ describe('CalendarApp', () => {
     expect(end.getTime() - start.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
   });
 
+  it('switches to the agenda view and fetches the Sunday–Saturday week', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'] },
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByText('Agenda'));
+
+    expect(await screen.findAllByText(/Nothing scheduled|Edit event/)).not.toHaveLength(0);
+    await waitFor(() => {
+      const calls = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls;
+      const [, start, end] = calls[calls.length - 1];
+      expect(start.getDay()).toBe(0);
+      expect(end.getTime() - start.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+    });
+  });
+
+  it('moves the agenda a week at a time with its own buttons', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], defaultView: 'agenda' },
+    });
+    renderCalendarApp(ctx);
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(1));
+    const first = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[0][1] as Date;
+
+    await userEvent.click(screen.getByLabelText('Next week'));
+
+    await waitFor(() => expect(ctx.calendarService.getEvents).toHaveBeenCalledTimes(2));
+    const second = (ctx.calendarService.getEvents as ReturnType<typeof vi.fn>).mock.calls[1][1] as Date;
+    expect(second.getTime() - first.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  it('opens in the agenda view when it is the default view', async () => {
+    const ctx = makeContext({
+      settings: { ...DEFAULT_SETTINGS, enabledCalendarIds: ['cal-1'], defaultView: 'agenda' },
+    });
+    renderCalendarApp(ctx);
+    expect(await screen.findByText('Agenda')).toHaveClass('active');
+  });
+
   it('does not re-fetch calendars on navigation after successful load', async () => {
     const ctx = makeContext();
     renderCalendarApp(ctx);

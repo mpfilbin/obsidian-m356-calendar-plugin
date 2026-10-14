@@ -5,6 +5,7 @@ import { CalendarSelector } from './CalendarSelector';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
+import { AgendaView } from './AgendaView';
 import { useAppContext } from '../context';
 import { useEventsData } from '../hooks/useEventsData';
 import { useTodosData } from '../hooks/useTodosData';
@@ -152,6 +153,25 @@ export const CalendarApp: React.FC = () => {
                 todos={todos}
                 todoLists={todoLists}
                 onDayClick={handleDayClick}
+                onDayContextMenu={actions.handleDayContextMenu}
+                onEventClick={actions.handleEventClick}
+                onEventContextMenu={actions.handleEventContextMenu}
+                onTodoClick={actions.handleTodoClick}
+                onTodoContextMenu={actions.handleTodoContextMenu}
+                completingTodoIds={completingTodoIds}
+                weather={weather}
+                weatherUnits={settings.weatherUnits}
+              />
+            )}
+            {view === 'agenda' && (
+              <AgendaView
+                currentDate={currentDate}
+                events={events}
+                calendars={calendars}
+                todos={todos}
+                todoLists={todoLists}
+                onDayClick={handleDayClick}
+                onNavigate={handleNavigate}
                 onDayContextMenu={actions.handleDayContextMenu}
                 onEventClick={actions.handleEventClick}
                 onEventContextMenu={actions.handleEventContextMenu}

@@ -101,7 +101,7 @@ export function getDaysInMonthView(date: Date): Date[] {
 /**
  * Returns the event-fetch window for a given view:
  * - month: first of the month → first of the next month
- * - week:  Sunday of the week (local midnight) → next Sunday
+ * - week / agenda: Sunday of the week (local midnight) → next Sunday
  * - day:   start of the day → start of the next day
  */
 export function getDateRange(date: Date, view: ViewType): { start: Date; end: Date } {
