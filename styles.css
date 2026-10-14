@@ -271,7 +271,8 @@
 }
 
 .m365-agenda-time {
-  flex: 0 0 9em;
+  flex: 0 0 12em;
+  margin-right: var(--size-4-2);
   color: var(--text-muted);
   font-size: var(--font-ui-small);
 }
@@ -281,6 +282,18 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m365-agenda-source {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  margin-left: auto;
+  padding-left: var(--size-4-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
   white-space: nowrap;
 }
 

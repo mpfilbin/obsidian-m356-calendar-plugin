@@ -120,6 +120,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                         >
                           <span className="m365-agenda-time">{eventTimeLabel(item)}</span>
                           <span className="m365-agenda-title">{item.event.subject}</span>
+                          <span className="m365-agenda-source">
+                            <span
+                              className="m365-calendar-color-swatch"
+                              style={{ backgroundColor: cal.color }}
+                              aria-hidden="true"
+                            />
+                            {cal.name}
+                          </span>
                         </button>
                       </li>
                     );
@@ -144,6 +152,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       >
                         <span className="m365-agenda-time">Task</span>
                         <span className="m365-agenda-title">{item.todo.title}</span>
+                        <span className="m365-agenda-source">
+                          <span
+                            className="m365-calendar-color-swatch"
+                            style={{ backgroundColor: list.color }}
+                            aria-hidden="true"
+                          />
+                          {list.displayName}
+                        </span>
                       </button>
                     </li>
                   );

@@ -59,6 +59,14 @@ describe('AgendaView', () => {
     expect(within(day).getByText('Task')).toBeInTheDocument();
   });
 
+  it('names the calendar or task list on each row', () => {
+    render(<AgendaView {...base} events={[ev('Standup', '2026-04-08T09:00:00', '2026-04-08T09:15:00')]} todos={[todo]} />);
+    const day = screen.getByTestId('m365-agenda-day-2026-04-08');
+    expect(within(screen.getByLabelText('Edit event: Standup')).getByText('Work')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('View task: File taxes')).getByText('Tasks')).toBeInTheDocument();
+    expect(day.querySelectorAll('.m365-calendar-color-swatch')).toHaveLength(2);
+  });
+
   it('calls the click and context-menu handlers', async () => {
     const onEventClick = vi.fn();
     const onEventContextMenu = vi.fn();
