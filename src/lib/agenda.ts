@@ -2,7 +2,7 @@ import type { M365Event, M365TodoItem } from '../types';
 import { toDateOnly } from './datetime';
 
 export type AgendaItem =
-  | { kind: 'event'; event: M365Event; allDay: boolean; continues: boolean }
+  | { kind: 'event'; event: M365Event; allDay: boolean; continues: boolean; endsToday: boolean }
   | { kind: 'todo'; todo: M365TodoItem };
 
 export interface AgendaDay {
@@ -57,11 +57,11 @@ export function buildAgenda(
       const first = event.start.dateTime.slice(0, 10);
       if (first > dateStr || lastDay(event) < dateStr) continue;
       if (event.isAllDay) {
-        allDay.push({ kind: 'event', event, allDay: true, continues: first < dateStr });
+        allDay.push({ kind: 'event', event, allDay: true, continues: first < dateStr, endsToday: lastDay(event) === dateStr });
       } else {
         const continues = first < dateStr;
         timed.push({
-          item: { kind: 'event', event, allDay: false, continues },
+          item: { kind: 'event', event, allDay: false, continues, endsToday: lastDay(event) === dateStr },
           start: continues ? 0 : startMinutes(event),
           end: endMinutes(event),
           subject: event.subject,

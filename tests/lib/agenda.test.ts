@@ -73,6 +73,15 @@ describe('buildAgenda', () => {
     expect(cont.kind === 'event' && cont.continues).toBe(true);
   });
 
+  it('flags which day a multi-day timed event actually ends on', () => {
+    const result = buildAgenda(days, [ev('long', '2026-04-06T22:00:00', '2026-04-08T09:00:00')], []);
+    const flags = [1, 2, 3].map((i) => {
+      const it0 = result[i].items[0];
+      return it0.kind === 'event' ? [it0.continues, it0.endsToday] : null;
+    });
+    expect(flags).toEqual([[false, false], [true, false], [true, true]]);
+  });
+
   it('does not spill a timed event ending exactly at midnight onto the next day', () => {
     const events = [ev('late', '2026-04-07T22:00:00', '2026-04-08T00:00:00')];
     const result = buildAgenda(days, events, []);

@@ -128,6 +128,13 @@ describe('AgendaView', () => {
     expect(within(day).getByText(/^Until /)).toBeInTheDocument();
   });
 
+  it('labels a timed event spanning three days by start, pass-through and end', () => {
+    render(<AgendaView {...base} events={[ev('Retreat', '2026-04-06T22:00:00', '2026-04-08T09:00:00')]} />);
+    expect(within(screen.getByTestId('m365-agenda-day-2026-04-06')).getByText(/^From /)).toBeInTheDocument();
+    expect(within(screen.getByTestId('m365-agenda-day-2026-04-07')).getByText('All day')).toBeInTheDocument();
+    expect(within(screen.getByTestId('m365-agenda-day-2026-04-08')).getByText(/^Until /)).toBeInTheDocument();
+  });
+
   it('skips items whose calendar or list is unknown', () => {
     render(<AgendaView {...base} events={[ev('Orphan', '2026-04-08T09:00:00', '2026-04-08T10:00:00', { calendarId: 'gone' })]} todos={[{ ...todo, listId: 'gone' }]} />);
     expect(screen.queryByLabelText('Edit event: Orphan')).not.toBeInTheDocument();

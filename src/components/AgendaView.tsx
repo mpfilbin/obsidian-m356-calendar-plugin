@@ -27,7 +27,9 @@ interface AgendaViewProps {
 function eventTimeLabel(item: Extract<AgendaItem, { kind: 'event' }>): string {
   if (item.allDay) return 'All day';
   const end = formatTime(new Date(item.event.end.dateTime));
-  if (item.continues) return `Until ${end}`;
+  // Only the final day knows when the event actually ends; days it merely spans have no meaningful time.
+  if (item.continues) return item.endsToday ? `Until ${end}` : 'All day';
+  if (!item.endsToday) return `From ${formatTime(new Date(item.event.start.dateTime))}`;
   return `${formatTime(new Date(item.event.start.dateTime))} – ${end}`;
 }
 
