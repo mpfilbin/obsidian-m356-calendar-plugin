@@ -258,15 +258,18 @@
   margin: 2px 0;
 }
 
-.m365-agenda-row {
+.m365-event-click-btn.m365-agenda-row {
+  /* Same specificity as .m365-event-click-btn (defined later), so be explicit. */
   display: flex;
+  align-items: center;
+  width: 100%;
   gap: var(--size-4-3);
   padding: 2px var(--size-4-2);
   border-left: 3px solid var(--interactive-accent);
   border-radius: var(--radius-s);
 }
 
-.m365-agenda-row:hover {
+.m365-event-click-btn.m365-agenda-row:hover {
   background: var(--background-modifier-hover);
 }
 
