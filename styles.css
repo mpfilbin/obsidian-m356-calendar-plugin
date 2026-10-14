@@ -206,6 +206,19 @@
   padding: var(--size-4-2) var(--size-4-3);
 }
 
+.m365-agenda-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-3);
+  padding-bottom: var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.m365-agenda-nav-range {
+  font-weight: var(--font-semibold);
+}
+
 .m365-agenda-day {
   padding: var(--size-4-2) 0;
   border-bottom: 1px solid var(--background-modifier-border);

@@ -10,6 +10,8 @@ interface AgendaViewProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onDayClick: (date: Date) => void;
+  /** Step the visible week; omit to hide the previous/next controls. */
+  onNavigate?: (direction: 'prev' | 'next') => void;
   onDayContextMenu?: (payload: DayContextMenuPayload, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
@@ -35,6 +37,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   events,
   calendars,
   onDayClick,
+  onNavigate,
   onDayContextMenu,
   onEventClick,
   onEventContextMenu,
@@ -54,10 +57,22 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     () => buildAgenda(getWeekDays(currentDate), events, todos),
     [currentDate, events, todos],
   );
+  const weekRange = `${days[0].date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${days[6].date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const unit = weatherUnits === 'imperial' ? 'F' : 'C';
 
   return (
     <div className="m365-agenda-view">
+      {onNavigate && (
+        <div className="m365-agenda-nav">
+          <button type="button" aria-label="Previous week" onClick={() => onNavigate('prev')}>
+            ‹ Previous week
+          </button>
+          <span className="m365-agenda-nav-range">{weekRange}</span>
+          <button type="button" aria-label="Next week" onClick={() => onNavigate('next')}>
+            Next week ›
+          </button>
+        </div>
+      )}
       {days.map((day) => {
         const isToday = day.date.toDateString() === now.toDateString();
         const w = weather?.get(day.dateStr) ?? null;

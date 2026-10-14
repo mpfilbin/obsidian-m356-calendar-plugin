@@ -171,6 +171,7 @@ export const CalendarApp: React.FC = () => {
                 todos={todos}
                 todoLists={todoLists}
                 onDayClick={handleDayClick}
+                onNavigate={handleNavigate}
                 onDayContextMenu={actions.handleDayContextMenu}
                 onEventClick={actions.handleEventClick}
                 onEventContextMenu={actions.handleEventContextMenu}

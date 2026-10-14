@@ -102,6 +102,20 @@ describe('AgendaView', () => {
     expect(onDayContextMenu).toHaveBeenCalledWith({ kind: 'allday', date: expect.any(Date) }, expect.anything());
   });
 
+  it('steps the week with the previous and next buttons', async () => {
+    const onNavigate = vi.fn();
+    render(<AgendaView {...base} events={[]} onNavigate={onNavigate} />);
+    expect(screen.getByText(/Apr 5 – Apr 11, 2026/)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText('Previous week'));
+    await userEvent.click(screen.getByLabelText('Next week'));
+    expect(onNavigate.mock.calls).toEqual([['prev'], ['next']]);
+  });
+
+  it('hides the week buttons when navigation is not provided', () => {
+    render(<AgendaView {...base} events={[]} />);
+    expect(screen.queryByLabelText('Next week')).not.toBeInTheDocument();
+  });
+
   it('marks today', () => {
     render(<AgendaView {...base} events={[]} />);
     expect(screen.getByTestId('m365-agenda-day-2026-04-08')).toHaveClass('today');
