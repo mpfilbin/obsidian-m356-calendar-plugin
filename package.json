@@ -33,7 +33,7 @@
     "tslib": "2.4.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "8.72.0",
-    "vitest": "^2.0.0"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "obsidian": "latest",
