@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TaskCacheService } from '../../src/services/TaskCacheService';
 import type { M365TodoItem, TaskCacheStore } from '../../src/types';
+import type { AnyMock } from '../types';
 
 const task = (id: string, dueDate = '2026-04-10'): M365TodoItem => ({
   id, title: `Task ${id}`, listId: 'list1', dueDate, importance: 'normal',
 });
 
 describe('TaskCacheService', () => {
-  let load: ReturnType<typeof vi.fn>;
-  let save: ReturnType<typeof vi.fn>;
+  let load: AnyMock;
+  let save: AnyMock;
   let cache: TaskCacheService;
 
   beforeEach(async () => {

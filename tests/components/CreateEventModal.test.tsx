@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateEventForm, buildRecurrence } from '../../src/components/CreateEventModal';
 import { M365Calendar } from '../../src/types';
+import type { AnyMock } from '../types';
 
 const calendars: M365Calendar[] = [
   { id: 'cal1', name: 'Work', color: '#0078d4', isDefaultCalendar: true, canEdit: true },
@@ -10,8 +11,8 @@ const calendars: M365Calendar[] = [
 ];
 
 describe('CreateEventForm', () => {
-  let onSubmit: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSubmit: AnyMock;
+  let onCancel: AnyMock;
 
   beforeEach(() => {
     onSubmit = vi.fn();

@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EventDetailForm } from '../../src/components/EventDetailModal';
 import { M365Event, M365Calendar } from '../../src/types';
+import type { AnyMock } from '../types';
 
 const event: M365Event = {
   id: 'evt1',
@@ -22,8 +23,8 @@ const calendars: M365Calendar[] = [
 ];
 
 describe('EventDetailForm', () => {
-  let onSave: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSave: AnyMock;
+  let onCancel: AnyMock;
 
   beforeEach(() => {
     onSave = vi.fn().mockResolvedValue(undefined);
