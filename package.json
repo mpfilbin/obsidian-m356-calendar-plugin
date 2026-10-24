@@ -23,7 +23,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^5.0.5",
     "builtin-modules": "^5.4.0",
     "esbuild": "0.28.2",
     "eslint-plugin-obsidianmd": "0.1.9",
