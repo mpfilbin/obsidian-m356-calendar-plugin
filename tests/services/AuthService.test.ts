@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { requestUrl, type RequestUrlResponse } from 'obsidian';
 import { AuthService, AuthError, isAuthError, TOKEN_SECRET_NAME, generateCodeVerifier, generateCodeChallenge } from '../../src/services/AuthService';
 import { StoredTokens } from '../../src/types';
+import type { AnyMock } from '../types';
 
 function makeRequestUrlResponse(status: number, json: unknown): RequestUrlResponse {
   return { status, json, headers: {}, arrayBuffer: new ArrayBuffer(0), text: '' } as RequestUrlResponse;
@@ -17,9 +18,9 @@ function makeTokens(expiresInMs: number): StoredTokens {
 }
 
 describe('AuthService', () => {
-  let getSecret: ReturnType<typeof vi.fn>;
-  let setSecret: ReturnType<typeof vi.fn>;
-  let openUrl: ReturnType<typeof vi.fn>;
+  let getSecret: AnyMock;
+  let setSecret: AnyMock;
+  let openUrl: AnyMock;
   let auth: AuthService;
 
   beforeEach(() => {

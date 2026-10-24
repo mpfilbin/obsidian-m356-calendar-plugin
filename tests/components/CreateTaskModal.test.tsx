@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateTaskForm } from '../../src/components/CreateTaskModal';
 import { M365TodoList } from '../../src/types';
+import type { AnyMock } from '../types';
 
 const todoLists: M365TodoList[] = [
   { id: 'list1', displayName: 'Work', color: '#ef4444' },
@@ -10,8 +11,8 @@ const todoLists: M365TodoList[] = [
 ];
 
 describe('CreateTaskForm', () => {
-  let onSubmit: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSubmit: AnyMock;
+  let onCancel: AnyMock;
 
   beforeEach(() => {
     onSubmit = vi.fn();

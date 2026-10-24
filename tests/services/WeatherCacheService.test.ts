@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WeatherCacheService } from '../../src/services/WeatherCacheService';
 import { DailyWeather, WeatherCacheStore } from '../../src/types';
 import { toDateOnly } from '../../src/lib/datetime';
+import type { AnyMock } from '../types';
 
 const LOCATION = 'New York, US';
 const UNITS = 'imperial' as const;
@@ -20,8 +21,8 @@ const makeWeather = (date: string): DailyWeather => ({
 });
 
 describe('WeatherCacheService', () => {
-  let load: ReturnType<typeof vi.fn>;
-  let save: ReturnType<typeof vi.fn>;
+  let load: AnyMock;
+  let save: AnyMock;
   let cache: WeatherCacheService;
 
   beforeEach(async () => {

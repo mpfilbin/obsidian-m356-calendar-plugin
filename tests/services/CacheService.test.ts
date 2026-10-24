@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CacheService } from '../../src/services/CacheService';
 import { M365Event, CacheStore } from '../../src/types';
+import type { AnyMock } from '../types';
 
 const makeEvent = (id: string, startISO: string): M365Event => ({
   id,
@@ -22,8 +23,8 @@ const evtApr15 = makeEvent('e2', '2026-04-15T10:00:00');
 const evtMay1  = makeEvent('e3', '2026-05-01T08:00:00');
 
 describe('CacheService', () => {
-  let load: ReturnType<typeof vi.fn>;
-  let save: ReturnType<typeof vi.fn>;
+  let load: AnyMock;
+  let save: AnyMock;
   let cache: CacheService;
 
   beforeEach(async () => {

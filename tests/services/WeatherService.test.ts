@@ -3,6 +3,7 @@ import { WeatherService } from '../../src/services/WeatherService';
 import { WeatherCacheService } from '../../src/services/WeatherCacheService';
 import { DailyWeather } from '../../src/types';
 import { toDateOnly } from '../../src/lib/datetime';
+import type { AnyMock } from '../types';
 
 const LOCATION = 'New York, US';
 // Computed dynamically so tests remain correct regardless of when they run
@@ -85,7 +86,7 @@ describe('WeatherService', () => {
   it('returns cached data without calling fetch', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    (cache.get as ReturnType<typeof vi.fn>).mockReturnValue(FORECAST_WEATHER);
+    (cache.get as AnyMock).mockReturnValue(FORECAST_WEATHER);
     const result = await service.getWeatherForDates([TODAY]);
     expect(result.get(TODAY)).toEqual(FORECAST_WEATHER);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -110,7 +111,7 @@ describe('WeatherService', () => {
   });
 
   describe('problem reporting', () => {
-    let onProblem: ReturnType<typeof vi.fn>;
+    let onProblem: AnyMock;
     beforeEach(() => {
       onProblem = vi.fn();
       service = new WeatherService(
@@ -241,7 +242,7 @@ describe('WeatherService', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeForecastResponse([TODAY])) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(makeForecastResponse([TOMORROW])) });
     vi.stubGlobal('fetch', fetchMock);
-    (cache.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    (cache.get as AnyMock).mockReturnValue(null);
 
     await service.getWeatherForDates([TODAY]);
     await service.getWeatherForDates([TOMORROW]);
