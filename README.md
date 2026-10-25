@@ -111,7 +111,13 @@ Sign out and sign in again after changing these settings — the new credentials
 
 See [docs/architecture/auth-flow.md](docs/architecture/auth-flow.md) for the OAuth 2.0 sequence diagrams.
 
+## Security notes
+
+The plugin stores your Microsoft sign-in tokens in Obsidian's secret storage, but the OpenWeather API key and the cached calendar/task data live in the plugin's `data.json` inside your vault. Exclude `.obsidian/plugins/m365-calendar/data.json` from vault sync, git, and backups if that data should not leave your device. The full analysis is in the [threat model](docs/security/threat-model.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## Development
+
+> **Contributors:** read the [threat model](docs/security/threat-model.md) before changing authentication, network calls, persisted data, or the release pipeline. Add `Threat model: no impact` or `Threat model: updated (IDs)` to your PR description.
 
 ### Setup
 
