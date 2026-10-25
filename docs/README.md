@@ -4,6 +4,11 @@
 
 - [`architecture/auth-flow.md`](architecture/auth-flow.md) — OAuth 2.0 + PKCE sign-in via the `obsidian://m365-callback` deep link, silent token refresh, token storage.
 
+## Security
+
+- [`../SECURITY.md`](../SECURITY.md) — how to report a vulnerability privately.
+- [`security/threat-model.md`](security/threat-model.md) — STRIDE threat model with reproducible PoCs, findings register, security invariants and recommendations. Update it when a change matches the "must update" table in §1.
+
 ### Code layout (`src/`)
 
 | Path | Responsibility |
