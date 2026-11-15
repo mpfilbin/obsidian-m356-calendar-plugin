@@ -62,6 +62,8 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   }, [todo.listId, todo.id, todoService]);
 
   useEffect(() => {
+    // Drop whatever was shown for the previous task, or before the setting was turned off.
+    setEmail(null);
     if (!showEmailDetails) return;
     let cancelled = false;
     void todoService.getLinkedEmail(todo.listId, todo.id)
@@ -236,7 +238,7 @@ const LinkedEmailDetails: React.FC<{ email: M365LinkedEmail }> = ({ email }) => 
       {email.bodyPreview && <div className="m365-todo-email-body">{email.bodyPreview}</div>}
       {!email.detailsAvailable && (
         <div className="m365-todo-email-meta">
-          The message could not be read. Check that the Mail.Read permission is granted and sign in again.
+          The message could not be read. Check that the Mail.Read permission is granted, then sign out and sign in again from the plugin settings.
         </div>
       )}
       {email.webLink && isHttpsUrl(email.webLink) && (

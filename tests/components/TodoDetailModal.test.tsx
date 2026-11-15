@@ -461,6 +461,14 @@ describe('TodoDetailForm — in-flight requests', () => {
       expect(screen.getByRole('link', { name: 'Open in Outlook' })).toBeInTheDocument();
     });
 
+    it('clears the email when the setting is turned off or the task changes', async () => {
+      const service = serviceWith(vi.fn().mockResolvedValue(email));
+      const { rerender } = render(<TodoDetailForm todo={todo} todoList={todoList} todoService={service} onComplete={vi.fn()} showEmailDetails />);
+      expect(await screen.findByText('Q3 budget')).toBeInTheDocument();
+      rerender(<TodoDetailForm todo={todo} todoList={todoList} todoService={service} onComplete={vi.fn()} showEmailDetails={false} />);
+      await waitFor(() => expect(screen.queryByText('Q3 budget')).not.toBeInTheDocument());
+    });
+
     it('does not render a non-https link', async () => {
       const bad = { ...email, webLink: 'javascript:alert(1)' }; // eslint-disable-line no-script-url
       render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockResolvedValue(bad))} onComplete={vi.fn()} showEmailDetails />);
