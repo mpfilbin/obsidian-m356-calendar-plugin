@@ -193,6 +193,32 @@ describe('AuthService', () => {
     });
   });
 
+  describe('scopes', () => {
+    const authUrlScope = async (service: AuthService): Promise<string[]> => {
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
+      openUrl.mockImplementation((url: string) => {
+        const u = new URL(url);
+        service.handleOAuthCallback({ action: 'm365-callback', code: 'c', state: u.searchParams.get('state') ?? '' });
+        return Promise.resolve();
+      });
+      await service.signIn();
+      return new URL(openUrl.mock.calls[0][0] as string).searchParams.get('scope')!.split(' ');
+    };
+
+    it('does not request Mail.Read by default', async () => {
+      expect(await authUrlScope(auth)).not.toContain('Mail.Read');
+    });
+
+    it('requests the extra scopes the caller asks for, read at sign-in time', async () => {
+      let extra: string[] = [];
+      const withExtra = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl, undefined, () => extra);
+      extra = ['Mail.Read'];
+      expect(await authUrlScope(withExtra)).toEqual(expect.arrayContaining(['Tasks.ReadWrite', 'Mail.Read']));
+    });
+  });
+
   describe('handleOAuthCallback', () => {
     it('resolves pending signIn when code is present in params', async () => {
       vi.mocked(requestUrl).mockResolvedValue(

@@ -27,6 +27,7 @@ export interface CalendarActionsDeps {
   refreshEvents: () => Promise<void>;
   /** Whether dialogs may show event locations on a map (the Maps setting). */
   mapsEnabled: boolean;
+  showEmailDetails: boolean;
 }
 
 /** User-initiated actions that open modals / menus and mutate events and tasks. */
@@ -35,7 +36,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
   const { hidePopover } = usePopoverContext();
   const {
     currentDate, view, calendars, enabledIds, setEvents,
-    todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds, refreshEvents, mapsEnabled,
+    todoLists, enabledTodoListIds, setTodos, setCompletingTodoIds, refreshEvents, mapsEnabled, showEmailDetails,
   } = deps;
 
   // Maps send the location text to OpenStreetMap, so they only exist while the setting is on.
@@ -275,7 +276,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
       return;
     }
     const { onComplete, onDelete } = todoActions(todo);
-    new TodoDetailModal(app, todo, list, todoService, onComplete, onDelete).open();
+    new TodoDetailModal(app, todo, list, todoService, onComplete, onDelete, showEmailDetails).open();
   };
 
   const handleTodoContextMenu = (todo: M365TodoItem, mouseEvent: MouseEvent) => {

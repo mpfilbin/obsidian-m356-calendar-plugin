@@ -419,4 +419,58 @@ describe('TodoDetailForm — in-flight requests', () => {
     finish();
     await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
   });
+  describe('linked email', () => {
+    const email = {
+      subject: 'Q3 budget',
+      from: 'Ada Lovelace <ada@example.com>',
+      receivedDateTime: '2026-04-10T09:30:00Z',
+      bodyPreview: 'Please review the numbers.',
+      webLink: 'https://outlook.office.com/mail/x',
+      detailsAvailable: true,
+    };
+    const serviceWith = (getLinkedEmail: ReturnType<typeof vi.fn>) =>
+      ({ ...(makeMockTodoService() as object), getLinkedEmail }) as unknown as TodoService;
+
+    it('shows the email details when the setting is on', async () => {
+      const getLinkedEmail = vi.fn().mockResolvedValue(email);
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(getLinkedEmail)} onComplete={vi.fn()} showEmailDetails />);
+      expect(await screen.findByText('Q3 budget')).toBeInTheDocument();
+      expect(screen.getByText('From: Ada Lovelace <ada@example.com>')).toBeInTheDocument();
+      expect(screen.getByText('Please review the numbers.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Open in Outlook' })).toHaveAttribute('href', email.webLink);
+      expect(getLinkedEmail).toHaveBeenCalledWith('list1', 'task1');
+    });
+
+    it('does not look the email up when the setting is off', async () => {
+      const getLinkedEmail = vi.fn();
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(getLinkedEmail)} onComplete={vi.fn()} />);
+      await screen.findByText('Work Tasks');
+      expect(getLinkedEmail).not.toHaveBeenCalled();
+    });
+
+    it('renders nothing extra for a task with no linked email', async () => {
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockResolvedValue(null))} onComplete={vi.fn()} showEmailDetails />);
+      await screen.findByText('Work Tasks');
+      expect(screen.queryByText('Open in Outlook')).not.toBeInTheDocument();
+    });
+
+    it('explains, but still links, when the message could not be read', async () => {
+      const unread = { subject: 'Q3 budget', webLink: email.webLink, detailsAvailable: false };
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockResolvedValue(unread))} onComplete={vi.fn()} showEmailDetails />);
+      expect(await screen.findByText(/could not be read/)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Open in Outlook' })).toBeInTheDocument();
+    });
+
+    it('does not render a non-https link', async () => {
+      const bad = { ...email, webLink: 'javascript:alert(1)' }; // eslint-disable-line no-script-url
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockResolvedValue(bad))} onComplete={vi.fn()} showEmailDetails />);
+      await screen.findByText('Q3 budget');
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    it('leaves the dialog usable when the lookup fails', async () => {
+      render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockRejectedValue(new Error('boom')))} onComplete={vi.fn()} showEmailDetails />);
+      expect(await screen.findByText('Mark complete')).toBeEnabled();
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { AuthService } from './AuthService';
-import { M365TodoList, M365TodoItem, M365ChecklistItem, NewTaskInput, TaskRecurrence } from '../types';
-import { GraphClient } from './GraphClient';
+import { M365TodoList, M365TodoItem, M365ChecklistItem, M365LinkedEmail, NewTaskInput, TaskRecurrence } from '../types';
+import { GraphClient, buildQuery } from './GraphClient';
 import { type Logger, NullLogger } from '../lib/logger';
 import { toDateOnly } from '../lib/datetime';
 import { Semaphore } from '../lib/semaphore';
@@ -20,13 +20,25 @@ function hashListColor(id: string): string {
   return TODO_LIST_COLORS[Math.abs(hash) % TODO_LIST_COLORS.length];
 }
 
+/** Longest email body kept for display; the rest is cut so a long thread cannot flood the dialog. */
+const MAX_EMAIL_BODY_CHARS = 2000;
+
+interface GraphEmailAddress { emailAddress?: { name?: string; address?: string } }
+
+function formatAddress(entry: GraphEmailAddress | undefined): string | undefined {
+  const name = entry?.emailAddress?.name?.trim();
+  const address = entry?.emailAddress?.address?.trim();
+  if (name && address && name !== address) return `${name} <${address}>`;
+  return name || address || undefined;
+}
+
 export class TodoService {
   private readonly semaphore = new Semaphore(2);
   private readonly graph: GraphClient;
 
   constructor(
     auth: AuthService,
-    logger: Logger = new NullLogger(),
+    private readonly logger: Logger = new NullLogger(),
     private readonly cache?: TaskCacheService,
   ) {
     this.graph = new GraphClient(auth, logger);
@@ -131,6 +143,53 @@ export class TodoService {
       displayName: item.displayName as string,
       isChecked: item.isChecked as boolean,
     }));
+  }
+
+  /**
+   * The email a task was created from (a flagged email shows up in To Do as a task linked to its
+   * message). Returns null when the task has no linked resource. When the message itself cannot be
+   * read (no `Mail.Read` consent, deleted, an unrecognised id) the task's own link is returned with
+   * `detailsAvailable: false`, so the caller can still offer "open in Outlook".
+   */
+  async getLinkedEmail(listId: string, taskId: string): Promise<M365LinkedEmail | null> {
+    const data = await this.graph.json<{ value: Record<string, unknown>[] }>(
+      'GET', `${TodoService.taskPath(listId, taskId)}/linkedResources`, 'fetch linked resources',
+    );
+    const resource = data.value.find((r) => typeof r.externalId === 'string' && r.externalId !== '') ?? data.value[0];
+    if (!resource) return null;
+
+    const fallback: M365LinkedEmail = {
+      subject: (resource.displayName as string | undefined) ?? '',
+      webLink: (resource.webLink as string | undefined) || undefined,
+      detailsAvailable: false,
+    };
+    const messageId = resource.externalId;
+    if (typeof messageId !== 'string' || messageId === '') return fallback;
+
+    try {
+      const query = buildQuery({ $select: 'subject,from,toRecipients,receivedDateTime,body,bodyPreview,webLink' });
+      const message = await this.graph.json<Record<string, unknown>>(
+        'GET', `/me/messages/${encodeURIComponent(messageId)}?${query}`, 'fetch email',
+        { headers: { Prefer: 'outlook.body-content-type="text"' } },
+      );
+      const content = ((message.body as { content?: string } | undefined)?.content ?? '').trim()
+        || ((message.bodyPreview as string | undefined) ?? '').trim();
+      return {
+        subject: (message.subject as string | undefined) || fallback.subject,
+        from: formatAddress(message.from as GraphEmailAddress | undefined),
+        to: ((message.toRecipients as GraphEmailAddress[] | undefined) ?? [])
+          .map(formatAddress).filter((a): a is string => !!a).join(', ') || undefined,
+        receivedDateTime: (message.receivedDateTime as string | undefined) || undefined,
+        bodyPreview: content
+          ? (content.length > MAX_EMAIL_BODY_CHARS ? `${content.slice(0, MAX_EMAIL_BODY_CHARS)}…` : content)
+          : undefined,
+        webLink: (message.webLink as string | undefined) || fallback.webLink,
+        detailsAvailable: true,
+      };
+    } catch (e) {
+      this.logger.warn('[M365 Calendar] Could not read the linked email:', e);
+      return fallback;
+    }
   }
 
   async createChecklistItem(listId: string, taskId: string, displayName: string): Promise<M365ChecklistItem> {

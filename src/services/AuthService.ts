@@ -40,6 +40,9 @@ const GRAPH_SCOPES = [
   'offline_access',
 ];
 
+/** Only requested while "Show email details on flagged-email tasks" is on (see settings). */
+export const MAIL_READ_SCOPE = 'Mail.Read';
+
 export function generateCodeVerifier(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return arrayBufferToBase64Url(bytes.buffer);
@@ -65,7 +68,13 @@ export class AuthService {
     private readonly setSecret: (name: string, value: string) => Promise<void>,
     private readonly openUrl: (url: string) => Promise<void>,
     private readonly logger: Logger = new NullLogger(),
+    /** Scopes beyond the always-requested ones, read each time a token is requested. */
+    private readonly getExtraScopes: () => string[] = () => [],
   ) {}
+
+  private scopeParam(): string {
+    return [...GRAPH_SCOPES, ...this.getExtraScopes()].join(' ');
+  }
 
   private pendingSignIn: {
     resolve: (code: string) => void;
@@ -182,7 +191,7 @@ export class AuthService {
       client_id: this.getClientId(),
       response_type: 'code',
       redirect_uri: redirectUri,
-      scope: GRAPH_SCOPES.join(' '),
+      scope: this.scopeParam(),
       response_mode: 'query',
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
@@ -197,7 +206,7 @@ export class AuthService {
       code,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
-      scope: GRAPH_SCOPES.join(' '),
+      scope: this.scopeParam(),
       code_verifier: codeVerifier,
     });
 
@@ -236,7 +245,7 @@ export class AuthService {
       client_id: this.getClientId(),
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
-      scope: GRAPH_SCOPES.join(' '),
+      scope: this.scopeParam(),
     });
 
     const tokenUrl = `https://login.microsoftonline.com/${this.getTenantId()}/oauth2/v2.0/token`;

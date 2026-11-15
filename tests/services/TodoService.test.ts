@@ -770,4 +770,72 @@ describe('TodoService', () => {
       await expect(service.deleteTask('list1', 'task1')).rejects.toThrow('Failed to delete task: Not Found');
     });
   });
+  describe('getLinkedEmail', () => {
+    const okJson = (body: unknown) => ({ ok: true, json: () => Promise.resolve(body) });
+    const resource = { id: 'r1', displayName: 'Q3 budget', webLink: 'https://outlook.office.com/mail/x', applicationName: 'Outlook', externalId: 'AAMk/id+1=' };
+
+    it('returns null when the task has no linked resource', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okJson({ value: [] })));
+      expect(await service.getLinkedEmail('list1', 'task1')).toBeNull();
+    });
+
+    it('reads the linked message and returns sender, date and plain-text body', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(okJson({ value: [resource] }))
+        .mockResolvedValueOnce(okJson({
+          subject: 'Q3 budget',
+          from: { emailAddress: { name: 'Ada Lovelace', address: 'ada@example.com' } },
+          toRecipients: [{ emailAddress: { name: 'Me', address: 'me@example.com' } }],
+          receivedDateTime: '2026-04-10T09:30:00Z',
+          body: { contentType: 'text', content: '  Please review the numbers.  ' },
+          bodyPreview: 'Please review',
+          webLink: 'https://outlook.office.com/mail/real',
+        }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const email = await service.getLinkedEmail('list1', 'task1');
+
+      expect(fetchMock.mock.calls[0][0]).toBe('https://graph.microsoft.com/v1.0/me/todo/lists/list1/tasks/task1/linkedResources');
+      const [messageUrl, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect(messageUrl).toContain('/me/messages/AAMk%2Fid%2B1%3D?$select=');
+      expect(init.headers).toMatchObject({ Prefer: 'outlook.body-content-type="text"' });
+      expect(email).toEqual({
+        subject: 'Q3 budget',
+        from: 'Ada Lovelace <ada@example.com>',
+        to: 'Me <me@example.com>',
+        receivedDateTime: '2026-04-10T09:30:00Z',
+        bodyPreview: 'Please review the numbers.',
+        webLink: 'https://outlook.office.com/mail/real',
+        detailsAvailable: true,
+      });
+    });
+
+    it('cuts a very long body', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(okJson({ value: [resource] }))
+        .mockResolvedValueOnce(okJson({ subject: 'Long', body: { content: 'x'.repeat(5000) } })));
+      const email = await service.getLinkedEmail('list1', 'task1');
+      expect(email?.bodyPreview).toHaveLength(2001);
+      expect(email?.bodyPreview?.endsWith('…')).toBe(true);
+    });
+
+    it('falls back to the task link when the message cannot be read', async () => {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(okJson({ value: [resource] }))
+        .mockResolvedValueOnce({ ok: false, status: 403, statusText: 'Forbidden' }));
+      expect(await service.getLinkedEmail('list1', 'task1')).toEqual({
+        subject: 'Q3 budget',
+        webLink: 'https://outlook.office.com/mail/x',
+        detailsAvailable: false,
+      });
+    });
+
+    it('does not call the mail API when the resource has no external id', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(okJson({ value: [{ ...resource, externalId: undefined }] }));
+      vi.stubGlobal('fetch', fetchMock);
+      const email = await service.getLinkedEmail('list1', 'task1');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(email?.detailsAvailable).toBe(false);
+    });
+  });
 });
