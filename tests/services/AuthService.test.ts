@@ -109,6 +109,39 @@ describe('AuthService', () => {
     expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
   });
 
+  describe('refresh with optional scopes', () => {
+    const scopeOf = (call: number) =>
+      new URLSearchParams((vi.mocked(requestUrl).mock.calls[call][0] as { body: string }).body).get('scope')!.split(' ');
+    const withMail = () => new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl, undefined, () => ['Mail.Read']);
+
+    it('retries with the base scopes when the optional scope has not been consented, instead of signing out', async () => {
+      getSecret.mockReturnValue(JSON.stringify(makeTokens(-1000)));
+      vi.mocked(requestUrl)
+        .mockResolvedValueOnce(makeRequestUrlResponse(400, { error: 'invalid_grant' }))
+        .mockResolvedValueOnce(makeRequestUrlResponse(200, { access_token: 'new-token', refresh_token: 'r2', expires_in: 3600 }));
+      expect(await withMail().getValidToken()).toBe('new-token');
+      expect(scopeOf(0)).toContain('Mail.Read');
+      expect(scopeOf(1)).not.toContain('Mail.Read');
+      expect(scopeOf(1)).toContain('Tasks.ReadWrite');
+      expect(setSecret).not.toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
+    });
+
+    it('still signs out when the refresh token is dead for the base scopes too', async () => {
+      getSecret.mockReturnValue(JSON.stringify(makeTokens(-1000)));
+      vi.mocked(requestUrl).mockResolvedValue(makeRequestUrlResponse(400, { error: 'invalid_grant' }));
+      await expect(withMail().getValidToken()).rejects.toThrow(/expired/i);
+      expect(requestUrl).toHaveBeenCalledTimes(2);
+      expect(setSecret).toHaveBeenCalledWith(TOKEN_SECRET_NAME, '');
+    });
+
+    it('does not retry when no optional scope was requested', async () => {
+      getSecret.mockReturnValue(JSON.stringify(makeTokens(-1000)));
+      vi.mocked(requestUrl).mockResolvedValue(makeRequestUrlResponse(400, { error: 'invalid_grant' }));
+      await expect(auth.getValidToken()).rejects.toThrow(/expired/i);
+      expect(requestUrl).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('keeps the tokens and throws a plain error on a transient refresh failure', async () => {
     getSecret.mockReturnValue(JSON.stringify(makeTokens(30_000)));
     vi.mocked(requestUrl).mockResolvedValue(makeRequestUrlResponse(503, { error: 'temporarily_unavailable' }));
@@ -190,6 +223,32 @@ describe('AuthService', () => {
 
       const opts = vi.mocked(requestUrl).mock.calls[0][0] as { url: string };
       expect(opts.url).toContain('/updated-tenant/');
+    });
+  });
+
+  describe('scopes', () => {
+    const authUrlScope = async (service: AuthService): Promise<string[]> => {
+      vi.mocked(requestUrl).mockResolvedValue(
+        makeRequestUrlResponse(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 }),
+      );
+      openUrl.mockImplementation((url: string) => {
+        const u = new URL(url);
+        service.handleOAuthCallback({ action: 'm365-callback', code: 'c', state: u.searchParams.get('state') ?? '' });
+        return Promise.resolve();
+      });
+      await service.signIn();
+      return new URL(openUrl.mock.calls[0][0] as string).searchParams.get('scope')!.split(' ');
+    };
+
+    it('does not request Mail.Read by default', async () => {
+      expect(await authUrlScope(auth)).not.toContain('Mail.Read');
+    });
+
+    it('requests the extra scopes the caller asks for, read at sign-in time', async () => {
+      let extra: string[] = [];
+      const withExtra = new AuthService(() => 'client-id', () => 'common', getSecret, setSecret, openUrl, undefined, () => extra);
+      extra = ['Mail.Read'];
+      expect(await authUrlScope(withExtra)).toEqual(expect.arrayContaining(['Tasks.ReadWrite', 'Mail.Read']));
     });
   });
 

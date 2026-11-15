@@ -11,6 +11,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
 - **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
 - **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
+- **Flagged-email details** — open a task created by flagging an email in Outlook and see the email's sender, recipients, date and text, with a link to open it in Outlook. Off by default; see Settings → Flagged emails
 - **Local caching** — renders instantly from cache, refreshes in the background
 - **Theme aware** — uses Obsidian CSS variables to match your active theme
 
@@ -41,6 +42,8 @@ Before using the plugin you must register an application in Azure Active Directo
 6. Navigate to **API permissions → Add a permission → Microsoft Graph → Delegated permissions**
 7. Add: `Calendars.ReadWrite.Shared`, `Tasks.ReadWrite`, `User.Read`
 8. Click **Grant admin consent** (if you are an admin) or ask your admin to do so
+
+> **Optional — flagged-email details:** to show the email behind a flagged-email task, also add the read-only `Mail.Read` permission (and grant consent), then turn on Settings → Flagged emails → *Show email details on flagged-email tasks* and sign out and in again. Without this setting the plugin never asks for mail access.
 
 > **Personal Microsoft accounts:** Admin consent is not required. The user will be prompted to consent on first sign-in.
 
@@ -81,6 +84,7 @@ Click on any day cell or week column to open the **New Event** form. Fill in the
 | Default view | Month, Week or Agenda | Month |
 | Background refresh interval | How often to sync with M365 (minutes) | 10 |
 | Show event locations on a map | Adds a map to the new/edit event dialogs. Sends the location text to OpenStreetMap to place it | On |
+| Show email details on flagged-email tasks | Opening a task that came from a flagged email shows the email's sender, recipients, date and text (first 2,000 characters). Requests the read-only `Mail.Read` permission at sign-in; sign out and in again after turning it on | Off |
 | Purge calendar and task data | Button: deletes locally stored events, tasks and sync information, then re-downloads calendars, events and tasks. Keeps your settings and sign-in. Use it to force a full resync | — |
 | Clear weather cache | Button: purges cached weather so it is fetched again | — |
 
@@ -100,6 +104,9 @@ Check that the relevant calendars are enabled in the sidebar toggle panel. If th
 
 **Tasks are not showing up**  
 Ensure your Azure app has the `Tasks.ReadWrite` permission and that consent has been granted. Only tasks with a due date set will appear on the calendar — tasks without a due date are not shown. Completed tasks are filtered out automatically.
+
+**A flagged-email task says "The message could not be read"**  
+Ensure your Azure app has the `Mail.Read` permission with consent granted, that *Show email details on flagged-email tasks* is on, and that you signed out and in again after turning it on. The "Open in Outlook" link works without it.
 
 **Clicking Complete on a task does nothing / shows an error**  
 Ensure your Azure app has the `Tasks.ReadWrite` permission (not just `Tasks.Read`) and that consent has been granted.

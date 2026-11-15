@@ -1,6 +1,6 @@
 import { Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
 import { appLogger, SwitchableLogger } from './lib/logger';
-import { AuthService } from './services/AuthService';
+import { AuthService, MAIL_READ_SCOPE } from './services/AuthService';
 import { CalendarService } from './services/CalendarService';
 import { CacheService } from './services/CacheService';
 import { WeatherService, type WeatherTestResult } from './services/WeatherService';
@@ -97,6 +97,7 @@ export default class M365CalendarPlugin extends Plugin {
       async (name, value) => { await this.app.secretStorage.setSecret(name, value); },
       openUrl,
       this.logger,
+      () => (this.settings.showEmailDetails ? [MAIL_READ_SCOPE] : []),
     );
 
     this.registerObsidianProtocolHandler('m365-callback', (params) => {

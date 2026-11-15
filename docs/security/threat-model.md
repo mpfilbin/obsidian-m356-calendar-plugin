@@ -59,8 +59,8 @@ When impact is high but a precondition is required, the finding says so in "Who 
 
 | ID | Asset | Why it matters |
 |---|---|---|
-| A1 | Entra access + refresh tokens (`Calendars.ReadWrite.Shared`, `Tasks.ReadWrite`, `User.Read`, `offline_access`) | Read/modify/delete the user's calendar and tasks for up to 90 days sliding |
-| A2 | Calendar and task content (subjects, bodies, locations, attendees' data) | Confidential business/personal information; integrity of what the user sees |
+| A1 | Entra access + refresh tokens (`Calendars.ReadWrite.Shared`, `Tasks.ReadWrite`, `User.Read`, `offline_access`; plus read-only `Mail.Read` when the opt-in "Show email details on flagged-email tasks" setting is on) | Read/modify/delete the user's calendar and tasks, and with `Mail.Read` read the user's mail, for up to 90 days sliding |
+| A2 | Calendar and task content (subjects, bodies, locations, attendees' data) and, when email details are on, the text of emails linked to flagged-email tasks (fetched on demand, shown in the task dialog, never written to the cache) | Confidential business/personal information; integrity of what the user sees |
 | A3 | OpenWeather API key | Billing/quota abuse (low value) |
 | A4 | Trust in the Azure app identity (which `client_id` the user consents to) | A hostile app registration obtains the same scopes |
 | A5 | Vault integrity (notes, other plugins' data) | Collateral damage from scripts and shared plugin runtime |

@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   enabledTodoListIds: [],
   debugLogging: false,
   mapsEnabled: true,
+  showEmailDetails: false,
 };
 
 export class M365CalendarSettingTab extends PluginSettingTab {
@@ -232,6 +233,21 @@ export class M365CalendarSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.mapsEnabled = value;
             await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl).setName('Flagged emails').setHeading();
+
+    new Setting(containerEl)
+      .setName('Show email details on flagged-email tasks')
+      .setDesc('When you open a task that came from a flagged email, show the email\'s sender, date and text. This adds the Mail.Read permission (read-only) to the sign-in request: add it to your Azure app registration first, then sign out and sign in again. Turn off to keep email content out of the plugin.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showEmailDetails)
+          .onChange(async (value) => {
+            this.plugin.settings.showEmailDetails = value;
+            await this.plugin.saveSettings();
+            if (value) new Notice('M365 Calendar: Sign out and sign in again to grant the Mail.Read permission.'); // eslint-disable-line obsidianmd/ui/sentence-case
           }),
       );
 

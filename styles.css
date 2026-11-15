@@ -1022,6 +1022,30 @@
   min-width: 4.5rem;
 }
 
+.m365-todo-detail-email {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  padding: var(--size-4-2);
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+.m365-todo-email-subject {
+  font-weight: var(--font-semibold);
+}
+
+.m365-todo-email-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.m365-todo-email-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
 .m365-todo-detail-checklist {
   display: flex;
   flex-direction: column;

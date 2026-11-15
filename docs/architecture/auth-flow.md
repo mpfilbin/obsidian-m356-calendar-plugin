@@ -12,7 +12,7 @@ sequenceDiagram
     User->>Plugin: Click "Sign In" in Settings
     Plugin->>Plugin: Generate code_verifier (32 random bytes, base64url), random state
     Plugin->>Plugin: code_challenge = BASE64URL(SHA-256(code_verifier))
-    Plugin->>Browser: Open authorization URL<br/>(desktop: electron shell.openExternal, mobile: window.location.href)<br/>?client_id=...&redirect_uri=obsidian://m365-callback<br/>&scope=Calendars.ReadWrite.Shared Tasks.ReadWrite User.Read offline_access<br/>&code_challenge=...&code_challenge_method=S256&state=...
+    Plugin->>Browser: Open authorization URL<br/>(desktop: electron shell.openExternal, mobile: window.location.href)<br/>?client_id=...&redirect_uri=obsidian://m365-callback<br/>&scope=Calendars.ReadWrite.Shared Tasks.ReadWrite User.Read offline_access<br/>(+ Mail.Read only when 'Show email details on flagged-email tasks' is on)<br/>&code_challenge=...&code_challenge_method=S256&state=...
     Browser->>MS: GET authorization URL
     MS->>Browser: Display login UI
     User->>MS: Enter credentials

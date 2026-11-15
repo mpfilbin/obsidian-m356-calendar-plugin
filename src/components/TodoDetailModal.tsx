@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { ReactModal } from './ReactModal';
-import { M365TodoItem, M365TodoList, M365ChecklistItem } from '../types';
+import { M365TodoItem, M365TodoList, M365ChecklistItem, M365LinkedEmail } from '../types';
 import { TodoService } from '../services/TodoService';
 import { usePending } from '../hooks/usePending';
 import { appLogger } from '../lib/logger';
@@ -14,9 +14,12 @@ interface TodoDetailFormProps {
   todoService: TodoService;
   onComplete: () => void | Promise<void>;
   onDelete?: () => void | Promise<void>;
+  /** Look up the email behind a flagged-email task (needs the Mail.Read permission). */
+  showEmailDetails?: boolean;
 }
 
-export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete }) => {
+export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete, showEmailDetails = false }) => {
+  const [email, setEmail] = useState<M365LinkedEmail | null>(null);
   const [checklistItems, setChecklistItems] = useState<M365ChecklistItem[]>([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
   const [newItemText, setNewItemText] = useState('');
@@ -57,6 +60,17 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
       .finally(() => { if (!cancelled) setLoadingChecklist(false); });
     return () => { cancelled = true; };
   }, [todo.listId, todo.id, todoService]);
+
+  useEffect(() => {
+    // Drop whatever was shown for the previous task, or before the setting was turned off.
+    setEmail(null);
+    if (!showEmailDetails) return;
+    let cancelled = false;
+    void todoService.getLinkedEmail(todo.listId, todo.id)
+      .then((linked) => { if (!cancelled) setEmail(linked); })
+      .catch((e: unknown) => appLogger.error('[M365 Calendar] Failed to load the linked email:', e));
+    return () => { cancelled = true; };
+  }, [showEmailDetails, todo.listId, todo.id, todoService]);
 
   const handleToggle = (item: M365ChecklistItem) => {
     const updated = { ...item, isChecked: !item.isChecked };
@@ -124,6 +138,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
           <span>{todo.body}</span>
         </div>
       )}
+      {email && <LinkedEmailDetails email={email} />}
       <div className="m365-todo-detail-checklist">
         <span className="m365-todo-detail-label">Checklist</span>
         {loadingChecklist ? (
@@ -202,6 +217,37 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
   );
 };
 
+// ── Linked email ─────────────────────────────────────────────────────────────
+
+/** A link may come from any app that created the task's linked resource, so only open https URLs. */
+function isHttpsUrl(value: string): boolean {
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+}
+
+const LinkedEmailDetails: React.FC<{ email: M365LinkedEmail }> = ({ email }) => {
+  const received = email.receivedDateTime
+    ? new Date(email.receivedDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    : undefined;
+  return (
+    <div className="m365-todo-detail-email">
+      <span className="m365-todo-detail-label">{email.detailsAvailable ? 'Email' : 'Linked item'}</span>
+      {email.subject && <div className="m365-todo-email-subject">{email.subject}</div>}
+      {email.from && <div className="m365-todo-email-meta">From: {email.from}</div>}
+      {email.to && <div className="m365-todo-email-meta">To: {email.to}</div>}
+      {received && <div className="m365-todo-email-meta">Received: {received}</div>}
+      {email.bodyPreview && <div className="m365-todo-email-body">{email.bodyPreview}</div>}
+      {!email.detailsAvailable && (
+        <div className="m365-todo-email-meta">
+          The message could not be read. Check that the Mail.Read permission is granted, then sign out and sign in again from the plugin settings.
+        </div>
+      )}
+      {email.webLink && isHttpsUrl(email.webLink) && (
+        <a href={email.webLink} target="_blank" rel="noopener noreferrer">Open in Outlook</a>
+      )}
+    </div>
+  );
+};
+
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 export class TodoDetailModal extends ReactModal {
@@ -212,6 +258,7 @@ export class TodoDetailModal extends ReactModal {
     private readonly todoService: TodoService,
     private readonly onComplete: () => void | Promise<void>,
     private readonly onDelete: () => void | Promise<void>,
+    private readonly showEmailDetails = false,
   ) {
     super(app);
   }
@@ -230,6 +277,7 @@ export class TodoDetailModal extends ReactModal {
         todoService={this.todoService}
         onComplete={() => this.closeAfter(this.onComplete)}
         onDelete={() => this.closeAfter(this.onDelete)}
+        showEmailDetails={this.showEmailDetails}
       />
     );
   }

@@ -45,6 +45,20 @@ export interface M365ChecklistItem {
   isChecked: boolean;
 }
 
+/** The Outlook message a flagged-email task points at. */
+export interface M365LinkedEmail {
+  subject: string;
+  /** "Name <address>", or whichever of the two Outlook has. */
+  from?: string;
+  to?: string;
+  receivedDateTime?: string;  // ISO 8601
+  bodyPreview?: string;
+  /** Opens the message in Outlook on the web. */
+  webLink?: string;
+  /** False when only the task's own link was available (message not readable). */
+  detailsAvailable: boolean;
+}
+
 export interface NewEventInput {
   subject: string;
   start: Date;
@@ -136,6 +150,8 @@ export interface M365CalendarSettings {
   enabledTodoListIds: string[];
   debugLogging: boolean;
   mapsEnabled: boolean;
+  /** Fetch the email behind a flagged-email task (needs the Mail.Read permission). */
+  showEmailDetails: boolean;
 }
 
 export interface StoredTokens {
