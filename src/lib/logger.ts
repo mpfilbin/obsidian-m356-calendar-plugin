@@ -13,6 +13,9 @@ export interface Logger {
 }
 
 export class ConsoleLogger implements Logger {
+  // The guideline against console noise is about unconditional logging. `log` is only reached through
+  // SwitchableLogger when the user turns on "Debug logging"; console.debug would hide it in devtools.
+  // eslint-disable-next-line obsidianmd/rule-custom-message -- opt-in debug output, see above
   log(...args: unknown[]): void { console.log(...args); }
   warn(...args: unknown[]): void { console.warn(...args); }
   error(...args: unknown[]): void { console.error(...args); }
