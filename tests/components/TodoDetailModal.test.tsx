@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { TodoDetailForm } from '../../src/components/TodoDetailModal';
@@ -479,6 +479,67 @@ describe('TodoDetailForm — in-flight requests', () => {
     it('leaves the dialog usable when the lookup fails', async () => {
       render(<TodoDetailForm todo={todo} todoList={todoList} todoService={serviceWith(vi.fn().mockRejectedValue(new Error('boom')))} onComplete={vi.fn()} showEmailDetails />);
       expect(await screen.findByText('Mark complete')).toBeEnabled();
+    });
+  });
+  describe('links in the email text', () => {
+    const withBody = (bodyPreview: string) => ({
+      subject: 'Q3 budget', bodyPreview, webLink: 'https://outlook.office.com/mail/x', detailsAvailable: true,
+    });
+    const makeHandlers = () => ({ open: vi.fn<(url: string) => void>(), contextMenu: vi.fn<(url: string, event: MouseEvent) => void>() });
+    const renderWith = (bodyPreview: string, linkHandlers?: ReturnType<typeof makeHandlers>) => {
+      const service = { ...(makeMockTodoService() as object), getLinkedEmail: vi.fn().mockResolvedValue(withBody(bodyPreview)) } as unknown as TodoService;
+      return render(<TodoDetailForm todo={todo} todoList={todoList} todoService={service} onComplete={vi.fn()} showEmailDetails linkHandlers={linkHandlers} />);
+    };
+
+    it('turns each URL in the body into a link and leaves the rest as text', async () => {
+      renderWith('Budget: https://example.com/budget.xlsx (or http://example.org/a). Thanks!');
+      const first = await screen.findByRole('link', { name: 'https://example.com/budget.xlsx' });
+      expect(first).toHaveAttribute('href', 'https://example.com/budget.xlsx');
+      expect(screen.getByRole('link', { name: 'http://example.org/a' })).toHaveAttribute('href', 'http://example.org/a');
+      expect(first.parentElement).toHaveTextContent('Budget: https://example.com/budget.xlsx (or http://example.org/a). Thanks!');
+    });
+
+    it('does not link other schemes', async () => {
+      renderWith('javascript:alert(1) and obsidian://open');
+      await screen.findByText(/javascript:alert\(1\) and obsidian:\/\/open/);
+      expect(screen.queryByRole('link', { name: /javascript|obsidian/ })).not.toBeInTheDocument();
+    });
+
+    it('opens a clicked link through the handler instead of navigating the dialog', async () => {
+      const handlers = makeHandlers();
+      renderWith('See https://example.com/x', handlers);
+      const link = await screen.findByRole('link', { name: 'https://example.com/x' });
+      const notPrevented = fireEvent.click(link);
+      expect(handlers.open).toHaveBeenCalledWith('https://example.com/x');
+      expect(notPrevented).toBe(false);
+    });
+
+    it('right-click asks for the link menu and suppresses the browser menu', async () => {
+      const handlers = makeHandlers();
+      renderWith('See https://example.com/x', handlers);
+      const link = await screen.findByRole('link', { name: 'https://example.com/x' });
+      const notPrevented = fireEvent.contextMenu(link);
+      expect(handlers.contextMenu).toHaveBeenCalledWith('https://example.com/x', expect.any(MouseEvent));
+      expect(notPrevented).toBe(false);
+      expect(handlers.open).not.toHaveBeenCalled();
+    });
+
+    it('gives the Open in Outlook link the same behaviour', async () => {
+      const handlers = makeHandlers();
+      renderWith('Hello', handlers);
+      const link = await screen.findByRole('link', { name: 'Open in Outlook' });
+      fireEvent.click(link);
+      fireEvent.contextMenu(link);
+      expect(handlers.open).toHaveBeenCalledWith('https://outlook.office.com/mail/x');
+      expect(handlers.contextMenu).toHaveBeenCalledWith('https://outlook.office.com/mail/x', expect.any(MouseEvent));
+    });
+
+    it('leaves links to the browser when no handlers are wired up', async () => {
+      renderWith('See https://example.com/x');
+      const link = await screen.findByRole('link', { name: 'https://example.com/x' });
+      expect(fireEvent.click(link)).toBe(true);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
   });
 });

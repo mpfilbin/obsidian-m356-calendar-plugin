@@ -430,6 +430,7 @@ A relative-path `id` made the script delete a directory outside the intended plu
 | Tokens kept in SecretStorage, never in `data.json` | `main.ts:96-97` | A1 at rest (PoC-3a) |
 | Auth URL built from a fixed `https://login.microsoftonline.com/` prefix | `AuthService.ts:191` | Scheme/host of the launched URL |
 | React text rendering, no HTML sinks | `src/components/*` | T-4 |
+| Links in flagged-email text: only well-formed http(s) URLs with a host are linked (`isWebUrl`/`splitLinks`), the full URL is shown as the link text, nothing is fetched or opened until the user clicks or picks "Open in Obsidian web viewer" / "Open in default browser"; `openInDefaultBrowser` and `openInWebViewer` re-check the scheme | `links.ts`, `openLink.ts`, `LinkifiedText.tsx` | T-4, E-6, X7 (links in a phishing email still go where the text says) |
 | Map iframe `sandbox="allow-scripts allow-same-origin"`, fixed host | `LocationMap.tsx:77-82` | T-9 |
 | Maps switch; when off, no geocode and no iframe | `useCalendarActions.ts:42`, `settings.ts:20` | I-4 (opt-out) |
 | Weather off by default; key field is `type=password`; failures never print the key | `settings.ts:13,161`; `WeatherService.ts:47-66` | I-3, I-7 |
@@ -449,7 +450,7 @@ A relative-path `id` made the script delete a directory outside the intended plu
 | V-2 | The authorize/token URL host is always `login.microsoftonline.com` over `https` | **Holds** (PoC-2d) |
 | V-3 | The Graph bearer token is only sent to `https://graph.microsoft.com/` | **VIOLATED** (T-1) |
 | V-4 | A sign-in completes only with a callback carrying the pending `state`, and an unauthenticated callback cannot cancel it | State check **Holds**; cancel-resistance **VIOLATED** (D-2) |
-| V-5 | No remote-controlled string is rendered as HTML or used as a URL scheme/host | **Holds** (PoC-3c, grep §5.2) |
+| V-5 | No remote-controlled string is rendered as HTML or used as a URL scheme/host, except http(s) links in flagged-email text, which open only on the user's click or menu choice (see the link control in §6) | **Holds** (PoC-3c, grep §5.2); link exception covered by unit tests |
 | V-6 | `data.json` contains no secrets or calendar content | **VIOLATED** (I-1) |
 | V-7 | With `mapsEnabled = false` no request goes to Nominatim/OSM; with `weatherEnabled = false` none goes to OpenWeather | Maps part **Holds** (PoC-3d); weather part **Not enforced** by test |
 | V-8 | No credential (token, code, API key) is passed to a logger | **Holds** (PoC-2a, PoC-3b) |
