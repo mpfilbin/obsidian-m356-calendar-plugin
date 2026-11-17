@@ -10,6 +10,9 @@ export interface RequestUrlResponse {
 
 export const requestUrl = vi.fn();
 
+/** Desktop by default; a test flips `isDesktopApp` to exercise mobile. */
+export const Platform = { isDesktopApp: true };
+
 export class Modal {
   contentEl: HTMLElement;
   titleEl: { setText: (s: string) => void };

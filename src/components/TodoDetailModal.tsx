@@ -5,6 +5,8 @@ import { M365TodoItem, M365TodoList, M365ChecklistItem, M365LinkedEmail } from '
 import { TodoService } from '../services/TodoService';
 import { usePending } from '../hooks/usePending';
 import { appLogger } from '../lib/logger';
+import { showLinkMenu, openInDefaultBrowser } from '../lib/openLink';
+import { ExternalLink, LinkifiedText, type LinkHandlers } from './LinkifiedText';
 
 // ── Form ─────────────────────────────────────────────────────────────────────
 
@@ -16,9 +18,11 @@ interface TodoDetailFormProps {
   onDelete?: () => void | Promise<void>;
   /** Look up the email behind a flagged-email task (needs the Mail.Read permission). */
   showEmailDetails?: boolean;
+  /** Opening links in the email text; when omitted links use the browser's own behaviour. */
+  linkHandlers?: LinkHandlers;
 }
 
-export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete, showEmailDetails = false }) => {
+export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, todoService, onComplete, onDelete, showEmailDetails = false, linkHandlers }) => {
   const [email, setEmail] = useState<M365LinkedEmail | null>(null);
   const [checklistItems, setChecklistItems] = useState<M365ChecklistItem[]>([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
@@ -138,7 +142,7 @@ export const TodoDetailForm: React.FC<TodoDetailFormProps> = ({ todo, todoList, 
           <span>{todo.body}</span>
         </div>
       )}
-      {email && <LinkedEmailDetails email={email} />}
+      {email && <LinkedEmailDetails email={email} handlers={linkHandlers} />}
       <div className="m365-todo-detail-checklist">
         <span className="m365-todo-detail-label">Checklist</span>
         {loadingChecklist ? (
@@ -224,7 +228,7 @@ function isHttpsUrl(value: string): boolean {
   try { return new URL(value).protocol === 'https:'; } catch { return false; }
 }
 
-const LinkedEmailDetails: React.FC<{ email: M365LinkedEmail }> = ({ email }) => {
+const LinkedEmailDetails: React.FC<{ email: M365LinkedEmail; handlers?: LinkHandlers }> = ({ email, handlers }) => {
   const received = email.receivedDateTime
     ? new Date(email.receivedDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : undefined;
@@ -235,14 +239,16 @@ const LinkedEmailDetails: React.FC<{ email: M365LinkedEmail }> = ({ email }) => 
       {email.from && <div className="m365-todo-email-meta">From: {email.from}</div>}
       {email.to && <div className="m365-todo-email-meta">To: {email.to}</div>}
       {received && <div className="m365-todo-email-meta">Received: {received}</div>}
-      {email.bodyPreview && <div className="m365-todo-email-body">{email.bodyPreview}</div>}
+      {email.bodyPreview && (
+        <div className="m365-todo-email-body"><LinkifiedText text={email.bodyPreview} handlers={handlers} /></div>
+      )}
       {!email.detailsAvailable && (
         <div className="m365-todo-email-meta">
           The message could not be read. Check that the Mail.Read permission is granted, then sign out and sign in again from the plugin settings.
         </div>
       )}
       {email.webLink && isHttpsUrl(email.webLink) && (
-        <a href={email.webLink} target="_blank" rel="noopener noreferrer">Open in Outlook</a>
+        <ExternalLink url={email.webLink} handlers={handlers}>Open in Outlook</ExternalLink>
       )}
     </div>
   );
@@ -278,6 +284,11 @@ export class TodoDetailModal extends ReactModal {
         onComplete={() => this.closeAfter(this.onComplete)}
         onDelete={() => this.closeAfter(this.onDelete)}
         showEmailDetails={this.showEmailDetails}
+        linkHandlers={{
+          open: openInDefaultBrowser,
+          // The dialog covers the workspace, so close it once a link has opened in a new tab.
+          contextMenu: (url, event) => showLinkMenu(this.app, url, event, () => this.close()),
+        }}
       />
     );
   }

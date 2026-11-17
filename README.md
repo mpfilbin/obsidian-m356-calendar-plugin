@@ -11,7 +11,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 - **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
 - **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
 - **Complete tasks** — mark Microsoft To Do tasks complete directly from the task detail view
-- **Flagged-email details** — open a task created by flagging an email in Outlook and see the email's sender, recipients, date and text, with a link to open it in Outlook. Off by default; see Settings → Flagged emails
+- **Flagged-email details** — open a task created by flagging an email in Outlook and see the email's sender, recipients, date and text, with a link to open it in Outlook. Web links in the email text are clickable: click to open in your default browser, or right-click for "Open in Obsidian web viewer" (desktop, needs the Web viewer core plugin) or "Open in default browser". Off by default; see Settings → Flagged emails
 - **Local caching** — renders instantly from cache, refreshes in the background
 - **Theme aware** — uses Obsidian CSS variables to match your active theme
 
