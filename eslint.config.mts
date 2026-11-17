@@ -14,7 +14,8 @@ export default tseslint.config(
       },
     },
     rules: {
-      ...obsidian.configs.recommended,
+      ...obsidian.ruleConfigs.recommended,
+      'obsidianmd/ui/sentence-case': ['error', { enforceCamelCaseLower: true }],
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },

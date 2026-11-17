@@ -36,7 +36,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
     redirectInfo.createEl('p', {
       text: 'Your Azure AD app must have the following redirect URI registered under Mobile and desktop applications:', // eslint-disable-line obsidianmd/ui/sentence-case
     });
-    redirectInfo.createEl('code', { text: 'obsidian://m365-callback' }); // eslint-disable-line obsidianmd/ui/sentence-case
+    redirectInfo.createEl('code', { text: 'obsidian://m365-callback' });
     redirectInfo.createEl('p', {
       text: 'If you previously used this plugin, update your Azure AD app registration and sign out, then sign back in.', // eslint-disable-line obsidianmd/ui/sentence-case
     });
@@ -46,10 +46,10 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Client ID')
-      .setDesc('Azure AD application (client) ID.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Azure AD application (client) ID.')
       .addText((text) =>
         text
-          .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
           .setValue(this.plugin.settings.clientId)
           .onChange(async (value) => {
             this.plugin.settings.clientId = value.trim();
@@ -62,7 +62,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       .setDesc('Use "common" for personal + work accounts.')
       .addText((text) =>
         text
-          .setPlaceholder('common') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setPlaceholder('common')
           .setValue(this.plugin.settings.tenantId)
           .onChange(async (value) => {
             this.plugin.settings.tenantId = value.trim() || 'common';
@@ -74,7 +74,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Sign in / sign out')
-      .setDesc('Authenticate with your Microsoft account.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Authenticate with your Microsoft account.')
       .addButton((btn) => {
         signInBtn = btn
           .setButtonText('Sign in')
@@ -161,7 +161,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
       .addText((text) => {
         text.inputEl.type = 'password';
         return text
-          .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') // eslint-disable-line obsidianmd/ui/sentence-case
+          .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
           .setValue(this.plugin.settings.openWeatherApiKey)
           .onChange(async (value) => {
             this.plugin.settings.openWeatherApiKey = value.trim();
@@ -240,14 +240,14 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show email details on flagged-email tasks')
-      .setDesc('When you open a task that came from a flagged email, show the email\'s sender, date and text. This adds the Mail.Read permission (read-only) to the sign-in request: add it to your Azure app registration first, then sign out and sign in again. Turn off to keep email content out of the plugin.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('When you open a task that came from a flagged email, show the email\'s sender, date and text. This adds the Mail.Read permission (read-only) to the sign-in request: add it to your Azure app registration first, then sign out and sign in again. Turn off to keep email content out of the plugin.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.showEmailDetails)
           .onChange(async (value) => {
             this.plugin.settings.showEmailDetails = value;
             await this.plugin.saveSettings();
-            if (value) new Notice('M365 Calendar: Sign out and sign in again to grant the Mail.Read permission.'); // eslint-disable-line obsidianmd/ui/sentence-case
+            if (value) new Notice('M365 Calendar: Sign out and sign in again to grant the Mail.Read permission.');
           }),
       );
 
@@ -255,7 +255,7 @@ export class M365CalendarSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Purge calendar and task data')
-      .setDesc('Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.') // eslint-disable-line obsidianmd/ui/sentence-case
+      .setDesc('Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.')
       .addButton((button) =>
         button
           .setButtonText('Purge and resync')
