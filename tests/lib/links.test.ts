@@ -63,4 +63,11 @@ describe('isWebUrl', () => {
     expect(isWebUrl('obsidian://open')).toBe(false);
     expect(isWebUrl('not a url')).toBe(false);
   });
+
+  it('rejects a hostless URL that the parser would otherwise read as another host', () => {
+    expect(new URL('https:///evil.example').hostname).toBe('evil.example'); // why the extra check exists
+    expect(isWebUrl('https:///evil.example')).toBe(false);
+    expect(isWebUrl('https://')).toBe(false);
+    expect(isWebUrl('https:// example.com')).toBe(false);
+  });
 });

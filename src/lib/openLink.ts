@@ -5,8 +5,9 @@ import { isWebUrl } from './links';
 /** Opens a web link in the system's default browser. Anything but http(s) is ignored. */
 export function openInDefaultBrowser(url: string): void {
   if (!isWebUrl(url)) return;
-  // Obsidian hands window.open() for an external address to the operating system's browser.
-  window.open(url);
+  // Obsidian hands window.open() for an external address to the operating system's browser. The URL
+  // can come from email text, so never give the opened page a handle back to this window.
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 /** The shape of the part of Obsidian's (undocumented) core-plugin registry that we read. */

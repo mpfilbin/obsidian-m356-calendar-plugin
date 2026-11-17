@@ -8,11 +8,16 @@ const URL_PATTERN = /https?:\/\/(?=[^\s<>"'`/])[^\s<>"'`]+/gi;
 /** Closing characters that belong to the URL only when it also contains the matching opener. */
 const CLOSERS: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
 
-/** Whether `value` is an http(s) URL. Anything else (javascript:, file:, obsidian:, …) is never opened. */
+/**
+ * Whether `value` is an http(s) URL with a host. Anything else (javascript:, file:, obsidian:, …) is
+ * never opened. A host must follow "//" directly, because the URL parser reads "https:///path" as
+ * "https://path/", which would send a hostless string to an unintended site.
+ */
 export function isWebUrl(value: string): boolean {
+  if (!/^https?:\/\/[^/\s]/i.test(value)) return false;
   try {
-    const { protocol } = new URL(value);
-    return protocol === 'http:' || protocol === 'https:';
+    const { protocol, hostname } = new URL(value);
+    return (protocol === 'http:' || protocol === 'https:') && hostname !== '';
   } catch {
     return false;
   }
@@ -49,7 +54,7 @@ export function splitLinks(text: string): TextPart[] {
 
   for (const match of text.matchAll(URL_PATTERN)) {
     const url = trimTrailing(match[0]);
-    if (!isWebUrl(url) || new URL(url).hostname === '') continue;
+    if (!isWebUrl(url)) continue;
     pushText(match.index);
     parts.push({ kind: 'link', value: url });
     cursor = match.index + url.length;

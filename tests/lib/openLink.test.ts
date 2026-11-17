@@ -42,12 +42,13 @@ describe('openLink', () => {
   describe('openInDefaultBrowser', () => {
     it('opens an https link', () => {
       openInDefaultBrowser('https://example.com');
-      expect(windowOpen).toHaveBeenCalledWith('https://example.com');
+      expect(windowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
     });
 
-    it('refuses anything that is not http(s)', () => {
+    it('refuses anything that is not http(s) with a host', () => {
       openInDefaultBrowser('javascript:alert(1)');
       openInDefaultBrowser('obsidian://open?vault=x');
+      openInDefaultBrowser('https:///evil.example');
       expect(windowOpen).not.toHaveBeenCalled();
     });
   });
@@ -83,7 +84,7 @@ describe('openLink', () => {
     it('falls back to the default browser and says so when the web viewer fails', async () => {
       const { app } = makeApp({ setViewState: vi.fn().mockRejectedValue(new Error('no such view')) });
       expect(await openInWebViewer(app, 'https://example.com')).toBe(false);
-      expect(windowOpen).toHaveBeenCalledWith('https://example.com');
+      expect(windowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
       expect(Notice).toHaveBeenCalledWith(expect.stringContaining('Opening your browser instead'));
     });
 
@@ -124,7 +125,7 @@ describe('openLink', () => {
     it('opens the default browser and leaves a dialog open', () => {
       const onOpenedInViewer = vi.fn();
       openMenu(makeApp().app, onOpenedInViewer).items[1].onClick();
-      expect(windowOpen).toHaveBeenCalledWith('https://example.com/x');
+      expect(windowOpen).toHaveBeenCalledWith('https://example.com/x', '_blank', 'noopener,noreferrer');
       expect(onOpenedInViewer).not.toHaveBeenCalled();
     });
 
