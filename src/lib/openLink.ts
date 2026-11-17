@@ -1,13 +1,31 @@
 import { App, Menu, Notice, Platform } from 'obsidian';
 import { appLogger } from './logger';
 import { isWebUrl } from './links';
+import { openExternal } from './electronShell';
 
-/** Opens a web link in the system's default browser. Anything but http(s) is ignored. */
+/** The URL can come from email text, so never give the opened page a handle back to this window. */
+function openInWindow(url: string): void {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * Opens a web link in the system's default browser. Anything but http(s) is ignored.
+ *
+ * On desktop this goes through Electron's `shell.openExternal`: `window.open()` would land in
+ * Obsidian's own web viewer window whenever the Web viewer core plugin is on. Mobile has no such
+ * viewer, so there `window.open()` reaches the system browser; it is also the fallback if the
+ * desktop call fails, so the link still opens somewhere.
+ */
 export function openInDefaultBrowser(url: string): void {
   if (!isWebUrl(url)) return;
-  // Obsidian hands window.open() for an external address to the operating system's browser. The URL
-  // can come from email text, so never give the opened page a handle back to this window.
-  window.open(url, '_blank', 'noopener,noreferrer');
+  if (!Platform.isDesktopApp) {
+    openInWindow(url);
+    return;
+  }
+  openExternal(url).catch((e: unknown) => {
+    appLogger.error('[M365 Calendar] Could not open the system browser:', e);
+    openInWindow(url);
+  });
 }
 
 /** The shape of the part of Obsidian's (undocumented) core-plugin registry that we read. */

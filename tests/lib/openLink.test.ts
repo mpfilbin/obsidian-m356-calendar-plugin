@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Menu, Notice, Platform, type App } from 'obsidian';
+import { openExternal } from '../../src/lib/electronShell';
 import { canOpenInWebViewer, openInDefaultBrowser, openInWebViewer, showLinkMenu } from '../../src/lib/openLink';
+
+vi.mock('../../src/lib/electronShell', () => ({ openExternal: vi.fn() }));
 
 type MenuMock = { items: { title: string; icon: string; onClick: () => void }[] };
 
@@ -31,6 +34,7 @@ describe('openLink', () => {
     Platform.isDesktopApp = true;
     windowOpen = vi.fn();
     vi.stubGlobal('open', windowOpen);
+    vi.mocked(openExternal).mockReset().mockResolvedValue(undefined);
     vi.mocked(Notice).mockClear?.();
   });
 
@@ -40,15 +44,30 @@ describe('openLink', () => {
   });
 
   describe('openInDefaultBrowser', () => {
-    it('opens an https link', () => {
+    it('on desktop hands the link to the operating system, not to window.open (which would use the web viewer)', () => {
+      openInDefaultBrowser('https://example.com');
+      expect(openExternal).toHaveBeenCalledWith('https://example.com');
+      expect(windowOpen).not.toHaveBeenCalled();
+    });
+
+    it('on mobile opens the link in a window with no opener', () => {
+      Platform.isDesktopApp = false;
       openInDefaultBrowser('https://example.com');
       expect(windowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
+      expect(openExternal).not.toHaveBeenCalled();
+    });
+
+    it('falls back to window.open if the operating system call fails', async () => {
+      vi.mocked(openExternal).mockRejectedValue(new Error('no electron'));
+      openInDefaultBrowser('https://example.com');
+      await vi.waitFor(() => expect(windowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer'));
     });
 
     it('refuses anything that is not http(s) with a host', () => {
       openInDefaultBrowser('javascript:alert(1)');
       openInDefaultBrowser('obsidian://open?vault=x');
       openInDefaultBrowser('https:///evil.example');
+      expect(openExternal).not.toHaveBeenCalled();
       expect(windowOpen).not.toHaveBeenCalled();
     });
   });
@@ -84,7 +103,7 @@ describe('openLink', () => {
     it('falls back to the default browser and says so when the web viewer fails', async () => {
       const { app } = makeApp({ setViewState: vi.fn().mockRejectedValue(new Error('no such view')) });
       expect(await openInWebViewer(app, 'https://example.com')).toBe(false);
-      expect(windowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
+      expect(openExternal).toHaveBeenCalledWith('https://example.com');
       expect(Notice).toHaveBeenCalledWith(expect.stringContaining('Opening your browser instead'));
     });
 
@@ -118,14 +137,15 @@ describe('openLink', () => {
       const { app } = makeApp({ setViewState: vi.fn().mockRejectedValue(new Error('boom')) });
       const onOpenedInViewer = vi.fn();
       openMenu(app, onOpenedInViewer).items[0].onClick();
-      await vi.waitFor(() => expect(windowOpen).toHaveBeenCalled());
+      await vi.waitFor(() => expect(openExternal).toHaveBeenCalled());
       expect(onOpenedInViewer).not.toHaveBeenCalled();
     });
 
     it('opens the default browser and leaves a dialog open', () => {
       const onOpenedInViewer = vi.fn();
       openMenu(makeApp().app, onOpenedInViewer).items[1].onClick();
-      expect(windowOpen).toHaveBeenCalledWith('https://example.com/x', '_blank', 'noopener,noreferrer');
+      expect(openExternal).toHaveBeenCalledWith('https://example.com/x');
+      expect(windowOpen).not.toHaveBeenCalled();
       expect(onOpenedInViewer).not.toHaveBeenCalled();
     });
 
