@@ -44,7 +44,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
     ? { geocode: (query) => geocodingService.geocode(query) }
     : undefined;
 
-  const openCreateEventModal = (date: Date, initialAllDay = false) => {
+  const openCreateEventModal = (date: Date, initialAllDay = false, initialEnd?: Date) => {
     const enabledCalendars = calendars.filter((c) => enabledIds.includes(c.id));
     if (enabledCalendars.length === 0) {
       new Notice('Enable at least one calendar to create events.');
@@ -66,6 +66,7 @@ export function useCalendarActions(deps: CalendarActionsDeps) {
       },
       initialAllDay,
       mapSupport,
+      initialEnd,
     ).open();
   };
 
