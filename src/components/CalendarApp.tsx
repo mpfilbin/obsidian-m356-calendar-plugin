@@ -202,6 +202,7 @@ export const CalendarApp: React.FC = () => {
                 todos={todos}
                 todoLists={todoLists}
                 onTimeClick={actions.openCreateEventModal}
+                onTimeRangeSelect={(start, end) => actions.openCreateEventModal(start, false, end)}
                 onEventClick={actions.handleEventClick}
                 onEventContextMenu={actions.handleEventContextMenu}
                 onTodoClick={actions.handleTodoClick}
