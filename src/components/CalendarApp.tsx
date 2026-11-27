@@ -58,12 +58,12 @@ export const CalendarApp: React.FC = () => {
 
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       void fetchAll({ reloadCalendars: true });
       void fetchWeather();
       void fetchTodos({ reloadLists: true });
     }, ms);
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, [fetchAll, fetchWeather, fetchTodos, settings.refreshIntervalMinutes]);
 
   const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
@@ -98,6 +98,17 @@ export const CalendarApp: React.FC = () => {
     setCurrentDate(date);
   };
 
+  // In day view, new events default to the selected day (like new tasks). On
+  // today we keep the current time; on any other day we use midnight so the
+  // create modal falls back to its 9:00 default instead of a stale time-of-day.
+  const newEventDate = (): Date => {
+    const now = new Date();
+    if (view !== 'day' || currentDate.toDateString() === now.toDateString()) return now;
+    const d = new Date(currentDate);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
   return (
     <div className="m365-calendar">
       {(error ?? authError) && <div className="m365-calendar-error">{error ?? authError}</div>}
@@ -106,7 +117,7 @@ export const CalendarApp: React.FC = () => {
         view={view}
         onViewChange={setView}
         onNavigate={handleNavigate}
-        onNewEvent={() => actions.openCreateEventModal(new Date())}
+        onNewEvent={() => actions.openCreateEventModal(newEventDate())}
         onNewTask={() => actions.openCreateTaskModal(view === 'day' ? currentDate : new Date())}
         onRefresh={() => {
           void fetchAll({ reloadCalendars: true, userInitiated: true });

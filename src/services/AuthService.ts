@@ -119,14 +119,14 @@ export class AuthService {
     const state = generateState();
 
     const code = await new Promise<string>((resolve, reject) => {
-      const timeoutHandle = setTimeout(() => {
+      const timeoutHandle = window.setTimeout(() => {
         this.pendingSignIn = null;
         reject(new Error('Authentication timed out after 120 seconds'));
       }, 120_000);
 
       this.pendingSignIn = {
-        resolve: (c) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; resolve(c); },
-        reject: (err) => { clearTimeout(timeoutHandle); this.pendingSignIn = null; reject(err); },
+        resolve: (c) => { window.clearTimeout(timeoutHandle); this.pendingSignIn = null; resolve(c); },
+        reject: (err) => { window.clearTimeout(timeoutHandle); this.pendingSignIn = null; reject(err); },
         state,
       };
 
@@ -134,7 +134,7 @@ export class AuthService {
       // Log the endpoint only; the query string carries the client id, state and PKCE challenge.
       this.logger.log('[M365 Auth] Opening auth URL:', authUrl.split('?')[0]);
       this.openUrl(authUrl).catch((err: unknown) => {
-        clearTimeout(timeoutHandle);
+        window.clearTimeout(timeoutHandle);
         this.pendingSignIn = null;
         reject(err instanceof Error ? err : new Error(String(err)));
       });
