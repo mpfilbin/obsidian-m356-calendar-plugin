@@ -56,6 +56,23 @@ Do not edit these by hand. Use the steps below so they stay in sync.
 4. Commit the bump on the PR branch, either in the feature commit or as a separate `chore: update version to X.Y.Z` commit.
 5. Do not create git tags or GitHub releases by hand.
 
+### Dependabot pull requests
+
+Dependabot opens weekly npm and GitHub Actions upgrade PRs (`.github/dependabot.yml`). Do not merge them unbumped and follow up with a separate "update version" PR or commit afterwards. The version bump belongs on the Dependabot PR's own branch, so the upgrade and its release go out together.
+
+- **npm dependency upgrades** (`package.json` / `package-lock.json`, including dev dependencies) are a **patch** bump, per the rules above. Add the bump to the Dependabot branch before the PR is merged.
+- **GitHub Actions upgrades** only change `.github/workflows/`, which is exempt from versioning. Do not bump them.
+- If an upgrade changes the plugin's behavior (for example, a library's new major version alters rendering or a Graph call), treat it as the level that behavior change deserves (usually **minor**) rather than patch, and say why in the PR.
+
+To add the bump to a Dependabot PR:
+
+1. Check out the Dependabot branch (`dependabot/npm_and_yarn/...`) and make sure it is up to date with `master` by **merging** `master` into it. Never rebase, amend or force-push it.
+2. Run the [procedure](#procedure) above with `patch`. `npm install` must not change any dependency versions beyond what Dependabot already changed; if it does, revert that part of the diff.
+3. Commit with `chore: update version to X.Y.Z` and push to the same branch. Pushing to a Dependabot branch makes Dependabot stop updating it itself; if it later needs a refresh, merge `master` in manually, or comment `@dependabot recreate` and redo the bump on the new branch.
+4. Recent PRs have been squash-merged (linear history, titles ending in `(#NN)`), so the extra commit collapses into the single `chore(deps...)` commit on `master`. Make sure the squashed commit title still describes the dependency change, not the bump.
+
+Several Dependabot PRs open at the same time will conflict on the version lines in `package.json`, `package-lock.json` and `manifest.json` as each one merges. When that happens, merge `master` into the branch, resolve the conflict by taking `master`'s version, and re-run the procedure so the bump is applied on top of the newest version. Never hand-pick a version number to resolve it.
+
 ### Releases
 
 The `Release` workflow (`.github/workflows/release.yml`) runs when `manifest.json` changes on `master`. It builds the plugin and creates a GitHub release named after the `manifest.json` version, skipping the step if that release already exists. Merging a PR with a version bump therefore publishes a release, so make sure the bump is correct before merge, and bump once per PR rather than once per commit.
