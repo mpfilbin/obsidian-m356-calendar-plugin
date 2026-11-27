@@ -27,7 +27,7 @@ export default class M365CalendarPlugin extends Plugin {
   private readonly weatherRefreshHandlers = new Set<() => void>();
   private readonly resyncHandlers = new Set<() => void>();
   private readonly settingsListeners = new Set<(s: M365CalendarSettings) => void>();
-  private settingsEmitTimer: ReturnType<typeof setTimeout> | null = null;
+  private settingsEmitTimer: number | null = null;
 
   // Serialize all saveData calls so concurrent writes (cache, weatherCache, settings)
   // never clobber each other with a stale read-modify-write.
@@ -154,7 +154,7 @@ export default class M365CalendarPlugin extends Plugin {
   }
 
   onunload(): void {
-    if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
+    if (this.settingsEmitTimer) window.clearTimeout(this.settingsEmitTimer);
     this.settingsListeners.clear();
     this.weatherRefreshHandlers.clear();
     this.resyncHandlers.clear();
@@ -192,8 +192,8 @@ export default class M365CalendarPlugin extends Plugin {
 
   // Debounced so typing in a settings text field doesn't refetch on every keystroke.
   private scheduleSettingsEmit(): void {
-    if (this.settingsEmitTimer) clearTimeout(this.settingsEmitTimer);
-    this.settingsEmitTimer = setTimeout(() => {
+    if (this.settingsEmitTimer) window.clearTimeout(this.settingsEmitTimer);
+    this.settingsEmitTimer = window.setTimeout(() => {
       this.settingsEmitTimer = null;
       const snapshot = { ...this.settings };
       this.settingsListeners.forEach((cb) => cb(snapshot));

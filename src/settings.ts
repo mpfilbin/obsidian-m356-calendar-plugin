@@ -1,4 +1,13 @@
-import { App, type ButtonComponent, Notice, PluginSettingTab, Setting } from 'obsidian';
+import {
+  App,
+  type ButtonComponent,
+  Notice,
+  PluginSettingTab,
+  Setting,
+  type SettingDefinition,
+  type SettingDefinitionItem,
+  type SettingGroup,
+} from 'obsidian';
 import M365CalendarPlugin from './main';
 import { M365CalendarSettings } from './types';
 import { appLogger } from './lib/logger';
@@ -21,60 +30,256 @@ export const DEFAULT_SETTINGS: M365CalendarSettings = {
   showEmailDetails: false,
 };
 
+/**
+ * The settings tab is described once, as `getSettingDefinitions()`. Obsidian 1.13+ renders (and
+ * indexes for settings search) that list itself and never calls `display()`. `minAppVersion` is
+ * older than that, so `display()` draws the same definitions imperatively for earlier versions.
+ */
 export class M365CalendarSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: M365CalendarPlugin) {
     super(app, plugin);
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
+  getControlValue(key: string): unknown {
+    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+  }
 
-    new Setting(containerEl).setName('Microsoft 365 authentication').setHeading();
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    const settings = this.plugin.settings;
+    switch (key) {
+      case 'clientId':
+        settings.clientId = String(value).trim();
+        break;
+      case 'tenantId':
+        settings.tenantId = String(value).trim() || 'common';
+        break;
+      case 'defaultView':
+        settings.defaultView = value as M365CalendarSettings['defaultView'];
+        break;
+      case 'refreshIntervalMinutes':
+        settings.refreshIntervalMinutes = Number(value);
+        break;
+      case 'weatherEnabled':
+        settings.weatherEnabled = Boolean(value);
+        break;
+      case 'openWeatherApiKey':
+        settings.openWeatherApiKey = String(value).trim();
+        break;
+      case 'weatherLocation':
+        settings.weatherLocation = String(value).trim();
+        break;
+      case 'weatherUnits':
+        settings.weatherUnits = value as M365CalendarSettings['weatherUnits'];
+        break;
+      case 'mapsEnabled':
+        settings.mapsEnabled = Boolean(value);
+        break;
+      case 'showEmailDetails':
+        settings.showEmailDetails = Boolean(value);
+        break;
+      case 'debugLogging':
+        settings.debugLogging = Boolean(value);
+        break;
+      default:
+        return;
+    }
+    await this.plugin.saveSettings();
+    if (key === 'showEmailDetails' && value) {
+      new Notice('M365 Calendar: Sign out and sign in again to grant the Mail.Read permission.');
+    }
+  }
 
-    const redirectInfo = containerEl.createEl('div', { cls: 'm365-auth-info' });
-    redirectInfo.createEl('p', {
-      text: 'Your Azure AD app must have the following redirect URI registered under Mobile and desktop applications:', // eslint-disable-line obsidianmd/ui/sentence-case
-    });
-    redirectInfo.createEl('code', { text: 'obsidian://m365-callback' });
-    redirectInfo.createEl('p', {
-      text: 'If you previously used this plugin, update your Azure AD app registration and sign out, then sign back in.', // eslint-disable-line obsidianmd/ui/sentence-case
-    });
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        type: 'group',
+        heading: 'Microsoft 365 authentication',
+        items: [
+          {
+            name: 'Redirect URI',
+            desc: 'Your Azure AD app must have this redirect URI registered under Mobile and desktop applications. If you previously used this plugin, update your Azure AD app registration and sign out, then sign back in.',  
+            render: (setting) => {
+              setting.controlEl.createEl('code', { text: 'obsidian://m365-callback' });
+            },
+          },
+          {
+            name: 'Client ID',
+            desc: 'Azure AD application (client) ID.',
+            control: { type: 'text', key: 'clientId', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+          },
+          {
+            name: 'Tenant ID',
+            desc: 'Use "common" for personal + work accounts.',
+            control: { type: 'text', key: 'tenantId', placeholder: 'common' },
+          },
+          {
+            name: 'Sign in / sign out',
+            desc: 'Authenticate with your Microsoft account. After changing the Client ID or Tenant ID, sign out and sign in again to apply the new credentials.',  
+            render: (setting) => this.renderSignIn(setting),
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Calendar',
+        items: [
+          {
+            name: 'Default view',
+            control: {
+              type: 'dropdown',
+              key: 'defaultView',
+              options: { month: 'Month', week: 'Week', agenda: 'Agenda' },
+            },
+          },
+          {
+            name: 'Background refresh interval (minutes)',
+            control: { type: 'slider', key: 'refreshIntervalMinutes', min: 1, max: 60, step: 1 },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Weather',
+        items: [
+          {
+            name: 'Show weather',
+            desc: 'Display weather conditions in calendar views. Requires an OpenWeather API key.',  
+            control: { type: 'toggle', key: 'weatherEnabled' },
+          },
+          {
+            name: 'OpenWeather API key',  
+            desc: 'One Call API 3.0 key from openweathermap.org.',  
+            // A custom row, not a `secret` control: that one stores a SecretStorage reference rather than the key.
+            render: (setting) => {
+              setting.addText((text) => {
+                text.inputEl.type = 'password';
+                return text
+                  .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+                  .setValue(String(this.getControlValue('openWeatherApiKey') ?? ''))
+                  .onChange((value) => this.setControlValue('openWeatherApiKey', value));
+              });
+            },
+          },
+          {
+            name: 'Location',
+            desc: 'City and country code, e.g. "New York, US" or "London, GB".',  
+            control: {
+              type: 'text',
+              key: 'weatherLocation',
+              placeholder: 'New York, US',  
+            },
+          },
+          {
+            name: 'Test connection',
+            desc: 'Check the API key and location, and show which place the location resolves to.',
+            render: (setting) => {
+              setting.addButton((button) =>
+                button.setButtonText('Test').onClick(async () => {
+                  button.setDisabled(true);
+                  try {
+                    const result = await this.plugin.testWeatherConnection();
+                    new Notice(`M365 Calendar weather: ${result.message}`, result.ok ? 5000 : 10000);
+                  } finally {
+                    button.setDisabled(false);
+                  }
+                }),
+              );
+            },
+          },
+          {
+            name: 'Temperature units',
+            control: {
+              type: 'dropdown',
+              key: 'weatherUnits',
+              options: {
+                imperial: 'Fahrenheit (°F)',  
+                metric: 'Celsius (°C)',  
+              },
+            },
+          },
+          {
+            name: 'Clear weather cache',
+            desc: 'Purge all cached weather data and fetch fresh data from OpenWeather.',  
+            render: (setting) => {
+              setting.addButton((button) =>
+                button.setButtonText('Clear cache').onClick(async () => {
+                  await this.plugin.clearWeatherCache();
+                  new Notice('Weather cache cleared');
+                }),
+              );
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Maps',
+        items: [
+          {
+            name: 'Show event locations on a map',
+            desc: 'Adds a map to the new and edit event dialogs. To place a location, its text is sent to OpenStreetMap (nominatim.openstreetmap.org) and the map is loaded from openstreetmap.org. Turn off to keep locations on your device.',  
+            control: { type: 'toggle', key: 'mapsEnabled' },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Flagged emails',
+        items: [
+          {
+            name: 'Show email details on flagged-email tasks',
+            desc: 'When you open a task that came from a flagged email, show the email\'s sender, date and text. This adds the Mail.Read permission (read-only) to the sign-in request: add it to your Azure app registration first, then sign out and sign in again. Turn off to keep email content out of the plugin.',
+            control: { type: 'toggle', key: 'showEmailDetails' },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Calendar data',
+        items: [
+          {
+            name: 'Purge calendar and task data',
+            desc: 'Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.',
+            render: (setting) => {
+              setting.addButton((button) =>
+                button
+                  .setButtonText('Purge and resync')
+                  .setWarning()
+                  .onClick(async () => {
+                    button.setDisabled(true);
+                    try {
+                      await this.plugin.purgeCalendarData();
+                      new Notice('Calendar and task data purged. Resyncing…');
+                    } catch (e) {
+                      appLogger.error('[M365 Calendar] Purge failed', e);
+                      new Notice('M365 Calendar: Could not purge calendar data. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
+                    } finally {
+                      button.setDisabled(false);
+                    }
+                  }),
+              );
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Advanced',
+        items: [
+          {
+            name: 'Debug logging',
+            desc: 'Log HTTP requests and responses to the developer console (Ctrl+Shift+I). Disable when not needed.',
+            control: { type: 'toggle', key: 'debugLogging' },
+          },
+        ],
+      },
+    ];
+  }
 
-    new Setting(containerEl)
-      .setDesc('After changing the Client ID or Tenant ID, sign out and sign in again to apply the new credentials.'); // eslint-disable-line obsidianmd/ui/sentence-case
-
-    new Setting(containerEl)
-      .setName('Client ID')
-      .setDesc('Azure AD application (client) ID.')
-      .addText((text) =>
-        text
-          .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-          .setValue(this.plugin.settings.clientId)
-          .onChange(async (value) => {
-            this.plugin.settings.clientId = value.trim();
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName('Tenant ID')
-      .setDesc('Use "common" for personal + work accounts.')
-      .addText((text) =>
-        text
-          .setPlaceholder('common')
-          .setValue(this.plugin.settings.tenantId)
-          .onChange(async (value) => {
-            this.plugin.settings.tenantId = value.trim() || 'common';
-            await this.plugin.saveSettings();
-          }),
-      );
-
+  private renderSignIn(setting: Setting): void {
     let signInBtn!: ButtonComponent;
 
-    new Setting(containerEl)
-      .setName('Sign in / sign out')
-      .setDesc('Authenticate with your Microsoft account.')
+    setting
       .addButton((btn) => {
         signInBtn = btn
           .setButtonText('Sign in')
@@ -83,8 +288,8 @@ export class M365CalendarSettingTab extends PluginSettingTab {
             signInBtn.setDisabled(true);
             try {
               await this.plugin.authService.signIn();
+              signInBtn.setDisabled(true); // signed in now; stays disabled until sign-out
               new Notice('M365 Calendar: Signed in.'); // eslint-disable-line obsidianmd/ui/sentence-case
-              this.display();
             } catch (e) {
               signInBtn.setDisabled(false);
               appLogger.error('[M365 Calendar] Sign in failed', e);
@@ -104,188 +309,73 @@ export class M365CalendarSettingTab extends PluginSettingTab {
         }),
       );
 
-    // Reflect current auth state — disable Sign In if already authenticated.
-    // Capture signInBtn in a const so this callback is bound to the button
-    // instance created in this render, not any future re-render.
-    const currentSignInBtn = signInBtn;
+    // Reflect the current auth state: disable Sign in if already authenticated. The button is
+    // captured above, so this applies to the one rendered by this call, not a later re-render.
+    const renderedSignInBtn = signInBtn;
     void this.plugin.authService.isAuthenticated().then((authenticated) => {
-      currentSignInBtn.setDisabled(authenticated);
+      renderedSignInBtn.setDisabled(authenticated);
     });
+  }
 
-    new Setting(containerEl).setName('Calendar').setHeading();
+  /** Fallback for Obsidian < 1.13, which has no declarative settings: draws the same definitions. */
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
 
-    new Setting(containerEl)
-      .setName('Default view')
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption('month', 'Month')
-          .addOption('week', 'Week')
-          .addOption('agenda', 'Agenda')
-          .setValue(this.plugin.settings.defaultView)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultView = value as 'month' | 'week' | 'agenda';
-            await this.plugin.saveSettings();
-          }),
-      );
+    for (const item of this.getSettingDefinitions()) {
+      if ('type' in item && item.type === 'group') {
+        new Setting(containerEl).setName(item.heading ?? '').setHeading();
+        for (const child of item.items ?? []) {
+          if (!('type' in child && child.type === 'page')) this.displayDefinition(containerEl, child);
+        }
+      }
+    }
+  }
 
-    new Setting(containerEl)
-      .setName('Background refresh interval (minutes)')
-      .addSlider((slider) =>
-        slider
-          .setLimits(1, 60, 1)
-          .setValue(this.plugin.settings.refreshIntervalMinutes)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.refreshIntervalMinutes = value;
-            await this.plugin.saveSettings();
-          }),
-      );
+  private displayDefinition(containerEl: HTMLElement, def: SettingDefinition): void {
+    const setting = new Setting(containerEl).setName(def.name);
+    if (def.desc) setting.setDesc(def.desc);
 
-    new Setting(containerEl).setName('Weather').setHeading();
+    if (def.render) {
+      // This tab's render callbacks never use the group, which only exists on 1.13+.
+      def.render(setting, undefined as unknown as SettingGroup);
+      return;
+    }
+    if (!def.control) return;
 
-    new Setting(containerEl)
-      .setName('Show weather')
-      .setDesc('Display weather conditions in calendar views. Requires an OpenWeather API key.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.weatherEnabled)
-          .onChange(async (value) => {
-            this.plugin.settings.weatherEnabled = value;
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName('OpenWeather API key') // eslint-disable-line obsidianmd/ui/sentence-case
-      .setDesc('One Call API 3.0 key from openweathermap.org.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addText((text) => {
-        text.inputEl.type = 'password';
-        return text
-          .setPlaceholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-          .setValue(this.plugin.settings.openWeatherApiKey)
-          .onChange(async (value) => {
-            this.plugin.settings.openWeatherApiKey = value.trim();
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName('Location')
-      .setDesc('City and country code, e.g. "New York, US" or "London, GB".') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addText((text) =>
-        text
-          .setPlaceholder('New York, US') // eslint-disable-line obsidianmd/ui/sentence-case
-          .setValue(this.plugin.settings.weatherLocation)
-          .onChange(async (value) => {
-            this.plugin.settings.weatherLocation = value.trim();
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName('Test connection')
-      .setDesc('Check the API key and location, and show which place the location resolves to.')
-      .addButton((button) =>
-        button.setButtonText('Test').onClick(async () => {
-          button.setDisabled(true);
-          try {
-            const result = await this.plugin.testWeatherConnection();
-            new Notice(`M365 Calendar weather: ${result.message}`, result.ok ? 5000 : 10000);
-          } finally {
-            button.setDisabled(false);
+    const control = def.control;
+    const value = this.getControlValue(control.key);
+    switch (control.type) {
+      case 'text':
+        setting.addText((text) =>
+          text
+            .setPlaceholder(control.placeholder ?? '')
+            .setValue(String(value ?? ''))
+            .onChange((v) => this.setControlValue(control.key, v)),
+        );
+        break;
+      case 'toggle':
+        setting.addToggle((toggle) =>
+          toggle.setValue(Boolean(value)).onChange((v) => this.setControlValue(control.key, v)),
+        );
+        break;
+      case 'dropdown':
+        setting.addDropdown((dropdown) => {
+          for (const [optionValue, label] of Object.entries(control.options)) {
+            dropdown.addOption(optionValue, label);
           }
-        }),
-      );
-
-    new Setting(containerEl)
-      .setName('Temperature units')
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption('imperial', 'Fahrenheit (°F)') // eslint-disable-line obsidianmd/ui/sentence-case
-          .addOption('metric', 'Celsius (°C)') // eslint-disable-line obsidianmd/ui/sentence-case
-          .setValue(this.plugin.settings.weatherUnits)
-          .onChange(async (value) => {
-            this.plugin.settings.weatherUnits = value as 'imperial' | 'metric';
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName('Clear weather cache')
-      .setDesc('Purge all cached weather data and fetch fresh data from OpenWeather.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addButton((button) =>
-        button
-          .setButtonText('Clear cache')
-          .onClick(async () => {
-            await this.plugin.clearWeatherCache();
-            new Notice('Weather cache cleared');
-          }),
-      );
-
-    new Setting(containerEl).setName('Maps').setHeading();
-
-    new Setting(containerEl)
-      .setName('Show event locations on a map')
-      .setDesc('Adds a map to the new and edit event dialogs. To place a location, its text is sent to OpenStreetMap (nominatim.openstreetmap.org) and the map is loaded from openstreetmap.org. Turn off to keep locations on your device.') // eslint-disable-line obsidianmd/ui/sentence-case
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.mapsEnabled)
-          .onChange(async (value) => {
-            this.plugin.settings.mapsEnabled = value;
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl).setName('Flagged emails').setHeading();
-
-    new Setting(containerEl)
-      .setName('Show email details on flagged-email tasks')
-      .setDesc('When you open a task that came from a flagged email, show the email\'s sender, date and text. This adds the Mail.Read permission (read-only) to the sign-in request: add it to your Azure app registration first, then sign out and sign in again. Turn off to keep email content out of the plugin.')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showEmailDetails)
-          .onChange(async (value) => {
-            this.plugin.settings.showEmailDetails = value;
-            await this.plugin.saveSettings();
-            if (value) new Notice('M365 Calendar: Sign out and sign in again to grant the Mail.Read permission.');
-          }),
-      );
-
-    new Setting(containerEl).setName('Calendar data').setHeading();
-
-    new Setting(containerEl)
-      .setName('Purge calendar and task data')
-      .setDesc('Delete all locally stored calendar events, tasks and sync information, then download your calendars, events and tasks again from Microsoft 365. Your settings and sign-in are kept.')
-      .addButton((button) =>
-        button
-          .setButtonText('Purge and resync')
-          .setWarning()
-          .onClick(async () => {
-            button.setDisabled(true);
-            try {
-              await this.plugin.purgeCalendarData();
-              new Notice('Calendar and task data purged. Resyncing…');
-            } catch (e) {
-              appLogger.error('[M365 Calendar] Purge failed', e);
-              new Notice('M365 Calendar: Could not purge calendar data. Check the developer console for details.'); // eslint-disable-line obsidianmd/ui/sentence-case
-            } finally {
-              button.setDisabled(false);
-            }
-          }),
-      );
-
-    new Setting(containerEl).setName('Advanced').setHeading();
-
-    new Setting(containerEl)
-      .setName('Debug logging')
-      .setDesc('Log HTTP requests and responses to the developer console (Ctrl+Shift+I). Disable when not needed.')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.debugLogging)
-          .onChange(async (value) => {
-            this.plugin.settings.debugLogging = value;
-            await this.plugin.saveSettings();
-          }),
-      );
+          return dropdown.setValue(String(value)).onChange((v) => this.setControlValue(control.key, v));
+        });
+        break;
+      case 'slider':
+        setting.addSlider((slider) =>
+          slider
+            .setLimits(control.min, control.max, control.step)
+            .setValue(Number(value))
+            .setDynamicTooltip()
+            .onChange((v) => this.setControlValue(control.key, v)),
+        );
+        break;
+    }
   }
 }
