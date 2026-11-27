@@ -577,6 +577,30 @@
 .m365-timeline-column {
   flex: 1;
   box-sizing: border-box;
+  /* Dragging on the timeline selects a time range, not text. */
+  user-select: none;
+}
+
+/* The time range being dragged out on the day timeline; its height is the event's length. */
+.m365-timeline-selection {
+  position: absolute;
+  right: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background-color: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 4;
+}
+
+.m365-timeline-selection-label {
+  display: block;
+  padding: 0 var(--size-4-1);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .m365-week-timeline-area .m365-timeline-column {

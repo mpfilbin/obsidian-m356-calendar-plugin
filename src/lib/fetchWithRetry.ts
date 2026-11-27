@@ -6,7 +6,7 @@ const MAX_DELAY_MS = 60_000;
 const BASE_BACKOFF_MS = 1_000;
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 /** Parses Retry-After as delta-seconds or an HTTP date; returns undefined if absent/invalid. */
 function parseRetryAfterMs(response: Response): number | undefined {

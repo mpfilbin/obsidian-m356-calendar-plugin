@@ -64,11 +64,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
     todos: M365TodoItem[];
     anchorRect: DOMRect;
   } | null>(null);
-  const overflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overflowTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (overflowTimerRef.current !== null) clearTimeout(overflowTimerRef.current);
+      if (overflowTimerRef.current !== null) window.clearTimeout(overflowTimerRef.current);
     };
   }, []);
 
@@ -289,9 +289,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
                           onContextMenu={(e) => e.stopPropagation()}
                           onMouseEnter={(e) => {
                             if (overflowTimerRef.current !== null)
-                              clearTimeout(overflowTimerRef.current);
+                              window.clearTimeout(overflowTimerRef.current);
                             const rect = e.currentTarget.getBoundingClientRect();
-                            overflowTimerRef.current = setTimeout(() => {
+                            overflowTimerRef.current = window.setTimeout(() => {
                               overflowTimerRef.current = null;
                               setOverflowPopover({
                                 events: dayEvents.slice(eventSlots),
@@ -302,7 +302,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                           }}
                           onMouseLeave={() => {
                             if (overflowTimerRef.current !== null) {
-                              clearTimeout(overflowTimerRef.current);
+                              window.clearTimeout(overflowTimerRef.current);
                               overflowTimerRef.current = null;
                             }
                             setOverflowPopover(null);

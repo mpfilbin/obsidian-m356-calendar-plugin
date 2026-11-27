@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { M365Event, M365Calendar } from '../types';
 import { useNow } from '../hooks/useNow';
 import { usePopoverContext } from '../PopoverContext';
@@ -6,6 +6,7 @@ import { formatTime, toDateOnly } from '../lib/datetime';
 import { useDragContext } from '../DragContext';
 import { useDragSource, useDropZones } from '../hooks/useDragDrop';
 import { eventDurationMinutes, snapStartMinutes } from '../lib/reschedule';
+import { clampMinutes, dateAtMinutes, selectionRange, type MinuteRange } from '../lib/timeSelection';
 
 export interface LayoutEvent {
   event: M365Event;
@@ -18,6 +19,8 @@ export const HOURS_IN_DAY = 24;
 export const MIN_EVENT_HEIGHT = 15;
 export const TIME_LABEL_WIDTH_PX = 52;
 export const COLUMN_GAP_PX = 6;
+/** The pointer must move this far (px) before a press becomes a drag selection rather than a click. */
+const DRAG_SELECT_THRESHOLD_PX = 4;
 
 type StampedEvent = { event: M365Event; startMs: number; endMs: number };
 
@@ -74,6 +77,8 @@ interface TimelineColumnProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
+  /** Enables drag-to-select: called with the start and end of the range the user dragged over. */
+  onTimeRangeSelect?: (start: Date, end: Date) => void;
   onTimeContextMenu?: (dateTime: Date, event: MouseEvent) => void;
   onEventClick?: (event: M365Event) => void;
   onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
@@ -87,6 +92,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
   events,
   calendars,
   onTimeClick,
+  onTimeRangeSelect,
   onTimeContextMenu,
   onEventClick,
   onEventContextMenu,
@@ -126,7 +132,71 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
     return d;
   };
 
+  const [selection, setSelection] = useState<MinuteRange | null>(null);
+  const suppressClickRef = useRef(false);
+  const stopDragRef = useRef<(() => void) | null>(null);
+
+  // A view change or unmount mid-drag must not leave document listeners behind.
+  useEffect(() => () => stopDragRef.current?.(), []);
+
+  // Press, drag and release on the empty timeline selects a time range. A press that barely moves
+  // stays a plain click, and presses on an event are left to the event (click or drag-to-move).
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onTimeRangeSelect || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('.m365-day-event-block')) return;
+
+    const column = e.currentTarget;
+    const doc = column.ownerDocument;
+    // Re-read the rect on every move so scrolling the timeline mid-drag stays accurate.
+    const minutesAt = (clientY: number) =>
+      clampMinutes((clientY - column.getBoundingClientRect().top) / PX_PER_MIN);
+    const startY = e.clientY;
+    const anchorMin = minutesAt(startY);
+    let dragging = false;
+    let cancelled = false;
+    let range: MinuteRange | null = null;
+
+    const onMove = (ev: MouseEvent) => {
+      if (cancelled) return;
+      if (!dragging && Math.abs(ev.clientY - startY) < DRAG_SELECT_THRESHOLD_PX) return;
+      dragging = true;
+      range = selectionRange(anchorMin, minutesAt(ev.clientY));
+      setSelection(range);
+    };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      cancelled = true;
+      setSelection(null);
+    };
+    const stop = () => {
+      doc.removeEventListener('mousemove', onMove);
+      doc.removeEventListener('mouseup', onUp);
+      doc.removeEventListener('keydown', onKeyDown);
+      stopDragRef.current = null;
+    };
+    const onUp = () => {
+      stop();
+      setSelection(null);
+      if (!dragging) return;
+      // The browser still fires a click on the column after the release; it isn't a plain click.
+      suppressClickRef.current = true;
+      window.setTimeout(() => { suppressClickRef.current = false; }, 0);
+      if (!cancelled && range) {
+        onTimeRangeSelect(dateAtMinutes(date, range.startMin), dateAtMinutes(date, range.endMin));
+      }
+    };
+
+    stopDragRef.current = stop;
+    doc.addEventListener('mousemove', onMove);
+    doc.addEventListener('mouseup', onUp);
+    doc.addEventListener('keydown', onKeyDown);
+  };
+
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     onTimeClick(computeTimeFromMouseEvent(e));
   };
 
@@ -142,6 +212,7 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
       className={`m365-timeline-column${hover && dropMinutes === undefined ? ' m365-drop-hover' : ''}`}
       {...dropProps}
       style={{ position: 'relative', height: `${HOURS_IN_DAY * 60 * PX_PER_MIN}px` }}
+      onMouseDown={handleMouseDown}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       data-testid={testId}
@@ -241,6 +312,21 @@ export const TimelineColumn: React.FC<TimelineColumnProps> = ({
         <div className="m365-drop-indicator" style={{ top: `${dropMinutes * PX_PER_MIN}px` }}>
           <span className="m365-drop-indicator-label">
             {formatTime(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, dropMinutes))}
+          </span>
+        </div>
+      )}
+      {selection && (
+        <div
+          className="m365-timeline-selection"
+          data-testid="m365-timeline-selection"
+          style={{
+            top: `${selection.startMin * PX_PER_MIN}px`,
+            height: `${(selection.endMin - selection.startMin) * PX_PER_MIN}px`,
+            left: `${eventsLeft}px`,
+          }}
+        >
+          <span className="m365-timeline-selection-label">
+            {formatTime(dateAtMinutes(date, selection.startMin))} – {formatTime(dateAtMinutes(date, selection.endMin))}
           </span>
         </div>
       )}

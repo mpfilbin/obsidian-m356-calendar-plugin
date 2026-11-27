@@ -6,7 +6,7 @@ An Obsidian plugin that displays your Microsoft 365 calendars (personal, shared,
 
 - **Month, week and agenda views** of your M365 calendar events; the agenda lists the current week (Sunday–Saturday) day by day, all-day events and tasks first, then timed events in order
 - **Multiple calendars** — enable or disable individual calendars (personal, shared, group)
-- **Create events** — click any day to create a new event without leaving Obsidian
+- **Create events** — click any day to create a new event without leaving Obsidian, or drag across the day view's timeline to pick its start and end time
 - **Event locations on a map** — add a location when creating an event, edit it later, and see it on an OpenStreetMap preview in the new/edit event dialogs. The location text is looked up with OpenStreetMap (Nominatim) and the map is loaded from openstreetmap.org; turn it off under Settings → Maps to keep locations on your device
 - **Right-click menus** — right-click an event or task to edit or delete it (deletes ask for confirmation; recurring events offer "this occurrence" or "entire series"), or right-click an empty spot to create one
 - **Drag and drop rescheduling** — drag an event or task to another day, or drag an event up or down a week/day timeline to change its time (desktop only; snaps to 15 minutes; read-only calendars can't be moved)
@@ -74,6 +74,8 @@ The calendar can be dragged to the main editor area or pinned to either sidebar.
 ### Creating an event
 
 Click on any day cell or week column to open the **New Event** form. Fill in the title, calendar, start/end time, and an optional description, then click **Create**.
+
+In the **day view** you can also drag across the timeline to choose the time: a coloured rectangle follows the pointer, its height is the length of the event, and releasing opens the form with that start and end. The selection snaps to 15 minutes, works dragging up or down, and **Esc** cancels it. (Drag-to-select uses the mouse, so on touch devices tap a time instead.)
 
 ## Settings
 
