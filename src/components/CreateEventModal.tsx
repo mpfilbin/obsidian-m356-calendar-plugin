@@ -84,6 +84,8 @@ interface CreateEventFormProps {
   calendars: M365Calendar[];
   defaultCalendarId: string;
   initialDate: Date;
+  /** End of the event when the user picked a time range; otherwise it defaults to an hour after the start. */
+  initialEnd?: Date;
   initialAllDay?: boolean;
   onSubmit: (calendarId: string, event: NewEventInput) => void | Promise<void>;
   onCancel: () => void;
@@ -95,6 +97,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   calendars,
   defaultCalendarId,
   initialDate,
+  initialEnd,
   initialAllDay = false,
   onSubmit,
   onCancel,
@@ -105,10 +108,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     defaultCalendarId || calendars[0]?.id || '',
   );
   const defaultStart = new Date(initialDate);
-  if (defaultStart.getHours() === 0 && defaultStart.getMinutes() === 0) {
+  // A time range picked on the timeline is used exactly as picked, including one starting at midnight.
+  const hasPickedRange = initialEnd !== undefined && initialEnd > initialDate;
+  if (!hasPickedRange && defaultStart.getHours() === 0 && defaultStart.getMinutes() === 0) {
     defaultStart.setHours(9, 0, 0, 0);
   }
-  const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
+  const defaultEnd = hasPickedRange ? new Date(initialEnd) : new Date(defaultStart.getTime() + 60 * 60 * 1000);
 
   const [isAllDay, setIsAllDay] = useState(initialAllDay);
   const [startStr, setStartStr] = useState(() => {
@@ -457,6 +462,7 @@ export class CreateEventModal extends ReactModal {
     ) => Promise<void>,
     private readonly initialAllDay: boolean = false,
     private readonly maps?: MapSupport,
+    private readonly initialEnd?: Date,
   ) {
     super(app);
   }
@@ -471,6 +477,7 @@ export class CreateEventModal extends ReactModal {
         calendars={this.calendars}
         defaultCalendarId={this.defaultCalendarId}
         initialDate={this.initialDate}
+        initialEnd={this.initialEnd}
         initialAllDay={this.initialAllDay}
         onSubmit={(calendarId, event) => this.closeAfter(() => this.onSubmit(calendarId, event))}
         onCancel={() => this.close()}

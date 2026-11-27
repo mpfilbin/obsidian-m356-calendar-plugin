@@ -6,16 +6,16 @@ export function useNow(enabled = true): Date {
   useEffect(() => {
     if (!enabled) return;
     const msUntilNextMinute = 60000 - (Date.now() % 60000);
-    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let intervalId: number | undefined;
 
-    const timeoutId = setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       setNow(new Date());
-      intervalId = setInterval(() => setNow(new Date()), 60000);
+      intervalId = window.setInterval(() => setNow(new Date()), 60000);
     }, msUntilNextMinute);
 
     return () => {
-      clearTimeout(timeoutId);
-      if (intervalId !== undefined) clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+      if (intervalId !== undefined) window.clearInterval(intervalId);
     };
   }, [enabled]);
 

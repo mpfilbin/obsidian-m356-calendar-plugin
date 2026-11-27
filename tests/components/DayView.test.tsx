@@ -558,4 +558,25 @@ describe('DayView — todos', () => {
     );
     expect(screen.getByRole('button', { name: 'View task: Buy milk' })).toBeDisabled();
   });
+
+  it('selects a time range on the timeline and reports it', () => {
+    const onTimeRangeSelect = vi.fn();
+    render(
+      <DayView
+        currentDate={new Date(2026, 3, 9)}
+        events={[]}
+        calendars={[calendar]}
+        onTimeClick={vi.fn()}
+        onTimeRangeSelect={onTimeRangeSelect}
+      />,
+    );
+    const timeline = screen.getByTestId('m365-day-timeline');
+    fireEvent.mouseDown(timeline, { button: 0, clientY: 13 * 60 });
+    fireEvent.mouseMove(document, { clientY: 14 * 60 });
+    expect(screen.getByTestId('m365-timeline-selection').style.height).toBe('60px');
+    fireEvent.mouseUp(document);
+
+    const [start, end] = onTimeRangeSelect.mock.calls[0] as [Date, Date];
+    expect([start.getHours(), end.getHours()]).toEqual([13, 14]);
+  });
 });

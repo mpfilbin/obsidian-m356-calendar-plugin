@@ -23,6 +23,7 @@ interface DayViewProps {
   events: M365Event[];
   calendars: M365Calendar[];
   onTimeClick: (date: Date) => void;
+  onTimeRangeSelect?: (start: Date, end: Date) => void;
   onEventClick?: (event: M365Event) => void;
   onEventContextMenu?: (event: M365Event, e: MouseEvent) => void;
   weather?: Map<string, DailyWeather | null>;
@@ -39,6 +40,7 @@ export const DayView: React.FC<DayViewProps> = ({
   events,
   calendars,
   onTimeClick,
+  onTimeRangeSelect,
   onEventClick,
   onEventContextMenu,
   weather,
@@ -177,6 +179,7 @@ export const DayView: React.FC<DayViewProps> = ({
           events={timedEvents}
           calendars={calendars}
           onTimeClick={onTimeClick}
+          onTimeRangeSelect={onTimeRangeSelect}
           onEventClick={onEventClick}
           onEventContextMenu={onEventContextMenu}
           showLabels={true}

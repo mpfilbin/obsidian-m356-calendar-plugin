@@ -43,6 +43,6 @@ export const OverflowPopup: React.FC<OverflowPopupProps> = ({
         return <TodoCard key={todo.id} todo={todo} todoList={list} />;
       })}
     </div>,
-    document.body,
+    activeDocument.body,
   );
 };

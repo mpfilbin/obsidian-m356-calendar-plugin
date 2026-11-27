@@ -585,4 +585,46 @@ describe('CreateEventForm — in-flight submit', () => {
     expect(screen.getByLabelText('Title')).toBeEnabled();
     expect(screen.getByText('Create')).toBeEnabled();
   });
+
+  describe('time range picked on the timeline', () => {
+    const renderWith = (initialDate: Date, initialEnd?: Date) =>
+      render(
+        <CreateEventForm
+          calendars={calendars}
+          defaultCalendarId="cal1"
+          initialDate={initialDate}
+          initialEnd={initialEnd}
+          onSubmit={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+    it('uses the picked start and end', () => {
+      renderWith(new Date(2026, 3, 10, 13, 15), new Date(2026, 3, 10, 14, 45));
+      expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-10T13:15');
+      expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-10T14:45');
+    });
+
+    it('keeps a range that starts at midnight instead of moving it to 09:00', () => {
+      renderWith(new Date(2026, 3, 10, 0, 0), new Date(2026, 3, 10, 1, 30));
+      expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-10T00:00');
+      expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-10T01:30');
+    });
+
+    it('accepts a range that ends at midnight at the end of the day', () => {
+      renderWith(new Date(2026, 3, 10, 23, 0), new Date(2026, 3, 11, 0, 0));
+      expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-11T00:00');
+    });
+
+    it('still defaults to one hour, and 09:00 for midnight, when no range is given', () => {
+      renderWith(new Date(2026, 3, 10, 0, 0));
+      expect((screen.getByLabelText('Start') as HTMLInputElement).value).toBe('2026-04-10T09:00');
+      expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-10T10:00');
+    });
+
+    it('ignores an end that is not after the start', () => {
+      renderWith(new Date(2026, 3, 10, 13, 15), new Date(2026, 3, 10, 13, 15));
+      expect((screen.getByLabelText('End') as HTMLInputElement).value).toBe('2026-04-10T14:15');
+    });
+  });
 });
