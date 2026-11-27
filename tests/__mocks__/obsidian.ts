@@ -55,10 +55,11 @@ export function _clearSettingInstances(): void { _instances.length = 0; }
 
 export class ButtonComponent {
   private _handler: (() => void | Promise<void>) | undefined;
+  disabled = false;
   setButtonText(_text: string) { return this; }
   setCta() { return this; }
   setWarning() { return this; }
-  setDisabled(_disabled: boolean) { return this; }
+  setDisabled(disabled: boolean) { this.disabled = disabled; return this; }
   onClick(handler: () => void | Promise<void>) { this._handler = handler; return this; }
   async simulateClick() { await this._handler?.(); }
 }
@@ -66,6 +67,8 @@ export class ButtonComponent {
 export class Setting {
   readonly buttons: ButtonComponent[] = [];
   readonly toggles: Array<{ simulateChange: (value: boolean) => Promise<void> }> = [];
+  readonly texts: Array<{ inputEl: { type: string }; value: string; simulateChange: (value: string) => Promise<void> }> = [];
+  readonly controlEl: HTMLElement = createElementWithCreateElMethod('div');
   constructor(_containerEl?: unknown) { _instances.push(this); }
   name = '';
   setName(name: string) { this.name = name; return this; }
@@ -80,8 +83,20 @@ export class Setting {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addText(cb: (text: any) => void) {
-    const text = { inputEl: { type: '' }, setPlaceholder: () => text, setValue: () => text, onChange: () => text };
+    let handler: ((value: string) => void | Promise<void>) | undefined;
+    const entry = {
+      inputEl: { type: '' },
+      value: '',
+      simulateChange: async (value: string) => { await handler?.(value); },
+    };
+    const text = {
+      inputEl: entry.inputEl,
+      setPlaceholder: () => text,
+      setValue: (v: string) => { entry.value = v; return text; },
+      onChange: (fn: (value: string) => void | Promise<void>) => { handler = fn; return text; },
+    };
     cb(text);
+    this.texts.push(entry);
     return this;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

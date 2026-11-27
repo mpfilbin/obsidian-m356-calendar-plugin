@@ -28,6 +28,11 @@
 Settings flow: the settings tab and the view both go through `Plugin.saveSettings`; open views receive
 changes (debounced) via `subscribeSettings`, so no reload is needed.
 
+The settings tab (`settings.ts`) is defined once, in `getSettingDefinitions()`. Obsidian 1.13+ renders that
+list itself and uses it for settings search. `minAppVersion` is older than 1.13, so `display()` draws the
+same definitions for earlier versions. Add or change a setting in the definitions only; plain controls
+read and write through `getControlValue` / `setControlValue`, which also normalise (trim) values.
+
 ## Design history
 
 `superpowers/specs/` and `superpowers/plans/` hold the dated design specs and implementation plans for
