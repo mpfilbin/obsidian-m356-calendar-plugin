@@ -58,12 +58,12 @@ export const CalendarApp: React.FC = () => {
 
   useEffect(() => {
     const ms = settings.refreshIntervalMinutes * 60 * 1000;
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       void fetchAll({ reloadCalendars: true });
       void fetchWeather();
       void fetchTodos({ reloadLists: true });
     }, ms);
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, [fetchAll, fetchWeather, fetchTodos, settings.refreshIntervalMinutes]);
 
   const handleNavigate = (direction: 'prev' | 'next' | 'today') => {

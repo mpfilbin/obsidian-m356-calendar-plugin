@@ -20,7 +20,7 @@ export class GeocodingError extends Error {
   }
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 /**
  * Turns place text ("Pike Place Market, Seattle") into coordinates using OpenStreetMap's Nominatim

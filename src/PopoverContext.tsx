@@ -24,11 +24,11 @@ export function usePopoverContext(): PopoverContextValue {
 
 export const PopoverProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [popover, setPopover] = useState<PopoverState | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   const showPopover = useCallback((event: M365Event, calendar: M365Calendar, rect: DOMRect) => {
-    if (timerRef.current !== null) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
       setPopover({ event, calendar, anchorRect: rect });
     }, 300);
@@ -36,7 +36,7 @@ export const PopoverProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const hidePopover = useCallback(() => {
     if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
+      window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
     setPopover(null);
@@ -44,7 +44,7 @@ export const PopoverProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   useEffect(() => {
     return () => {
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -60,7 +60,7 @@ export const PopoverProvider: React.FC<{ children: ReactNode }> = ({ children })
             calendar={popover.calendar}
             anchorRect={popover.anchorRect}
           />,
-          document.body,
+          activeDocument.body,
         )}
     </PopoverContext.Provider>
   );
