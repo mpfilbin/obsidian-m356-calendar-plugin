@@ -53,6 +53,8 @@ Do not edit these by hand. Use the steps below so they stay in sync.
 
    `npm run release -- <major|minor|patch>` (`scripts/release.sh`) runs the same steps and then creates a commit itself. Prefer the manual steps above when the commit message must follow other conventions (for example, attribution lines), or when the version bump should be part of an existing commit.
 3. Check `git diff`: only version lines should change in `package.json`, `package-lock.json` and `manifest.json`, plus at most one new line in `versions.json`. If `npm install` changed dependency versions, revert those changes.
+
+   The lockfile is written by npm 11 (the npm in Node 24, which CI uses). Node 22's npm 10 rewrites it differently, for example by dropping the `libc` fields, and can crash on some dependency changes. If the diff shows lockfile changes that are not version lines, run the install with npm 11 instead (`npx -y npm@11 install`), or restore `package-lock.json` from `master` and edit only its two version lines.
 4. Commit the bump on the PR branch, either in the feature commit or as a separate `chore: update version to X.Y.Z` commit.
 5. Do not create git tags or GitHub releases by hand.
 
@@ -76,6 +78,47 @@ Several Dependabot PRs open at the same time will conflict on the version lines 
 ### Releases
 
 The `Release` workflow (`.github/workflows/release.yml`) runs when `manifest.json` changes on `master`. It builds the plugin and creates a GitHub release named after the `manifest.json` version, skipping the step if that release already exists. Merging a PR with a version bump therefore publishes a release, so make sure the bump is correct before merge, and bump once per PR rather than once per commit.
+
+## Handling Dependabot pull requests
+
+Dependabot opens weekly upgrade PRs for npm packages and GitHub Actions (`.github/dependabot.yml`). Agents asked to process them have the autonomy to **merge them without asking for further approval** once every condition below is met. Human supervision is only needed when a change is backwards incompatible or needs a human-driven decision; see [When to stop and ask](#when-to-stop-and-ask).
+
+### Conditions for merging on your own
+
+Merge a Dependabot PR (squash, as for every PR here) only when **all** of these are true:
+
+1. The upgrade is backwards compatible and needs no decision from a person (see below).
+2. The version bump is on the PR's own branch (see [Dependabot pull requests](#dependabot-pull-requests) under Versioning). GitHub Actions upgrades that only touch `.github/workflows/` are exempt.
+3. The checks in [Checks before pushing](#checks-before-pushing) pass locally from a clean install (`rm -rf node_modules && npm ci`), including the tests under all three timezones when the upgrade touches the test tooling.
+4. **Every** CI check is green on the PR's current head commit: lint, typecheck, build, the three timezone test jobs, and both CodeQL analyses. Never merge on pending or red checks, and never skip, disable or loosen a test, lint rule or coverage threshold to get green.
+5. The PR is mergeable (no conflicts) and has no unresolved review comments.
+
+### Working through several PRs
+
+- Take them **one at a time**, lowest risk first (patch and minor dev dependencies, then runtime dependencies, then anything larger). Every merge changes `master` and its version, so the next PR needs `master` merged into it and a fresh bump (the next patch version) on top. Do not open several in parallel.
+- For each PR: check out its Dependabot branch, merge `origin/master` into it (never rebase, amend or force-push), run `npm ci`, apply the patch bump, run the local checks, commit `chore: update version to X.Y.Z`, push to the same branch, wait for CI, then merge.
+- Squash-merge with a title that describes the dependency change, ending in the PR number, for example `chore(deps-dev): bump tslib from 2.8.1 to 2.9.1 (#74)`. Do not use the version bump as the title.
+- Each merge changes `manifest.json` on `master`, so the Release workflow publishes a release per merged PR. That is expected.
+- Afterwards, report what was merged (and anything that was not, with the reason).
+
+### Things that go wrong, and what to do
+
+- **Dependabot rewrote its branch.** When `master` moves, Dependabot rebases and force-pushes its branch, so your push is rejected as non-fast-forward. Do not force-push, and do not merge the old history. Fetch the branch, reset your local copy of it to the new remote branch (your unpushed commits are the only thing you discard), and re-apply the version bump and any extra changes on top.
+- **Packages that must move together.** Some packages are pinned to each other, for example `vitest` and `@vitest/coverage-v8`, which must have identical versions. When `npm ci` fails with an `ERESOLVE` peer dependency conflict, bump the partner in the same PR rather than leaving CI red. A version-locked pair moving together is not a reason to stop.
+- **npm crashes while resolving** (`Cannot read properties of null (reading 'edgesOut')`). That is a bug in npm 10, which ships with Node 22. CI uses Node 24, which has npm 11. Run the install with a newer npm instead, for example `npx -y npm@11 install`, starting from `master`'s `package.json` and `package-lock.json` if Dependabot's lockfile is inconsistent, then confirm with a clean `npm ci`. Do not delete the lockfile and regenerate it from scratch, which drifts unrelated packages.
+- **Lockfile noise.** Dependabot's lockfile can differ from `master`'s in ways that are not version changes (the root `obsidian` range, optional peer entries). That is fine. Do compare which packages changed versions: only the upgraded package, its version-locked partners and their own transitive dependencies should move.
+- **Red CI that is not the upgrade's fault.** Show it is red on `master` too, or fix the root cause. Re-run a job at most once. Do not merge around it.
+
+### When to stop and ask
+
+Leave the PR open and ask the repository owner when any of these apply:
+
+- **Backwards incompatible.** A major version upgrade that has breaking changes, an upgrade that needs source or configuration changes to keep the plugin working or behaving the same, an upgrade that changes what users see or what is stored, or one that would raise `minAppVersion` or drop support for an Obsidian version the plugin still supports.
+- **A human decision is needed.** More than one reasonable way to resolve a conflict, a dependency that is deprecated, abandoned or has changed owner, a license change, or a choice between upgrading and pinning or replacing a package.
+- **Security-sensitive.** Anything covered by [Security-sensitive changes](#security-sensitive-changes), including a new dependency with install scripts or native code, a dependency bundled into `main.js` that handles credentials, network requests or rendering of remote content, and any change to `.github/workflows/`, `esbuild.config.mjs` or `scripts/` beyond the upgrade itself.
+- **You cannot get it green** without changing behavior, tests or configuration in a way you are not sure is right.
+
+Say what you found and what the options are. Do not merge in the meantime.
 
 ## Checks before pushing
 
